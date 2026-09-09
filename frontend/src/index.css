@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+
+:root {
+  --premium-gold: #d4af37;
+  --premium-gold-hover: #b5952f;
+  --premium-dark: #1a202c;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+}
+
+h1, h2, h3, h4, h5, h6, .navbar-brand {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Override Bootstrap Warning to Premium Gold */
+.bg-warning {
+  background-color: var(--premium-gold) !important;
+}
+
+.text-warning {
+  color: var(--premium-gold) !important;
+}
+
+.border-warning {
+  border-color: var(--premium-gold) !important;
+}
+
+.btn-warning {
+  background-color: var(--premium-gold) !important;
+  border-color: var(--premium-gold) !important;
+  color: #fff !important;
+}
+
+.btn-warning:hover {
+  background-color: var(--premium-gold-hover) !important;
+  border-color: var(--premium-gold-hover) !important;
+}
+
+/* Custom Utilities */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 1rem 3rem rgba(0,0,0,.175) !important;
+}
+
+.hover-warning:hover {
+  background-color: var(--premium-gold) !important;
+  border-color: var(--premium-gold) !important;
+  color: #fff !important;
+}
+
+.hover-text-warning:hover {
+  color: var(--premium-gold) !important;
+}
+
+.bg-dark {
+  background-color: var(--premium-dark) !important;
+}
