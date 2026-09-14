@@ -16,7 +16,7 @@ const Home = () => {
             }}
           >
             <Container>
-              <h1 className="display-3 fw-bold mb-4">Chào mừng đến với Hovi Hotels</h1>
+              <h1 className="display-3 fw-bold mb-4">Chào mừng đến với VinaStay Hotels</h1>
               <p className="lead mb-5 fs-4">Trải nghiệm sự sang trọng và thoải mái chưa từng có.</p>
               <Button as={Link} to="/rooms" variant="warning" size="lg" className="px-5 py-3 fw-bold rounded-pill shadow-lg">
                 Khám phá phòng

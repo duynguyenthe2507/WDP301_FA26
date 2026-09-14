@@ -33,7 +33,7 @@ app.use('/api/auth', authRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Hovi Hotel Booking API is running!' });
+  res.status(200).json({ message: 'VinaStay Hotel Booking API is running!' });
 });
 
 // Global Error Handler

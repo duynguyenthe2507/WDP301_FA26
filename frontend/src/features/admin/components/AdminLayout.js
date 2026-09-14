@@ -7,7 +7,7 @@ const AdminLayout = () => {
     <div className="d-flex flex-column min-vh-100 bg-light">
       <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm">
         <Container fluid>
-          <Navbar.Brand as={Link} to="/admin" className="fw-bold">Hovi Admin Panel</Navbar.Brand>
+          <Navbar.Brand as={Link} to="/admin" className="fw-bold">VinaStay Admin Panel</Navbar.Brand>
           <Navbar.Toggle aria-controls="admin-navbar-nav" />
           <Navbar.Collapse id="admin-navbar-nav">
             <Nav className="ms-auto">
