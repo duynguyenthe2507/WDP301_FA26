@@ -1,65 +1,6 @@
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { OAuth2Client } from 'google-auth-library';
-
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-export const googleLogin = async (req, res) => {
-  try {
-    const { credential } = req.body; // Token Google trả về từ frontend
-
-    // 1. Xác thực Token trực tiếp với Google
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { email, name } = payload;
-
-    // 2. Tìm xem user đã tồn tại chưa
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      // Nếu chưa có, tạo user mới
-      user = await User.create({
-        email,
-        full_name: name,
-        auth_type: 'GOOGLE',
-        status: 'ACTIVE',
-        role: 'CUSTOMER'
-      });
-    }
-
-    // 3. Kiểm tra status bị khóa
-    if (user.status === 'BLOCKED') {
-      return res.status(403).json({ message: 'Tài khoản đã bị khóa' });
-    }
-
-    // 4. Cấp JWT của hệ thống bạn
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || 'secret_key',
-      { expiresIn: '1d' }
-    );
-
-    res.json({
-      message: 'Đăng nhập Google thành công',
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: 'Xác thực Google thất bại: ' + error.message });
-  }
-};
-
 
 export const register = async (req, res) => {
   try {
@@ -74,12 +15,6 @@ export const register = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email đã tồn tại' });
-    }
-
-    if (existingUser.auth_type === 'GOOGLE') {
-      return res.status(400).json({
-        message: 'Tài khoản này được đăng ký bằng Google. Vui lòng bấm vào nút "Đăng nhập bằng Google".'
-      });
     }
 
     // Đăng ký tài khoản
@@ -122,9 +57,9 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Email không tồn tại' });
     }
 
-    if (!user.password || user.auth_type === 'GOOGLE') {
+    if (!user.password) {
       return res.status(400).json({
-        message: 'Tài khoản này được đăng ký bằng Google. Vui lòng bấm vào nút "Đăng nhập bằng Google".'
+        message: 'Tài khoản này không có mật khẩu'
       });
     }
 

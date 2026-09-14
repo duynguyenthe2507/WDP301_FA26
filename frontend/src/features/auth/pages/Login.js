@@ -4,7 +4,6 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
-import { GoogleLogin } from '@react-oauth/google';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,17 +26,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-  const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      const res = await axios.post('http://localhost:9999/api/auth/google-login', {
-        credential: credentialResponse.credential,
-      });
-      login(res.data.user, res.data.token);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Lỗi đăng nhập Google');
-    }
-  };
-
   return (
     <div className="auth-page">
       <Card className="auth-card">
@@ -84,23 +72,6 @@ const Login = () => {
             <Button variant="warning" type="submit" className="w-100 auth-btn mt-2 mb-3" disabled={loading}>
               {loading ? 'Đang xác thực...' : 'Đăng nhập'}
             </Button>
-
-            <div className="d-flex align-items-center my-4">
-              <hr className="flex-grow-1 text-muted" />
-              <span className="mx-3 text-muted small fw-semibold">HOẶC</span>
-              <hr className="flex-grow-1 text-muted" />
-            </div>
-
-            <div className="d-flex justify-content-center mb-4">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Đăng nhập Google thất bại trên trình duyệt')}
-                theme="outline"
-                shape="rectangular"
-                text="signin_with"
-                size="large"
-              />
-            </div>
 
             <div className="text-center small text-muted">
               Chưa có tài khoản? <Link to="/register" className="auth-link">Đăng ký ngay</Link>
