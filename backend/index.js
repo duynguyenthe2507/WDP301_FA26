@@ -8,6 +8,7 @@ import customerRoutes from './src/routes/customerRoutes.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import partnerRoutes from './src/routes/partnerRoutes.js';
 import managerRoutes from './src/routes/managerRoutes.js';
+import authRoutes from './src/routes/authRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,7 @@ app.use('/api/customer', customerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/partner', partnerRoutes);
 app.use('/api/manager', managerRoutes);
+app.use('/api/auth', authRoutes);
 
 // Base Route
 app.get('/', (req, res) => {
