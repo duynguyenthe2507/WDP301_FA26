@@ -10,10 +10,10 @@ const Footer = () => {
           <Col md={4}>
             <div className="d-flex align-items-center mb-3">
               <FaHotel className="fs-3 text-warning me-2" />
-              <h4 className="mb-0 fw-bold">Hovi</h4>
+              <h4 className="mb-0 fw-bold">VinaStay</h4>
             </div>
             <p className="text-secondary">
-              Trải nghiệm dịch vụ lưu trú tuyệt vời nhất với Hovi. Đặt phòng ngay hôm nay và tận hưởng không gian thoải mái cao cấp, tiện nghi đẳng cấp thế giới, và những kỷ niệm khó quên.
+              Trải nghiệm dịch vụ lưu trú tuyệt vời nhất với VinaStay. Đặt phòng ngay hôm nay và tận hưởng không gian thoải mái cao cấp, tiện nghi đẳng cấp thế giới, và những kỷ niệm khó quên.
             </p>
           </Col>
           <Col md={4}>
@@ -29,7 +29,7 @@ const Footer = () => {
             <ul className="list-unstyled text-secondary">
               <li className="mb-2">📍 123 Đại lộ Luxury, Hà Nội</li>
               <li className="mb-2">📞 +1 234 567 8900</li>
-              <li className="mb-2">✉️ contact@hovi.com</li>
+              <li className="mb-2">✉️ contact@vinastay.com</li>
             </ul>
             <div className="d-flex gap-3 mt-3">
               <a href="#facebook" className="text-light fs-4 hover-text-warning"><FaFacebook /></a>
@@ -40,7 +40,7 @@ const Footer = () => {
         </Row>
         <hr className="my-4 border-secondary" />
         <div className="text-center text-secondary">
-          <small>&copy; {new Date().getFullYear()} Hovi Hotels. Bảo lưu mọi quyền.</small>
+          <small>&copy; {new Date().getFullYear()} VinaStay Hotels. Bảo lưu mọi quyền.</small>
         </div>
       </Container>
     </footer>
