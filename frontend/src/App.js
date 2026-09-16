@@ -1,5 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+
+// Auth Pages
+import Login from './features/auth/pages/Login';
+import Register from './features/auth/pages/Register';
 
 // Layouts
 import CustomerLayout from './features/customer/components/CustomerLayout';
@@ -22,8 +27,13 @@ import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Customer Routes (Default) */}
+      <AuthProvider>
+        <Routes>
+          {/* Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Customer Routes (Default) */}
         <Route path="/" element={<CustomerLayout />}>
           <Route index element={<Home />} />
           <Route path="rooms" element={<RoomsList />} />
@@ -48,7 +58,8 @@ function App() {
           <Route index element={<ManagerDashboard />} />
           {/* Add more manager routes here */}
         </Route>
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }

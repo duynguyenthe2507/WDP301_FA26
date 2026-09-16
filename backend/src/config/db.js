@@ -8,9 +8,7 @@ export const connectDB = async () => {
       process.exit(1);
     }
     
-    await mongoose.connect(MONGO_URL, {
-      dbName: process.env.DB_NAME || 'hovi_hotel',
-    });
+    await mongoose.connect(MONGO_URL);
     
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
