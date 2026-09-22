@@ -17,6 +17,12 @@ import Home from './features/customer/pages/Home';
 import RoomsList from './features/customer/pages/RoomsList';
 import RoomDetails from './features/customer/pages/RoomDetails';
 import Booking from './features/customer/pages/Booking';
+import ProfilePage from './features/customer/pages/ProfilePage';
+import HotelSearchPage from './features/customer/pages/HotelSearchPage';
+import HotelDetailsPage from './features/customer/pages/HotelDetailsPage';
+
+// Guards
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -34,30 +40,37 @@ function App() {
           <Route path="/register" element={<Register />} />
           
           {/* Customer Routes (Default) */}
-        <Route path="/" element={<CustomerLayout />}>
-          <Route index element={<Home />} />
-          <Route path="rooms" element={<RoomsList />} />
-          <Route path="room/:id" element={<RoomDetails />} />
-          <Route path="booking" element={<Booking />} />
-        </Route>
+          <Route path="/" element={<CustomerLayout />}>
+            <Route index element={<Home />} />
+            <Route path="rooms" element={<RoomsList />} />
+            <Route path="room/:id" element={<RoomDetails />} />
+            <Route path="hotels" element={<HotelSearchPage />} />
+            <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
+            <Route path="booking" element={<Booking />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          {/* Add more admin routes here */}
-        </Route>
+            {/* Profile - yêu cầu đăng nhập CUSTOMER */}
+            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
+          </Route>
 
-        {/* Hotel Partner Routes */}
-        <Route path="/partner" element={<PartnerLayout />}>
-          <Route index element={<PartnerDashboard />} />
-          {/* Add more partner routes here */}
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            {/* Add more admin routes here */}
+          </Route>
 
-        {/* Platform Manager Routes */}
-        <Route path="/manager" element={<ManagerLayout />}>
-          <Route index element={<ManagerDashboard />} />
-          {/* Add more manager routes here */}
-        </Route>
+          {/* Hotel Partner Routes */}
+          <Route path="/partner" element={<PartnerLayout />}>
+            <Route index element={<PartnerDashboard />} />
+            {/* Add more partner routes here */}
+          </Route>
+
+          {/* Platform Manager Routes */}
+          <Route path="/manager" element={<ManagerLayout />}>
+            <Route index element={<ManagerDashboard />} />
+            {/* Add more manager routes here */}
+          </Route>
         </Routes>
       </AuthProvider>
     </Router>
