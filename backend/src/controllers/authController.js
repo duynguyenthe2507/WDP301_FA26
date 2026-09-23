@@ -57,12 +57,6 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Email không tồn tại' });
     }
 
-    if (!user.password) {
-      return res.status(400).json({
-        message: 'Tài khoản này không có mật khẩu'
-      });
-    }
-
     // Kiểm tra trạng thái tài khoản
     if (user.status === 'BLOCKED') {
       return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa' });

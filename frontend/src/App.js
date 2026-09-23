@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
 
 // Auth Pages
 import Login from './features/auth/pages/Login';
@@ -27,7 +26,6 @@ import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard
 function App() {
   return (
     <Router>
-      <AuthProvider>
         <Routes>
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
@@ -59,7 +57,6 @@ function App() {
           {/* Add more manager routes here */}
         </Route>
         </Routes>
-      </AuthProvider>
     </Router>
   );
 }
