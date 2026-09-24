@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MOCK_HOTELS } from './mockHotelsData';
+import MOCK_HOTELS from './mockHotelsData.json';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:9999';
 
