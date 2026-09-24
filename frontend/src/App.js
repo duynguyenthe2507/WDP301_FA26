@@ -20,6 +20,7 @@ import Booking from './features/customer/pages/Booking';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
+import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
 
@@ -44,7 +45,7 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          {/* Add more admin routes here */}
+          <Route path="users" element={<UserManagement />} />
         </Route>
 
         {/* Hotel Partner Routes */}
