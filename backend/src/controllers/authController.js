@@ -4,7 +4,7 @@ import User from '../models/User.js';
 
 export const register = async (req, res) => {
   try {
-    const { email, password, full_name, phone_number, role, status } = req.body;
+    const { email, password, full_name, phone_number, role } = req.body;
 
     // Kiểm tra trạng thái rỗng
     if (!email || !password || !full_name) {
@@ -23,8 +23,9 @@ export const register = async (req, res) => {
       password,
       full_name,
       phone_number,
-      role: role || 'CUSTOMER',
-      status: status || 'ACTIVE',
+      // Người dùng chỉ có thể tự đăng ký vai trò khách hàng hoặc đối tác.
+      role: role === 'PARTNER' ? 'PARTNER' : 'CUSTOMER',
+      status: 'ACTIVE',
     });
 
     res.status(201).json({
