@@ -1,9 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 
 // Auth Pages
 import Login from './features/auth/pages/Login';
 import Register from './features/auth/pages/Register';
+import CustomerRegister from './features/auth/pages/CustomerRegister';
+import PartnerRegister from './features/auth/pages/PartnerRegister';
 
 // Layouts
 import CustomerLayout from './features/customer/components/CustomerLayout';
@@ -13,9 +16,12 @@ import ManagerLayout from './features/platform_manager/components/ManagerLayout'
 
 // Customer Pages
 import Home from './features/customer/pages/Home';
-import RoomsList from './features/customer/pages/RoomsList';
-import RoomDetails from './features/customer/pages/RoomDetails';
-import Booking from './features/customer/pages/Booking';
+import ProfilePage from './features/customer/pages/ProfilePage';
+import HotelSearchPage from './features/customer/pages/HotelSearchPage';
+import HotelDetailsPage from './features/customer/pages/HotelDetailsPage';
+
+// Guards
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -26,37 +32,46 @@ import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard
 function App() {
   return (
     <Router>
+      <AuthProvider>
         <Routes>
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+          <Route path="/register/customer" element={<CustomerRegister />} />
+          <Route path="/register/user" element={<CustomerRegister />} />
+          <Route path="/register/partner" element={<PartnerRegister />} />
+
           {/* Customer Routes (Default) */}
-        <Route path="/" element={<CustomerLayout />}>
-          <Route index element={<Home />} />
-          <Route path="rooms" element={<RoomsList />} />
-          <Route path="room/:id" element={<RoomDetails />} />
-          <Route path="booking" element={<Booking />} />
-        </Route>
+          <Route path="/" element={<CustomerLayout />}>
+            <Route index element={<Home />} />
+            <Route path="hotels" element={<HotelSearchPage />} />
+            <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          {/* Add more admin routes here */}
-        </Route>
+            {/* Profile - yêu cầu đăng nhập CUSTOMER */}
+            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="profile" element={<ProfilePage />} />
+            </Route>
+          </Route>
 
-        {/* Hotel Partner Routes */}
-        <Route path="/partner" element={<PartnerLayout />}>
-          <Route index element={<PartnerDashboard />} />
-          {/* Add more partner routes here */}
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            {/* Add more admin routes here */}
+          </Route>
 
-        {/* Platform Manager Routes */}
-        <Route path="/manager" element={<ManagerLayout />}>
-          <Route index element={<ManagerDashboard />} />
-          {/* Add more manager routes here */}
-        </Route>
+          {/* Hotel Partner Routes */}
+          <Route path="/partner" element={<PartnerLayout />}>
+            <Route index element={<PartnerDashboard />} />
+            {/* Add more partner routes here */}
+          </Route>
+
+          {/* Platform Manager Routes */}
+          <Route path="/manager" element={<ManagerLayout />}>
+            <Route index element={<ManagerDashboard />} />
+            {/* Add more manager routes here */}
+          </Route>
         </Routes>
+      </AuthProvider>
     </Router>
   );
 }

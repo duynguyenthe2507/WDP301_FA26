@@ -9,10 +9,10 @@ const Home = () => {
       {/* Hero Section Carousel */}
       <Carousel fade>
         <Carousel.Item style={{ height: '80vh' }}>
-          <div 
+          <div
             className="d-flex align-items-center text-center text-light w-100 h-100"
             style={{
-              background: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://images.unsplash.com/photo-1542314831-c53cd453a5ce?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80") no-repeat center center/cover',
+              background: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTVql9-u_NcEacbni5bLEVfBuo9qYmf8eaZw2QHyN2vcnJKE_rGIWr3aRsu&s=10") no-repeat center center/cover',
             }}
           >
             <Container>
@@ -26,7 +26,7 @@ const Home = () => {
         </Carousel.Item>
 
         <Carousel.Item style={{ height: '80vh' }}>
-          <div 
+          <div
             className="d-flex align-items-center text-center text-light w-100 h-100"
             style={{
               background: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80") no-repeat center center/cover',
@@ -43,7 +43,7 @@ const Home = () => {
         </Carousel.Item>
 
         <Carousel.Item style={{ height: '80vh' }}>
-          <div 
+          <div
             className="d-flex align-items-center text-center text-light w-100 h-100"
             style={{
               background: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80") no-repeat center center/cover',
@@ -127,8 +127,8 @@ const Home = () => {
                     </Card.Text>
                     <div className="d-flex justify-content-between align-items-center">
                       <div className="text-secondary small d-flex gap-2">
-                         <span>👤 2 Khách</span>
-                         <span>📏 40m²</span>
+                        <span>👤 2 Khách</span>
+                        <span>📏 40m²</span>
                       </div>
                       <Button as={Link} to={`/room/${room}`} variant="outline-dark" className="rounded-pill px-4 fw-semibold">
                         Chi tiết
