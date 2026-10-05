@@ -18,6 +18,10 @@ import RoomsList from './features/customer/pages/RoomsList';
 import RoomDetails from './features/customer/pages/RoomDetails';
 import Booking from './features/customer/pages/Booking';
 
+//Partners Pages
+import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
+import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
+
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
@@ -50,6 +54,8 @@ function App() {
         {/* Hotel Partner Routes */}
         <Route path="/partner" element={<PartnerLayout />}>
           <Route index element={<PartnerDashboard />} />
+          <Route path="terms" element={<PartnerTerms />} />
+          <Route path="property-location" element={<PartnerPropertyLocation />} />
           {/* Add more partner routes here */}
         </Route>
 

@@ -319,7 +319,7 @@ const PartnerTerms = () => {
       return;
     }
 
-    navigate('/partner');
+    navigate('/partner/property-location');
   };
 
   return (
