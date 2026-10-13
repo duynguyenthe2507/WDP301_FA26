@@ -4,7 +4,7 @@ import {
   FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes
 } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
-import { getMyProfile, updateMyProfile, changePassword } from '../customerApi';
+import { getMyProfile, updateMyProfile, changePassword } from '../CustomerApi';
 
 const ProfilePage = () => {
   const { logout } = useContext(AuthContext);
@@ -14,7 +14,7 @@ const ProfilePage = () => {
 
   // Edit profile
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({ full_name: '', phone_number: '' });
+  const [formData, setFormData] = useState({ fullName: '', phoneNumber: '' });
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateMsg, setUpdateMsg] = useState({ type: '', text: '' });
 
@@ -33,8 +33,8 @@ const ProfilePage = () => {
         const res = await getMyProfile();
         setProfile(res.data);
         setFormData({
-          full_name: res.data.full_name || '',
-          phone_number: res.data.phone_number || ''
+          fullName: res.data.fullName || '',
+          phoneNumber: res.data.phoneNumber || ''
         });
       } catch (err) {
         if (err.response?.status === 401) logout();
@@ -47,7 +47,7 @@ const ProfilePage = () => {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    if (formData.full_name.trim().length < 2) {
+    if (formData.fullName.trim().length < 2) {
       setUpdateMsg({ type: 'danger', text: 'Họ tên phải có ít nhất 2 ký tự' });
       return;
     }
@@ -55,8 +55,8 @@ const ProfilePage = () => {
     setUpdateMsg({ type: '', text: '' });
     try {
       const res = await updateMyProfile({
-        full_name: formData.full_name.trim(),
-        phone_number: formData.phone_number.trim()
+        fullName: formData.fullName.trim(),
+        phoneNumber: formData.phoneNumber.trim()
       });
       setProfile(res.data.user);
       setEditMode(false);
@@ -71,8 +71,8 @@ const ProfilePage = () => {
   const handleCancelEdit = () => {
     setEditMode(false);
     setFormData({
-      full_name: profile?.full_name || '',
-      phone_number: profile?.phone_number || ''
+      fullName: profile?.fullName || '',
+      phoneNumber: profile?.phoneNumber || ''
     });
     setUpdateMsg({ type: '', text: '' });
   };
@@ -132,14 +132,14 @@ const ProfilePage = () => {
                 flexShrink: 0
               }}
             >
-              {profile?.full_name?.charAt(0)?.toUpperCase() || 'U'}
+              {profile?.fullName?.charAt(0)?.toUpperCase() || 'U'}
             </div>
             <div>
               <h2
                 className="text-white fw-bold mb-1"
                 style={{ fontFamily: 'Playfair Display, serif' }}
               >
-                {profile?.full_name}
+                {profile?.fullName}
               </h2>
               <Badge
                 style={{ background: '#d4af37' }}
@@ -204,16 +204,16 @@ const ProfilePage = () => {
                     {editMode ? (
                       <Form.Control
                         type="text"
-                        value={formData.full_name}
+                        value={formData.fullName}
                         onChange={(e) =>
-                          setFormData({ ...formData, full_name: e.target.value })
+                          setFormData({ ...formData, fullName: e.target.value })
                         }
                         className="rounded-3 p-3"
                         style={{ borderColor: '#e2e8f0' }}
                         required
                       />
                     ) : (
-                      <p className="fs-5 fw-semibold mb-0 ps-1">{profile?.full_name || '—'}</p>
+                      <p className="fs-5 fw-semibold mb-0 ps-1">{profile?.fullName || '—'}</p>
                     )}
                   </Form.Group>
 
@@ -234,9 +234,9 @@ const ProfilePage = () => {
                     {editMode ? (
                       <Form.Control
                         type="text"
-                        value={formData.phone_number}
+                        value={formData.phoneNumber}
                         onChange={(e) =>
-                          setFormData({ ...formData, phone_number: e.target.value })
+                          setFormData({ ...formData, phoneNumber: e.target.value })
                         }
                         className="rounded-3 p-3"
                         placeholder="Số điện thoại"
@@ -244,7 +244,7 @@ const ProfilePage = () => {
                       />
                     ) : (
                       <p className="fs-5 fw-semibold mb-0 ps-1">
-                        {profile?.phone_number || '—'}
+                        {profile?.phoneNumber || '—'}
                       </p>
                     )}
                   </Form.Group>

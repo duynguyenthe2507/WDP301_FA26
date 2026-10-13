@@ -17,8 +17,8 @@ export const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Tài khoản không tồn tại' });
     }
 
-    if (user.status === 'BLOCKED') {
-      return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa' });
+    if (['BLOCKED', 'SUSPENDED', 'DEACTIVATED'].includes(user.status)) {
+      return res.status(403).json({ message: 'Tài khoản của bạn đã bị tạm khóa hoặc vô hiệu hóa' });
     }
 
     req.user = user; // Lưu thông tin user vào request

@@ -18,20 +18,26 @@ export const getProfile = async (req, res) => {
 // PUT /api/customer/profile
 export const updateProfile = async (req, res) => {
   try {
-    const { full_name, phone_number } = req.body;
+    const { fullName, phoneNumber, avatarUrl } = req.body;
     const updateData = {};
 
-    if (full_name !== undefined) {
-      if (full_name.trim().length < 2)
+    if (fullName !== undefined) {
+      if (fullName.trim().length < 2)
         return res.status(400).json({ message: 'Họ tên phải có ít nhất 2 ký tự' });
-      updateData.full_name = full_name.trim();
+      updateData.fullName = fullName.trim();
     }
-    if (phone_number !== undefined) {
-      updateData.phone_number = phone_number.trim();
+    if (phoneNumber !== undefined) {
+      updateData.phoneNumber = phoneNumber.trim();
+    }
+    if (avatarUrl !== undefined) {
+      updateData.avatarUrl = avatarUrl.trim();
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true }).select('-password');
-    res.status(200).json({ message: 'Cập nhật thành công', user });
+    res.status(200).json({
+      message: 'Cập nhật thành công',
+      user,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi hệ thống', error: error.message });
   }

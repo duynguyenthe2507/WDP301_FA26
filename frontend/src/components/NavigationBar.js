@@ -25,14 +25,14 @@ const NavigationBar = () => {
                 {/* Link hồ sơ - chỉ hiện với CUSTOMER */}
                 {user.role === 'CUSTOMER' && (
                   <Nav.Link as={Link} to="/profile" active={location.pathname === '/profile'} className="d-flex align-items-center">
-                    <FaUserCircle className="me-1" /> {user.full_name || 'Hồ sơ'}
+                    <FaUserCircle className="me-1" /> {user.fullName || 'Hồ sơ'}
                   </Nav.Link>
                 )}
 
                 {/* Link dashboard cho các role khác */}
                 {user.role !== 'CUSTOMER' && (
-                  <Nav.Link as={Link} to={user.role === 'ADMIN' ? '/admin' : user.role === 'PARTNER' ? '/partner' : user.role === 'STAFF' ? '/manager' : '/'} className="d-flex align-items-center">
-                    <FaUserCircle className="me-1" /> {user.full_name || 'Tài khoản'}
+                  <Nav.Link as={Link} to={user.role === 'ADMIN' ? '/admin' : (user.role === 'HOTEL_PARTNER' || user.role === 'PARTNER') ? '/partner' : (user.role === 'OPERATIONS_MANAGER' || user.role === 'STAFF') ? '/manager' : '/'} className="d-flex align-items-center">
+                    <FaUserCircle className="me-1" /> {user.fullName || 'Tài khoản'}
                   </Nav.Link>
                 )}
 
@@ -50,10 +50,6 @@ const NavigationBar = () => {
                 </Button>
               </>
             )}
-
-            <Button as={Link} to="/booking" variant="warning" className="ms-lg-3 mt-3 mt-lg-0 fw-semibold rounded-pill px-4">
-              Đặt phòng ngay
-            </Button>
           </Nav>
         </Navbar.Collapse>
       </Container>

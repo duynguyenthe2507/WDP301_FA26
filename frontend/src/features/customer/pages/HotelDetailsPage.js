@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Badge } from 'react-bootstrap';
 import { useParams, Link } from 'react-router-dom';
 import { FaMapMarkerAlt, FaBed } from 'react-icons/fa';
-import { getHotelById, checkAvailability } from '../customerApi';
+import { getHotelById, checkAvailability } from '../CustomerApi';
 import ImageGallery from '../components/ImageGallery';
 import RoomTypeCard from '../components/RoomTypeCard';
 import AvailabilityChecker from '../components/AvailabilityChecker';

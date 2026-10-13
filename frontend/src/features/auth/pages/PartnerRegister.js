@@ -9,8 +9,8 @@ const PartnerRegister = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    full_name: '',
-    phone_number: '',
+    fullName: '',
+    phoneNumber: '',
     agreedToTerms: true,
     role: 'PARTNER'
   });
@@ -53,8 +53,8 @@ const PartnerRegister = () => {
       const payload = {
         email: formData.email.trim(),
         password: formData.password,
-        full_name: formData.full_name.trim(),
-        phone_number: formData.phone_number.trim(),
+        fullName: formData.fullName.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
         role: 'PARTNER'
       };
 
@@ -107,10 +107,10 @@ const PartnerRegister = () => {
                     <div className="position-relative">
                       <Form.Control
                         type="text"
-                        name="full_name"
+                        name="fullName"
                         className="auth-form-control ps-4"
                         placeholder="Họ tên người đại diện"
-                        value={formData.full_name}
+                        value={formData.fullName}
                         onChange={handleChange}
                         required
                       />
@@ -125,10 +125,10 @@ const PartnerRegister = () => {
                     <div className="position-relative">
                       <Form.Control
                         type="tel"
-                        name="phone_number"
+                        name="phoneNumber"
                         className="auth-form-control ps-4"
                         placeholder="0912345678"
-                        value={formData.phone_number}
+                        value={formData.phoneNumber}
                         onChange={handleChange}
                         required
                       />

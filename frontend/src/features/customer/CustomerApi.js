@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { MOCK_HOTELS } from './mockHotelsData';
+import { MOCK_HOTELS } from './MockHotelsData';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:9999';
 
@@ -27,7 +27,7 @@ export const getMyProfile = () => api.get('/api/customer/profile');
 
 /**
  * Cập nhật thông tin cá nhân
- * @param {{ full_name: string, phone_number: string }} data
+ * @param {{ fullName: string, phoneNumber: string }} data
  */
 export const updateMyProfile = (data) => api.put('/api/customer/profile', data);
 
