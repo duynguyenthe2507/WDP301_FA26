@@ -259,8 +259,9 @@ const BookingHistoryPage = () => {
           <div className="d-flex flex-column gap-3">
             {bookings.map((booking) => {
               const roomDetail = booking.bookingDetails?.[0] || {};
-              const isPaid = booking.paymentStatus === 'PAID' || booking.bookingStatus === 'CONFIRMED';
-              const isPending = booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID';
+              const isCancelled = booking.bookingStatus === 'CANCELLED';
+              const isPaid = !isCancelled && (booking.paymentStatus === 'PAID' || booking.bookingStatus === 'CONFIRMED');
+              const isPending = !isCancelled && !isPaid;
 
               return (
                 <Card key={booking._id || booking.bookingCode} className="border-0 shadow-sm rounded-3 overflow-hidden bg-white">
@@ -350,7 +351,7 @@ const BookingHistoryPage = () => {
                             state={{ booking }}
                             className="btn btn-outline-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
                           >
-                            <FaFileInvoice /> Chi tiết / Hóa đơn
+                            <FaFileInvoice /> {isPaid ? 'Xem hóa đơn' : 'Xem chi tiết'}
                           </Link>
 
                           {isPending && (
@@ -362,7 +363,7 @@ const BookingHistoryPage = () => {
                               variant="warning"
                               className="fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
                             >
-                              <FaRedo /> Thanh toán
+                              <FaRedo /> Thanh toán ngay
                             </Button>
                           )}
                         </div>

@@ -285,46 +285,37 @@ export const getBookingByCode = async (req, res) => {
 export const getMyBookings = async (req, res) => {
   try {
     const customerId = req.user?._id;
-    const userEmail = req.user?.email;
-    const { status, email, search } = req.query;
+    const email = req.query.email?.trim().toLowerCase();
 
-    const conditions = [];
-
-    // 1. Điều kiện tìm kiếm theo tài khoản hoặc email
-    if (customerId && userEmail) {
-      conditions.push({
-        $or: [
-          { customerId },
-          { 'bookerInfo.email': userEmail.toLowerCase() },
-        ],
-      });
-    } else if (customerId) {
-      conditions.push({ customerId });
+    // 1. Chỉ lấy đơn theo tài khoản đăng nhập hoặc email tra cứu
+    let filter = {};
+    if (customerId) {
+      filter = { customerId };
     } else if (email) {
-      conditions.push({ 'bookerInfo.email': String(email).trim().toLowerCase() });
+      filter = { 'bookerInfo.email': email };
     } else {
-      // Nếu chưa đăng nhập và không truyền email, trả về danh sách rỗng
+      // Nếu chưa đăng nhập và không nhập email -> trả về rỗng
       return res.status(200).json({ success: true, count: 0, bookings: [] });
     }
 
-    // 2. Lọc theo trạng thái đơn nếu có
+    // Lấy toàn bộ đơn phòng từ CSDL
+    let bookings = await Booking.find(filter).sort({ createdAt: -1 });
+
+    // 2. Lọc bằng hàm Javascript thông thường (không cần lệnh truy vấn phức tạp)
+    const { status, search } = req.query;
+
     if (status && status !== 'ALL') {
-      conditions.push({ bookingStatus: status });
+      bookings = bookings.filter((b) => b.bookingStatus === status);
     }
 
-    // 3. Tìm kiếm theo mã đặt phòng hoặc tên khách sạn nếu có
     if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
-      conditions.push({
-        $or: [
-          { bookingCode: searchRegex },
-          { hotelName: searchRegex },
-        ],
-      });
+      const keyword = search.trim().toLowerCase();
+      bookings = bookings.filter(
+        (b) =>
+          b.bookingCode?.toLowerCase().includes(keyword) ||
+          b.hotelName?.toLowerCase().includes(keyword)
+      );
     }
-
-    const finalQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
-    const bookings = await Booking.find(finalQuery).sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
