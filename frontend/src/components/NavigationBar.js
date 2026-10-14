@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHotel, FaUserCircle } from 'react-icons/fa';
+import { FaHotel, FaUserCircle, FaHistory } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 
 const NavigationBar = () => {
@@ -22,11 +22,16 @@ const NavigationBar = () => {
 
             {user ? (
               <>
-                {/* Link hồ sơ - chỉ hiện với CUSTOMER */}
+                {/* Link lịch sử đặt phòng & hồ sơ - chỉ hiện với CUSTOMER */}
                 {user.role === 'CUSTOMER' && (
-                  <Nav.Link as={Link} to="/profile" active={location.pathname === '/profile'} className="d-flex align-items-center">
-                    <FaUserCircle className="me-1" /> {user.fullName || 'Hồ sơ'}
-                  </Nav.Link>
+                  <>
+                    <Nav.Link as={Link} to="/booking-history" active={location.pathname === '/booking-history'} className="d-flex align-items-center">
+                      <FaHistory className="me-1" /> Lịch sử đặt phòng
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/profile" active={location.pathname === '/profile'} className="d-flex align-items-center">
+                      <FaUserCircle className="me-1" /> {user.fullName || 'Hồ sơ'}
+                    </Nav.Link>
+                  </>
                 )}
 
                 {/* Link dashboard cho các role khác */}
@@ -42,7 +47,10 @@ const NavigationBar = () => {
               </>
             ) : (
               <>
-                <Button as={Link} to="/login" variant="outline-light" className="ms-lg-3 mt-3 mt-lg-0 rounded-pill px-4">
+                <Nav.Link as={Link} to="/booking-history" active={location.pathname === '/booking-history'} className="d-flex align-items-center me-lg-2">
+                  <FaHistory className="me-1" /> Tra cứu đơn đặt
+                </Nav.Link>
+                <Button as={Link} to="/login" variant="outline-light" className="ms-lg-2 mt-3 mt-lg-0 rounded-pill px-4">
                   Đăng nhập
                 </Button>
                 <Button as={Link} to="/register" variant="warning" className="ms-lg-2 mt-3 mt-lg-0 fw-semibold rounded-pill px-4">

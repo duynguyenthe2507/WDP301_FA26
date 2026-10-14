@@ -47,7 +47,7 @@ const getVnpayDate = () => {
 export const createPaymentUrl = ({
   bookingCode,
   amount,
-  ipAddr = '8.8.8.8',
+  ipAddr = '127.0.0.1',
   orderInfo = 'Thanh toan don dat phong',
   bankCode = '',
   orderType = 'other',
@@ -61,7 +61,7 @@ export const createPaymentUrl = ({
   // Chuẩn hóa IP sang IPv4 (tránh dính IPv6 loopback '::1' từ localhost)
   let safeIp = ipAddr;
   if (!safeIp || safeIp === '::1' || safeIp.includes(':')) {
-    safeIp = '8.8.8.8';
+    safeIp = '127.0.0.1';
   }
 
   // Chuẩn hóa OrderInfo: bỏ dấu tiếng Việt và ký tự đặc biệt
@@ -98,18 +98,18 @@ export const createPaymentUrl = ({
   vnp_Params['vnp_SecureHash'] = signed;
   vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
 
-  console.log('\n================== [VNPAY DEBUG: TẠO URL THANH TOÁN] ==================');
-  console.log(`VNP_TMN_CODE="${tmnCode}"`);
-  console.log(`VNP_HASH_SECRET="${secretKey}"`);
-  console.log('📌 vnp_TxnRef       :', bookingCode);
-  console.log('📌 vnp_Amount       :', vnp_Params['vnp_Amount'], `(${amount} VND)`);
-  console.log('📌 Chuỗi mang đi băm (signData):');
-  console.log('   >', signData);
-  console.log('📌 Chữ ký vừa sinh (vnp_SecureHash):');
-  console.log('   >', signed);
-  console.log('📌 URL chuyển hướng:');
-  console.log('   >', vnpUrl);
-  console.log('=========================================================================\n');
+  // console.log('\n================== [VNPAY DEBUG: TẠO URL THANH TOÁN] ==================');
+  // console.log(`VNP_TMN_CODE="${tmnCode}"`);
+  // console.log(`VNP_HASH_SECRET="${secretKey}"`);
+  // console.log('📌 vnp_TxnRef       :', bookingCode);
+  // console.log('📌 vnp_Amount       :', vnp_Params['vnp_Amount'], `(${amount} VND)`);
+  // console.log('📌 Chuỗi mang đi băm (signData):');
+  // console.log('   >', signData);
+  // console.log('📌 Chữ ký vừa sinh (vnp_SecureHash):');
+  // console.log('   >', signed);
+  // console.log('📌 URL chuyển hướng:');
+  // console.log('   >', vnpUrl);
+  // console.log('=========================================================================\n');
 
   return { paymentUrl: vnpUrl, bookingCode };
 };
@@ -134,19 +134,19 @@ export const verifyReturnData = (vnpParams) => {
   const responseCode = vnpParams['vnp_ResponseCode'] || '';
   const isSuccess = isHashValid && responseCode === '00';
 
-  console.log('\n================== [VNPAY DEBUG: XÁC THỰC KẾT QUẢ TRẢ VỀ] ==================');
-  console.log(`VNP_TMN_CODE="${vnpParams['vnp_TmnCode'] || vnpayConfig.vnp_TmnCode}"`);
-  console.log(`VNP_HASH_SECRET="${secretKey}"`);
-  console.log('📌 vnp_TxnRef       :', vnpParams['vnp_TxnRef']);
-  console.log('📌 vnp_ResponseCode  :', responseCode, `(${responseCode === '00' ? 'Giao dịch thành công' : 'Thất bại/Hủy'})`);
-  console.log('📌 vnp_SecureHash nhận được :');
-  console.log('   >', secureHash);
-  console.log('📌 Chuỗi server dùng để băm lại (signData):');
-  console.log('   >', signData);
-  console.log('📌 vnp_SecureHash server tự tính :');
-  console.log('   >', signed);
-  console.log('📌 Kết quả kiểm tra chữ ký   :', isHashValid ? '✅ HỢP LỆ (Match)' : '❌ SAI CHỮ KÝ (Mismatch)');
-  console.log('===============================================================================\n');
+  // console.log('\n================== [VNPAY DEBUG: XÁC THỰC KẾT QUẢ TRẢ VỀ] ==================');
+  // console.log(`VNP_TMN_CODE="${vnpParams['vnp_TmnCode'] || vnpayConfig.vnp_TmnCode}"`);
+  // console.log(`VNP_HASH_SECRET="${secretKey}"`);
+  // console.log('📌 vnp_TxnRef       :', vnpParams['vnp_TxnRef']);
+  // console.log('📌 vnp_ResponseCode  :', responseCode, `(${responseCode === '00' ? 'Giao dịch thành công' : 'Thất bại/Hủy'})`);
+  // console.log('📌 vnp_SecureHash nhận được :');
+  // console.log('   >', secureHash);
+  // console.log('📌 Chuỗi server dùng để băm lại (signData):');
+  // console.log('   >', signData);
+  // console.log('📌 vnp_SecureHash server tự tính :');
+  // console.log('   >', signed);
+  // console.log('📌 Kết quả kiểm tra chữ ký   :', isHashValid ? '✅ HỢP LỆ (Match)' : '❌ SAI CHỮ KÝ (Mismatch)');
+  // console.log('===============================================================================\n');
 
   return {
     isSuccess,

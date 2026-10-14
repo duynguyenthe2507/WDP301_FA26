@@ -8,6 +8,7 @@ import {
   createPendingBooking,
   verifyVNPayPayment,
   getBookingByCode,
+  getMyBookings,
 } from '../controllers/customerController.js';
 import { verifyToken, authorizeRoles, optionalAuth } from '../middlewares/authMiddleware.js';
 
@@ -22,6 +23,7 @@ router.put('/change-password', verifyToken, authorizeRoles('CUSTOMER'), changePa
 router.post('/bookings/pending', optionalAuth, createPendingBooking);
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
+router.get('/my-bookings', optionalAuth, getMyBookings);
 router.get('/bookings/:bookingCode', getBookingByCode);
 
 export default router;

@@ -202,3 +202,12 @@ export const getBookingByCode = async (bookingCode) => {
     return await api.get(`/api/customer/bookings/${bookingCode}`);
 };
 
+/**
+ * Lấy danh sách lịch sử đặt phòng của khách hàng
+ * @param {{ status?: string, email?: string, search?: string }} params
+ */
+export const getMyBookings = async (params = {}) => {
+    return await api.get('/api/customer/my-bookings', { params });
+};
+
+

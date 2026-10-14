@@ -36,8 +36,10 @@ const bookingSchema = new mongoose.Schema(
     guestInfo: {
       fullName: { type: String, default: '' },
       phoneNumber: { type: String, default: '' },
-      email: { type: String, default: '' },
-      notes: { type: String, default: '' },
+    },
+    specialRequests: {
+      type: String,
+      default: '',
     },
     checkInDate: {
       type: Date,

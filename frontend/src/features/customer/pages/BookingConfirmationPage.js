@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Badge, Button, Spinner, Alert } from 'react-bootstrap';
-import { FaCheckCircle, FaHotel, FaCalendarAlt, FaUser, FaBed, FaPrint, FaHome, FaCreditCard, FaFileAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaHotel, FaCalendarAlt, FaUser, FaBed, FaPrint, FaHome, FaCreditCard, FaFileAlt, FaHistory } from 'react-icons/fa';
 import { getBookingByCode } from '../CustomerApi';
 
 const formatPrice = (price) =>
@@ -31,10 +31,6 @@ const BookingConfirmationPage = () => {
         });
     }
   }, [bookingCode, booking]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   if (loading) {
     return (
@@ -178,14 +174,23 @@ const BookingConfirmationPage = () => {
                     <div>
                       <div><span className="text-secondary">Họ tên:</span> <strong>{booking.guestInfo?.fullName}</strong></div>
                       <div><span className="text-secondary">Điện thoại:</span> <strong>{booking.guestInfo?.phoneNumber}</strong></div>
-                      {booking.guestInfo?.notes && (
-                        <div className="mt-1 text-muted"><em>Ghi chú: {booking.guestInfo.notes}</em></div>
-                      )}
                     </div>
                   )}
                 </div>
               </Col>
             </Row>
+
+            {/* YÊU CẦU ĐẶC BIỆT CHO KHÁCH SẠN (DÙNG CHUNG CẢ ĐƠN PHÒNG) */}
+            {Boolean(booking.specialRequests) && (
+              <div className="mb-4 pb-3 border-bottom">
+                <h6 className="fw-bold text-dark small mb-2 d-flex align-items-center gap-2">
+                  <FaFileAlt className="text-primary" /> Yêu cầu đặc biệt cho khách sạn (Special Requests)
+                </h6>
+                <div className="p-3 bg-light rounded-3 small text-dark border">
+                  "{booking.specialRequests || booking.notes || booking.guestInfo?.notes}"
+                </div>
+              </div>
+            )}
 
             {/* THÔNG TIN THANH TOÁN VNPAY */}
             <div>
@@ -193,7 +198,7 @@ const BookingConfirmationPage = () => {
               <div className="d-flex flex-column gap-2 small">
                 <div className="d-flex justify-content-between">
                   <span className="text-secondary">Phương thức:</span>
-                  <strong>Cổng thanh toán VNPAY (Sandbox)</strong>
+                  <strong>Cổng thanh toán VNPAY</strong>
                 </div>
                 <div className="d-flex justify-content-between">
                   <span className="text-secondary">Mã giao dịch VNPAY:</span>
@@ -219,10 +224,10 @@ const BookingConfirmationPage = () => {
           <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
             <FaHome /> Quay về trang chủ
           </Link>
-          <div className="d-flex gap-2">
-            <Button variant="outline-primary" size="sm" onClick={handlePrint} className="d-inline-flex align-items-center gap-1">
-              <FaPrint /> In phiếu xác nhận
-            </Button>
+          <div className="d-flex flex-wrap gap-2">
+            <Link to="/booking-history" className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+              <FaHistory /> Lịch sử đặt phòng
+            </Link>
             <Link to="/hotels" className="btn btn-primary btn-sm px-3" style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}>
               Đặt thêm phòng khác
             </Link>

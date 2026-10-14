@@ -1,4 +1,6 @@
 import User from '../models/User.js';
+import Booking from '../models/Booking.js';
+import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
 export const pingCustomer = (req, res) => {
   res.status(200).json({ message: 'Customer API works!' });
@@ -72,8 +74,7 @@ export const changePassword = async (req, res) => {
 // ==========================================
 // VNPAY SANDBOX BOOKING & PAYMENT CONTROLLERS
 // ==========================================
-import Booking from '../models/Booking.js';
-import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
+
 
 // POST /api/customer/bookings/pending
 // Tạo đơn đặt phòng và sinh link chuyển hướng sang VNPay Sandbox
@@ -86,6 +87,7 @@ export const createPendingBooking = async (req, res) => {
       bookerInfo,
       isSelfGuest,
       guestInfo,
+      specialRequests,
       checkInDate,
       checkOutDate,
       totalNights,
@@ -123,7 +125,7 @@ export const createPendingBooking = async (req, res) => {
     const newBooking = new Booking({
       bookingCode,
       customerId: req.user?._id || null,
-      hotelId: hotelId || 'hotel_demo_01',
+      hotelId: hotelId || '',
       hotelName: hotelName || 'Khách Sạn VinaStay',
       hotelAddress: hotelAddress || '',
       bookerInfo: {
@@ -133,13 +135,12 @@ export const createPendingBooking = async (req, res) => {
       },
       isSelfGuest: Boolean(isSelfGuest),
       guestInfo: isSelfGuest
-        ? { fullName: '', phoneNumber: '', email: '', notes: guestInfo?.notes || '' }
+        ? { fullName: '', phoneNumber: '' }
         : {
           fullName: guestInfo?.fullName?.trim() || '',
           phoneNumber: guestInfo?.phoneNumber?.trim() || '',
-          email: guestInfo?.email?.trim() || '',
-          notes: guestInfo?.notes?.trim() || '',
         },
+      specialRequests: (specialRequests || '').trim(),
       checkInDate: checkInDate ? new Date(checkInDate) : new Date(),
       checkOutDate: checkOutDate ? new Date(checkOutDate) : new Date(Date.now() + 86400000),
       totalNights: Math.max(1, Number(totalNights) || 1),
@@ -198,7 +199,6 @@ export const verifyVNPayPayment = async (req, res) => {
     const vnpParams = { ...req.query, ...req.body };
     const {
       isSuccess,
-      isHashValid,
       bookingCode,
       transactionNo,
       bankCode,
@@ -279,4 +279,62 @@ export const getBookingByCode = async (req, res) => {
     res.status(500).json({ message: 'Lỗi khi lấy thông tin đơn đặt phòng', error: error.message });
   }
 };
+
+// GET /api/customer/my-bookings
+// Lấy danh sách lịch sử đặt phòng của khách hàng
+export const getMyBookings = async (req, res) => {
+  try {
+    const customerId = req.user?._id;
+    const userEmail = req.user?.email;
+    const { status, email, search } = req.query;
+
+    const conditions = [];
+
+    // 1. Điều kiện tìm kiếm theo tài khoản hoặc email
+    if (customerId && userEmail) {
+      conditions.push({
+        $or: [
+          { customerId },
+          { 'bookerInfo.email': userEmail.toLowerCase() },
+        ],
+      });
+    } else if (customerId) {
+      conditions.push({ customerId });
+    } else if (email) {
+      conditions.push({ 'bookerInfo.email': String(email).trim().toLowerCase() });
+    } else {
+      // Nếu chưa đăng nhập và không truyền email, trả về danh sách rỗng
+      return res.status(200).json({ success: true, count: 0, bookings: [] });
+    }
+
+    // 2. Lọc theo trạng thái đơn nếu có
+    if (status && status !== 'ALL') {
+      conditions.push({ bookingStatus: status });
+    }
+
+    // 3. Tìm kiếm theo mã đặt phòng hoặc tên khách sạn nếu có
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      conditions.push({
+        $or: [
+          { bookingCode: searchRegex },
+          { hotelName: searchRegex },
+        ],
+      });
+    }
+
+    const finalQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
+    const bookings = await Booking.find(finalQuery).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error('Error fetching booking history:', error);
+    res.status(500).json({ message: 'Lỗi khi lấy lịch sử đặt phòng', error: error.message });
+  }
+};
+
 

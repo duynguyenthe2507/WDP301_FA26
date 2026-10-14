@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Container, Card, Spinner, Alert, Button, Row, Col } from 'react-bootstrap';
-import { FaCheckCircle, FaTimesCircle, FaArrowLeft, FaRedo, FaFileInvoice, FaShieldAlt } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaArrowLeft, FaRedo, FaFileInvoice, FaShieldAlt, FaHistory } from 'react-icons/fa';
 import { verifyVNPayPayment } from '../CustomerApi';
 
 const formatPrice = (price) =>
@@ -111,6 +111,9 @@ const VNPayReturnPage = () => {
                     style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
                   >
                     <FaFileInvoice className="me-1" /> Xem phiếu xác nhận đặt phòng
+                  </Link>
+                  <Link to="/booking-history" className="btn btn-outline-primary px-4 py-2 fw-semibold">
+                    <FaHistory className="me-1" /> Lịch sử đặt phòng
                   </Link>
                   <Link to="/" className="btn btn-outline-secondary px-4 py-2">
                     Về trang chủ

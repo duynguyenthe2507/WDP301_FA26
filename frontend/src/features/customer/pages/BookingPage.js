@@ -39,8 +39,8 @@ const BookingPage = () => {
   const nights = Math.max(
     1,
     Number(stateData.nights) ||
-      Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
-      1
+    Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
+    1
   );
   const quantity = Number(stateData.quantity) || 1;
 
@@ -74,14 +74,38 @@ const BookingPage = () => {
   const [guestInfo, setGuestInfo] = useState({
     fullName: '',
     phoneNumber: '',
-    email: '',
-    notes: '',
   });
+
+  // 4. Yêu cầu đặc biệt cho khách sạn (dùng chung cho cả đơn phòng)
+  const [specialRequests, setSpecialRequests] = useState('');
 
   // State lỗi validation và xử lý submit
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // Tự động reset trạng thái loading khi quay lại trang bằng nút Back của trình duyệt (bfcache)
+  useEffect(() => {
+    setIsSubmitting(false);
+
+    const handlePageShow = () => {
+      setIsSubmitting(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setIsSubmitting(false);
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const handleBookerChange = (e) => {
     const { name, value } = e.target;
@@ -161,13 +185,12 @@ const BookingPage = () => {
         },
         isSelfGuest,
         guestInfo: isSelfGuest
-          ? { fullName: '', phoneNumber: '', email: '', notes: guestInfo.notes?.trim() || '' }
+          ? { fullName: '', phoneNumber: '' }
           : {
-              fullName: guestInfo.fullName.trim(),
-              phoneNumber: guestInfo.phoneNumber.trim(),
-              email: guestInfo.email?.trim() || '',
-              notes: guestInfo.notes?.trim() || '',
-            },
+            fullName: guestInfo.fullName.trim(),
+            phoneNumber: guestInfo.phoneNumber.trim(),
+          },
+        specialRequests: specialRequests.trim(),
         checkInDate: checkIn,
         checkOutDate: checkOut,
         totalNights: nights,
@@ -189,6 +212,11 @@ const BookingPage = () => {
       if (paymentUrl) {
         // Chuyển hướng trực tiếp sang cổng thanh toán VNPAY Sandbox
         window.location.href = paymentUrl;
+
+        // Reset lại nút sau 1.5s phòng khi người dùng ấn nút Back trên trình duyệt quay lại
+        setTimeout(() => {
+          setIsSubmitting(false);
+        }, 1500);
       } else {
         throw new Error('Không nhận được URL thanh toán từ VNPAY');
       }
@@ -360,7 +388,7 @@ const BookingPage = () => {
                         </Form.Group>
                       </Col>
 
-                      <Col md={6}>
+                      <Col md={12}>
                         <Form.Group>
                           <Form.Label className="small fw-semibold text-secondary">
                             Số điện thoại khách <span className="text-danger">*</span>
@@ -368,7 +396,7 @@ const BookingPage = () => {
                           <Form.Control
                             type="tel"
                             name="phoneNumber"
-                            placeholder="Số điện thoại liên hệ"
+                            placeholder="Số điện thoại liên hệ của khách nhận phòng"
                             value={guestInfo.phoneNumber}
                             onChange={handleGuestChange}
                             isInvalid={!!errors.guest_phoneNumber}
@@ -378,42 +406,34 @@ const BookingPage = () => {
                           </Form.Control.Feedback>
                         </Form.Group>
                       </Col>
-
-                      <Col md={6}>
-                        <Form.Group>
-                          <Form.Label className="small fw-semibold text-secondary">
-                            Email khách (không bắt buộc)
-                          </Form.Label>
-                          <Form.Control
-                            type="email"
-                            name="email"
-                            placeholder="email@example.com"
-                            value={guestInfo.email}
-                            onChange={handleGuestChange}
-                          />
-                        </Form.Group>
-                      </Col>
                     </Row>
                   </div>
                 )}
+              </Card.Body>
+            </Card>
 
-                <Form.Group className="mt-3">
-                  <Form.Label className="small fw-semibold text-secondary">
-                    Yêu cầu đặc biệt cho khách sạn (tùy chọn)
-                  </Form.Label>
+            {/* 3. YÊU CẦU ĐẶC BIỆT CHO KHÁCH SẠN (DÙNG CHUNG CẢ ĐƠN PHÒNG) */}
+            <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
+              <Card.Body className="p-4">
+                <h5 className="fw-bold text-dark mb-2 pb-2 border-bottom">
+                  Yêu cầu đặc biệt cho khách sạn
+                </h5>
+                <p className="text-secondary small mb-3">
+                  Yêu cầu này áp dụng chung cho cả đơn đặt phòng và sẽ được chuyển trực tiếp tới khách sạn (ví dụ: giờ dự kiến check-in, phòng tầng cao, giường phụ, phòng yên tĩnh...).
+                </p>
+                <Form.Group>
                   <Form.Control
                     as="textarea"
-                    rows={2}
-                    name="notes"
-                    placeholder="Ví dụ: Giờ dự kiến check-in, phòng tầng cao, giường phụ..."
-                    value={guestInfo.notes}
-                    onChange={handleGuestChange}
+                    rows={3}
+                    placeholder="Nhập yêu cầu đặc biệt của bạn tại đây (tùy chọn)..."
+                    value={specialRequests}
+                    onChange={(e) => setSpecialRequests(e.target.value)}
                   />
                 </Form.Group>
               </Card.Body>
             </Card>
 
-            {/* 3. PHƯƠNG THỨC THANH TOÁN VNPAY */}
+            {/* 4. PHƯƠNG THỨC THANH TOÁN VNPAY */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <h5 className="fw-bold text-dark mb-3 pb-2 border-bottom">
@@ -436,7 +456,7 @@ const BookingPage = () => {
                     />
                     <div>
                       <div className="fw-bold text-dark">
-                        Cổng thanh toán VNPAY (Sandbox)
+                        Cổng thanh toán VNPAY
                       </div>
                       <div className="text-muted small">
                         Hỗ trợ VNPAY-QR, Thẻ ATM/Tài khoản nội địa, Thẻ quốc tế Visa/Mastercard.
