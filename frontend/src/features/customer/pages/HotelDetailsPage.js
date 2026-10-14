@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Badge } from 'react-bootstrap';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { FaMapMarkerAlt, FaBed } from 'react-icons/fa';
 import { getHotelById, checkAvailability } from '../CustomerApi';
 import ImageGallery from '../components/ImageGallery';
@@ -12,6 +12,7 @@ import ErrorMessage from '../../../components/ErrorMessage';
 
 const HotelDetailsPage = () => {
   const { hotelId } = useParams();
+  const navigate = useNavigate();
 
   // Hotel state
   const [hotel, setHotel] = useState(null);
@@ -62,6 +63,34 @@ const HotelDetailsPage = () => {
     } finally {
       setAvailLoading(false);
     }
+  };
+
+  const handleSelectRoom = (roomType) => {
+    let checkIn = selectedDates.checkIn;
+    let checkOut = selectedDates.checkOut;
+    let stayNights = nights;
+
+    if (!checkIn || !checkOut) {
+      const today = new Date();
+      const d1 = new Date(today);
+      d1.setDate(d1.getDate() + 1);
+      const d2 = new Date(today);
+      d2.setDate(d2.getDate() + 2);
+      checkIn = d1.toISOString().split('T')[0];
+      checkOut = d2.toISOString().split('T')[0];
+      stayNights = 1;
+    }
+
+    navigate('/booking', {
+      state: {
+        hotel,
+        roomType,
+        checkIn,
+        checkOut,
+        nights: stayNights,
+        quantity: 1,
+      },
+    });
   };
 
   const getAvailabilityForRoom = (roomTypeId) => {
@@ -170,6 +199,7 @@ const HotelDetailsPage = () => {
                       roomType={roomType}
                       availability={getAvailabilityForRoom(roomType._id)}
                       nights={nights}
+                      onSelect={handleSelectRoom}
                     />
                   ))
               ) : (

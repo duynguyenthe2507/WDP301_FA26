@@ -19,6 +19,9 @@ import Home from './features/customer/pages/Home';
 import ProfilePage from './features/customer/pages/ProfilePage';
 import HotelSearchPage from './features/customer/pages/HotelSearchPage';
 import HotelDetailsPage from './features/customer/pages/HotelDetailsPage';
+import BookingPage from './features/customer/pages/BookingPage';
+import BookingConfirmationPage from './features/customer/pages/BookingConfirmationPage';
+import VNPayReturnPage from './features/customer/pages/VNPayReturnPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
@@ -46,6 +49,9 @@ function App() {
             <Route index element={<Home />} />
             <Route path="hotels" element={<HotelSearchPage />} />
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
+            <Route path="booking" element={<BookingPage />} />
+            <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
+            <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
 
             {/* Profile - yêu cầu đăng nhập CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>

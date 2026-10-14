@@ -28,7 +28,7 @@ export const verifyToken = async (req, res, next) => {
   }
 };
 
-//Phân quyền theo role
+// Phân quyền theo role
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
@@ -42,3 +42,20 @@ export const authorizeRoles = (...roles) => {
     next();
   };
 };
+
+// Xác thực tùy chọn (cho phép cả khách vãng lai và người đã đăng nhập đặt phòng)
+export const optionalAuth = async (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const user = await User.findById(decoded.id).select('-password');
+    if (user && !['BLOCKED', 'SUSPENDED', 'DEACTIVATED'].includes(user.status)) {
+      req.user = user;
+    }
+  } catch (err) {
+    // Không ném lỗi nếu token hết hạn
+  }
+  next();
+};
+

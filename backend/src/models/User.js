@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-
 const userSchema = new mongoose.Schema(
     {
         email: {
@@ -12,7 +11,6 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: true,
         },
         fullName: {
             type: String,
@@ -23,23 +21,23 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
-        avatarUrl: {
-            type: String,
-            default: '',
-        },
         role: {
             type: String,
-            enum: ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN', 'PARTNER', 'STAFF'],
+            enum: ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN'],
             default: 'CUSTOMER',
         },
         status: {
             type: String,
-            enum: ['ACTIVE', 'SUSPENDED', 'DEACTIVATED', 'BLOCKED'],
+            enum: ['ACTIVE', 'BLOCKED', 'SUSPENDED', 'DEACTIVATED'],
             default: 'ACTIVE',
         },
         isEmailVerified: {
             type: Boolean,
             default: false,
+        },
+        avatar: {
+            type: String,
+            default: '',
         },
     },
     {
@@ -57,7 +55,6 @@ userSchema.pre('save', async function () {
 userSchema.methods.comparePassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
-
 const User = mongoose.model('User', userSchema);
 
 export default User;

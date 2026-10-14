@@ -7,15 +7,14 @@ const PLACEHOLDER_ROOM = 'https://images.unsplash.com/photo-1631049307264-da0ec9
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' đ';
 
-const RoomTypeCard = ({ roomType, availability, nights = 1 }) => {
+const RoomTypeCard = ({ roomType, availability, nights = 1, onSelect }) => {
   const {
     name,
     base_price,
     capacity,
     amenities = [],
     bed = [],
-    room_type_images = [],
-    status
+    room_type_images = []
   } = roomType;
 
   const primaryImage =
@@ -95,14 +94,15 @@ const RoomTypeCard = ({ roomType, availability, nights = 1 }) => {
               </div>
               <Button
                 disabled={hasAvailability && !isAvailable}
+                onClick={() => onSelect && onSelect(roomType)}
                 className="rounded-pill px-4 fw-semibold"
                 style={
                   hasAvailability && !isAvailable
                     ? { background: '#e9ecef', border: 'none', color: '#6c757d' }
-                    : { background: '#d4af37', border: 'none', color: '#fff' }
+                    : { background: '#005baa', border: 'none', color: '#fff' }
                 }
               >
-                {hasAvailability && !isAvailable ? 'Hết phòng' : 'Chọn phòng này'}
+                {hasAvailability && !isAvailable ? 'Hết phòng' : 'Đặt phòng'}
               </Button>
             </div>
           </Card.Body>

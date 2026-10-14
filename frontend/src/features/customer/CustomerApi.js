@@ -8,14 +8,14 @@ const api = axios.create({ baseURL: API_URL });
 
 // Interceptor: tự động gắn JWT token vào mọi request
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
 );
 
 // ─────────────────────────────────────────────
@@ -46,67 +46,67 @@ export const changePassword = (data) => api.put('/api/customer/change-password',
  * @param {{ location?: string, page?: number, limit?: number, minPrice?: number, maxPrice?: number, minRating?: number }} params
  */
 export const searchHotels = async (params = {}) => {
-  // Giả lập network delay nhẹ cho trải nghiệm UI thực tế
-  await new Promise((resolve) => setTimeout(resolve, 200));
+    // Giả lập network delay nhẹ cho trải nghiệm UI thực tế
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
-  const { location, page = 1, limit = 6, minPrice, maxPrice, minRating } = params;
+    const { location, page = 1, limit = 6, minPrice, maxPrice, minRating } = params;
 
-  let filtered = [...MOCK_HOTELS];
+    let filtered = [...MOCK_HOTELS];
 
-  if (location && location.trim()) {
-    const term = location.trim().toLowerCase();
-    filtered = filtered.filter(
-      (h) =>
-        h.name.toLowerCase().includes(term) ||
-        h.location.toLowerCase().includes(term) ||
-        h.address.toLowerCase().includes(term)
-    );
-  }
-
-  if (minRating) {
-    filtered = filtered.filter((h) => h.rating_summary?.average_rating >= parseFloat(minRating));
-  }
-
-  if (minPrice || maxPrice) {
-    filtered = filtered.filter((h) => {
-      const minHotelPrice = Math.min(...(h.room_types || []).map((rt) => rt.base_price));
-      if (minPrice && minHotelPrice < parseFloat(minPrice)) return false;
-      if (maxPrice && minHotelPrice > parseFloat(maxPrice)) return false;
-      return true;
-    });
-  }
-
-  const total = filtered.length;
-  const pageNum = Math.max(1, parseInt(page) || 1);
-  const limitNum = parseInt(limit) || 6;
-  const totalPages = Math.ceil(total / limitNum) || 1;
-  const skip = (pageNum - 1) * limitNum;
-
-  const paginatedHotels = filtered.slice(skip, skip + limitNum).map((h) => {
-    const primaryImg = h.images?.find((img) => img.is_primary) || h.images?.[0];
-    const min_price = h.room_types?.length
-      ? Math.min(...h.room_types.map((rt) => rt.base_price))
-      : null;
-    return {
-      _id: h._id,
-      name: h.name,
-      location: h.location,
-      address: h.address,
-      primary_image: primaryImg?.url || null,
-      rating_summary: h.rating_summary,
-      min_price
-    };
-  });
-
-  return {
-    data: {
-      hotels: paginatedHotels,
-      total,
-      page: pageNum,
-      limit: limitNum,
-      total_pages: totalPages
+    if (location && location.trim()) {
+        const term = location.trim().toLowerCase();
+        filtered = filtered.filter(
+            (h) =>
+                h.name.toLowerCase().includes(term) ||
+                h.location.toLowerCase().includes(term) ||
+                h.address.toLowerCase().includes(term)
+        );
     }
-  };
+
+    if (minRating) {
+        filtered = filtered.filter((h) => h.rating_summary?.average_rating >= parseFloat(minRating));
+    }
+
+    if (minPrice || maxPrice) {
+        filtered = filtered.filter((h) => {
+            const minHotelPrice = Math.min(...(h.room_types || []).map((rt) => rt.base_price));
+            if (minPrice && minHotelPrice < parseFloat(minPrice)) return false;
+            if (maxPrice && minHotelPrice > parseFloat(maxPrice)) return false;
+            return true;
+        });
+    }
+
+    const total = filtered.length;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = parseInt(limit) || 6;
+    const totalPages = Math.ceil(total / limitNum) || 1;
+    const skip = (pageNum - 1) * limitNum;
+
+    const paginatedHotels = filtered.slice(skip, skip + limitNum).map((h) => {
+        const primaryImg = h.images?.find((img) => img.is_primary) || h.images?.[0];
+        const min_price = h.room_types?.length
+            ? Math.min(...h.room_types.map((rt) => rt.base_price))
+            : null;
+        return {
+            _id: h._id,
+            name: h.name,
+            location: h.location,
+            address: h.address,
+            primary_image: primaryImg?.url || null,
+            rating_summary: h.rating_summary,
+            min_price
+        };
+    });
+
+    return {
+        data: {
+            hotels: paginatedHotels,
+            total,
+            page: pageNum,
+            limit: limitNum,
+            total_pages: totalPages
+        }
+    };
 };
 
 /**
@@ -114,16 +114,16 @@ export const searchHotels = async (params = {}) => {
  * @param {string} hotelId
  */
 export const getHotelById = async (hotelId) => {
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  const hotel = MOCK_HOTELS.find((h) => h._id === hotelId);
-  if (!hotel) {
-    const err = new Error('Không tìm thấy khách sạn');
-    err.response = { status: 404, data: { message: 'Không tìm thấy khách sạn' } };
-    throw err;
-  }
-  return {
-    data: { hotel }
-  };
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const hotel = MOCK_HOTELS.find((h) => h._id === hotelId);
+    if (!hotel) {
+        const err = new Error('Không tìm thấy khách sạn');
+        err.response = { status: 404, data: { message: 'Không tìm thấy khách sạn' } };
+        throw err;
+    }
+    return {
+        data: { hotel }
+    };
 };
 
 /**
@@ -133,43 +133,72 @@ export const getHotelById = async (hotelId) => {
  * @param {string} checkOut - YYYY-MM-DD
  */
 export const checkAvailability = async (hotelId, checkIn, checkOut) => {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const hotel = MOCK_HOTELS.find((h) => h._id === hotelId);
-  if (!hotel) {
-    const err = new Error('Không tìm thấy khách sạn');
-    err.response = { status: 404, data: { message: 'Không tìm thấy khách sạn' } };
-    throw err;
-  }
-
-  const checkInDate = new Date(checkIn);
-  const checkOutDate = new Date(checkOut);
-  const nights = Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
-
-  const room_availability = hotel.room_types.map((rt) => {
-    // Giả lập phòng trống ngẫu nhiên thực tế (còn từ 2 đến tổng số phòng)
-    const available_rooms = Math.max(1, rt.total_rooms - 2);
-    return {
-      room_type_id: rt._id,
-      name: rt.name,
-      base_price: rt.base_price,
-      currency: rt.currency,
-      capacity: rt.capacity,
-      total_rooms: rt.total_rooms,
-      booked_rooms: rt.total_rooms - available_rooms,
-      available_rooms,
-      is_available: true,
-      status: rt.status
-    };
-  });
-
-  return {
-    data: {
-      hotel_id: hotelId,
-      hotel_name: hotel.name,
-      check_in: checkIn,
-      check_out: checkOut,
-      nights,
-      room_availability
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const hotel = MOCK_HOTELS.find((h) => h._id === hotelId);
+    if (!hotel) {
+        const err = new Error('Không tìm thấy khách sạn');
+        err.response = { status: 404, data: { message: 'Không tìm thấy khách sạn' } };
+        throw err;
     }
-  };
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+    const nights = Math.max(1, Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)));
+
+    const room_availability = hotel.room_types.map((rt) => {
+        // Giả lập phòng trống ngẫu nhiên thực tế (còn từ 2 đến tổng số phòng)
+        const available_rooms = Math.max(1, rt.total_rooms - 2);
+        return {
+            room_type_id: rt._id,
+            name: rt.name,
+            base_price: rt.base_price,
+            currency: rt.currency,
+            capacity: rt.capacity,
+            total_rooms: rt.total_rooms,
+            booked_rooms: rt.total_rooms - available_rooms,
+            available_rooms,
+            is_available: true,
+            status: rt.status
+        };
+    });
+
+    return {
+        data: {
+            hotel_id: hotelId,
+            hotel_name: hotel.name,
+            check_in: checkIn,
+            check_out: checkOut,
+            nights,
+            room_availability
+        }
+    };
 };
+
+// ─────────────────────────────────────────────
+// VNPAY BOOKING & PAYMENT APIs
+// ─────────────────────────────────────────────
+
+/**
+ * Tạo đơn đặt phòng chờ thanh toán & nhận URL VNPay Sandbox
+ * @param {Object} payload
+ */
+export const createPendingBooking = async (payload) => {
+    return await api.post('/api/customer/bookings/pending', payload);
+};
+
+/**
+ * Xác thực kết quả thanh toán từ VNPay Sandbox
+ * @param {Object} params
+ */
+export const verifyVNPayPayment = async (params) => {
+    return await api.post('/api/customer/bookings/vnpay-verify', params);
+};
+
+/**
+ * Lấy thông tin chi tiết đơn đặt phòng theo mã
+ * @param {string} bookingCode
+ */
+export const getBookingByCode = async (bookingCode) => {
+    return await api.get(`/api/customer/bookings/${bookingCode}`);
+};
+
