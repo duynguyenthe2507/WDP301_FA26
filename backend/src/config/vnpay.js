@@ -17,11 +17,11 @@ export const vnpayConfig = {
   },
 };
 
-// Sắp xếp object chuẩn theo thứ tự alphabet và encode value theo chuẩn VNPay
-export const sortObject = (obj) => {
-  const sorted = {};
-  const str = [];
-  let key;
+// Hàm sắp xếp các key theo bảng chữ cái alphabet (A-Z) chuẩn theo template VNPay
+export function sortObject(obj) {
+  var sorted = {};
+  var str = [];
+  var key;
   for (key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       str.push(encodeURIComponent(key));
@@ -29,12 +29,12 @@ export const sortObject = (obj) => {
   }
   str.sort();
   for (key = 0; key < str.length; key++) {
-    sorted[str[key]] = encodeURIComponent(obj[decodeURIComponent(str[key])]).replace(/%20/g, '+');
+    sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, '+');
   }
   return sorted;
-};
+}
 
-// Sinh chuỗi ngày tháng YYYYMMDDHHmmss theo múi giờ Việt Nam (GMT+7)
+// Sinh chuỗi ngày tháng yyyyMMddHHmmss theo múi giờ Việt Nam (GMT+7)
 const getVnpayDate = () => {
   const d = new Date(Date.now() + 7 * 60 * 60 * 1000);
   const pad = (n) => String(n).padStart(2, '0');
@@ -43,23 +43,25 @@ const getVnpayDate = () => {
   )}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
 };
 
-// 1. Hàm tạo URL thanh toán
+// 1. Hàm tạo URL thanh toán chuẩn theo template router.post('/create_payment_url')
 export const createPaymentUrl = ({
   bookingCode,
   amount,
-  ipAddr = '127.0.0.1',
+  ipAddr = '8.8.8.8',
   orderInfo = 'Thanh toan don dat phong',
   bankCode = '',
+  orderType = 'other',
+  locale = 'vn',
 }) => {
   const tmnCode = String(vnpayConfig.vnp_TmnCode || '').trim();
   const secretKey = String(vnpayConfig.vnp_HashSecret || '').trim();
-  const vnpUrl = String(vnpayConfig.vnp_Url || '').trim();
+  let vnpUrl = String(vnpayConfig.vnp_Url || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html').trim();
   const returnUrl = String(vnpayConfig.vnp_ReturnUrl || '').trim();
 
   // Chuẩn hóa IP sang IPv4 (tránh dính IPv6 loopback '::1' từ localhost)
   let safeIp = ipAddr;
   if (!safeIp || safeIp === '::1' || safeIp.includes(':')) {
-    safeIp = '127.0.0.1';
+    safeIp = '8.8.8.8';
   }
 
   // Chuẩn hóa OrderInfo: bỏ dấu tiếng Việt và ký tự đặc biệt
@@ -69,128 +71,62 @@ export const createPaymentUrl = ({
     .replace(/[^a-zA-Z0-9 ]/g, '')
     .trim();
 
-  let vnp_Params = {
-    vnp_Version: '2.1.0',
-    vnp_Command: 'pay',
-    vnp_TmnCode: tmnCode,
-    vnp_Locale: 'vn',
-    vnp_CurrCode: 'VND',
-    vnp_TxnRef: String(bookingCode),
-    vnp_OrderInfo: cleanOrderInfo || `Thanh toan don dat phong ${bookingCode}`,
-    vnp_OrderType: 'other',
-    vnp_Amount: Math.round(Number(amount) * 100), // Quy đổi sang đơn vị đồng * 100
-    vnp_ReturnUrl: returnUrl,
-    vnp_IpAddr: safeIp,
-    vnp_CreateDate: getVnpayDate(),
-  };
+  let vnp_Params = {};
+  vnp_Params['vnp_Version'] = '2.1.0';
+  vnp_Params['vnp_Command'] = 'pay';
+  vnp_Params['vnp_TmnCode'] = tmnCode;
+  vnp_Params['vnp_Locale'] = locale || 'vn';
+  vnp_Params['vnp_CurrCode'] = 'VND';
+  vnp_Params['vnp_TxnRef'] = String(bookingCode);
+  vnp_Params['vnp_OrderInfo'] = cleanOrderInfo || `Thanh toan don dat phong ${bookingCode}`;
+  vnp_Params['vnp_OrderType'] = orderType || 'other';
+  vnp_Params['vnp_Amount'] = Math.round(Number(amount) * 100);
+  vnp_Params['vnp_ReturnUrl'] = returnUrl;
+  vnp_Params['vnp_IpAddr'] = safeIp;
+  vnp_Params['vnp_CreateDate'] = getVnpayDate();
 
-  if (bankCode) {
+  if (bankCode && bankCode !== '') {
     vnp_Params['vnp_BankCode'] = bankCode;
   }
 
-  // 1. Sắp xếp các tham số theo bảng chữ cái A-Z và mã hóa chuẩn VNPay
-  const sortedParams = sortObject(vnp_Params);
+  vnp_Params = sortObject(vnp_Params);
 
-  // 2. Chuỗi dùng để ký (signData): encode: false vì sortObject đã xử lý encodeURIComponent
-  const signData = qs.stringify(sortedParams, { encode: false });
-
-  // 3. Băm HMAC-SHA512
+  const signData = qs.stringify(vnp_Params, { encode: false });
   const hmac = crypto.createHmac('sha512', secretKey);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
-  // 4. Gán mã hash vào params
-  sortedParams['vnp_SecureHash'] = signed;
-
-  // 5. Tạo link chuyển hướng với encode: false (đồng bộ 100% với chuỗi đã băm)
-  const paymentUrl = `${vnpUrl}?${qs.stringify(sortedParams, { encode: false })}`;
-
-  const maskedSecret =
-    secretKey.length > 8
-      ? `${secretKey.slice(0, 4)}...${secretKey.slice(-4)} (độ dài: ${secretKey.length})`
-      : `[QUÁ NGẮN: ${secretKey.length} ký tự]`;
+  vnp_Params['vnp_SecureHash'] = signed;
+  vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
 
   console.log('\n================== [VNPAY DEBUG: TẠO URL THANH TOÁN] ==================');
-  console.log('📌 VNP_TMN_CODE    :', tmnCode);
-  console.log('📌 VNP_HASH_SECRET  :', maskedSecret);
+  console.log(`VNP_TMN_CODE="${tmnCode}"`);
+  console.log(`VNP_HASH_SECRET="${secretKey}"`);
   console.log('📌 vnp_TxnRef       :', bookingCode);
-  console.log('📌 vnp_Amount       :', vnp_Params.vnp_Amount, `(${amount} VND)`);
+  console.log('📌 vnp_Amount       :', vnp_Params['vnp_Amount'], `(${amount} VND)`);
   console.log('📌 Chuỗi mang đi băm (signData):');
   console.log('   >', signData);
   console.log('📌 Chữ ký vừa sinh (vnp_SecureHash):');
   console.log('   >', signed);
   console.log('📌 URL chuyển hướng:');
-  console.log('   >', paymentUrl);
+  console.log('   >', vnpUrl);
+  console.log('=========================================================================\n');
 
-  // Gửi probe request ngầm sang VNPay để đọc lý do VNPay chấp nhận hay từ chối
-  fetch(paymentUrl)
-    .then(async (res) => {
-      const html = await res.text();
-      console.log('\n--- [VNPAY PROBE: KẾT QUẢ TỪ CỔNG SANDBOX.VNPAYMENT.VN] ---');
-      if (html.includes('Invalid signature') || html.includes('Sai chữ ký')) {
-        console.error('❌ VNPay phản hồi: [SAI CHỮ KÝ - INVALID SIGNATURE] (Code 70)');
-        console.error('👉 NGUYÊN NHÂN: Thuật toán mã hóa HMAC-SHA512 đã chuẩn, nhưng VNP_HASH_SECRET trong .env KHÔNG KHỚP với VNP_TMN_CODE trên Sandbox!');
-        console.error('👉 CÁCH FIX: Bạn hãy kiểm tra lại email đăng ký VNPay Sandbox để lấy đúng mã HASH_SECRET của Terminal', tmnCode);
-      } else if (html.includes('The terminal (website) not found') || html.includes('không tìm thấy')) {
-        console.error(`❌ VNPay phản hồi: [KHÔNG TÌM THẤY TERMINAL] Mã VNP_TMN_CODE="${tmnCode}" không tồn tại trên VNPay Sandbox.`);
-      } else {
-        console.log('✅ VNPay Sandbox phản hồi: [HỢP LỆ 100%] Đã mở thành công trang thanh toán VNPay!');
-      }
-      console.log('=========================================================================\n');
-    })
-    .catch((err) => {
-      console.warn('[VNPAY PROBE WARNING] Không thể gửi probe sang VNPay:', err.message);
-    });
-
-  return { paymentUrl, bookingCode };
+  return { paymentUrl: vnpUrl, bookingCode };
 };
 
-// Chế độ mock (VNP_MOCK=true): bỏ qua cổng VNPay, trả thẳng về ReturnUrl với tham số
-// giả lập đã được ký bằng secret của chính app để verifyReturnData vẫn chạy đúng.
-export const createMockReturnUrl = ({ bookingCode, amount }) => {
-  const secretKey = String(vnpayConfig.vnp_HashSecret || 'mock').trim();
-  const returnUrl = String(vnpayConfig.vnp_ReturnUrl).trim();
-
-  let params = {
-    vnp_Amount: Math.round(Number(amount) * 100),
-    vnp_BankCode: 'NCB',
-    vnp_CardType: 'ATM',
-    vnp_OrderInfo: `Thanh toan don dat phong ${bookingCode}`,
-    vnp_PayDate: getVnpayDate(),
-    vnp_ResponseCode: '00',
-    vnp_TmnCode: String(vnpayConfig.vnp_TmnCode || 'MOCK').trim(),
-    vnp_TransactionNo: String(Date.now()).slice(-8),
-    vnp_TransactionStatus: '00',
-    vnp_TxnRef: String(bookingCode),
-  };
-
-  params = sortObject(params);
-  const signData = qs.stringify(params, { encode: false });
-  params['vnp_SecureHash'] = crypto
-    .createHmac('sha512', secretKey)
-    .update(Buffer.from(signData, 'utf-8'))
-    .digest('hex');
-
-  console.log('\n[VNPAY MOCK] Chế độ Mock được kích hoạt - Bỏ qua cổng VNPay');
-  console.log('Booking Code:', bookingCode, '| Số tiền:', amount);
-
-  return `${returnUrl}?${qs.stringify(params, { encode: false })}`;
-};
-
-// 2. Hàm kiểm tra chữ ký trả về (Return URL / Webhook IPN)
+// 2. Hàm kiểm tra chữ ký trả về chuẩn theo template router.get('/vnpay_return') và IPN
 export const verifyReturnData = (vnpParams) => {
+  let vnp_Params = { ...vnpParams };
+  const secureHash = vnp_Params['vnp_SecureHash'];
+
+  delete vnp_Params['vnp_SecureHash'];
+  delete vnp_Params['vnp_SecureHashType'];
+
+  vnp_Params = sortObject(vnp_Params);
+
   const secretKey = String(vnpayConfig.vnp_HashSecret || '').trim();
-  const secureHash = vnpParams['vnp_SecureHash'];
 
-  const cleanParams = { ...vnpParams };
-  delete cleanParams['vnp_SecureHash'];
-  delete cleanParams['vnp_SecureHashType'];
-
-  // Sắp xếp tham số nhận về
-  const sortedParams = sortObject(cleanParams);
-
-  // Tạo chuỗi thô để so sánh chữ ký
-  const signData = qs.stringify(sortedParams, { encode: false });
-
+  const signData = qs.stringify(vnp_Params, { encode: false });
   const hmac = crypto.createHmac('sha512', secretKey);
   const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
@@ -199,6 +135,8 @@ export const verifyReturnData = (vnpParams) => {
   const isSuccess = isHashValid && responseCode === '00';
 
   console.log('\n================== [VNPAY DEBUG: XÁC THỰC KẾT QUẢ TRẢ VỀ] ==================');
+  console.log(`VNP_TMN_CODE="${vnpParams['vnp_TmnCode'] || vnpayConfig.vnp_TmnCode}"`);
+  console.log(`VNP_HASH_SECRET="${secretKey}"`);
   console.log('📌 vnp_TxnRef       :', vnpParams['vnp_TxnRef']);
   console.log('📌 vnp_ResponseCode  :', responseCode, `(${responseCode === '00' ? 'Giao dịch thành công' : 'Thất bại/Hủy'})`);
   console.log('📌 vnp_SecureHash nhận được :');

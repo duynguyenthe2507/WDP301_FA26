@@ -73,7 +73,7 @@ export const changePassword = async (req, res) => {
 // VNPAY SANDBOX BOOKING & PAYMENT CONTROLLERS
 // ==========================================
 import Booking from '../models/Booking.js';
-import { createPaymentUrl, createMockReturnUrl, verifyReturnData } from '../config/vnpay.js';
+import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
 // POST /api/customer/bookings/pending
 // Tạo đơn đặt phòng và sinh link chuyển hướng sang VNPay Sandbox
@@ -135,11 +135,11 @@ export const createPendingBooking = async (req, res) => {
       guestInfo: isSelfGuest
         ? { fullName: '', phoneNumber: '', email: '', notes: guestInfo?.notes || '' }
         : {
-            fullName: guestInfo?.fullName?.trim() || '',
-            phoneNumber: guestInfo?.phoneNumber?.trim() || '',
-            email: guestInfo?.email?.trim() || '',
-            notes: guestInfo?.notes?.trim() || '',
-          },
+          fullName: guestInfo?.fullName?.trim() || '',
+          phoneNumber: guestInfo?.phoneNumber?.trim() || '',
+          email: guestInfo?.email?.trim() || '',
+          notes: guestInfo?.notes?.trim() || '',
+        },
       checkInDate: checkInDate ? new Date(checkInDate) : new Date(),
       checkOutDate: checkOutDate ? new Date(checkOutDate) : new Date(Date.now() + 86400000),
       totalNights: Math.max(1, Number(totalNights) || 1),
@@ -163,9 +163,9 @@ export const createPendingBooking = async (req, res) => {
     // VNPay chỉ nhận IPv4: bỏ danh sách proxy, tiền tố ::ffff: và đổi ::1 về 127.0.0.1
     let ipAddr = String(
       req.headers['x-forwarded-for'] ||
-        req.socket?.remoteAddress ||
-        req.connection?.remoteAddress ||
-        '127.0.0.1'
+      req.socket?.remoteAddress ||
+      req.connection?.remoteAddress ||
+      '127.0.0.1'
     )
       .split(',')[0]
       .trim()
@@ -173,15 +173,12 @@ export const createPendingBooking = async (req, res) => {
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ipAddr)) ipAddr = '127.0.0.1';
 
     // Tạo URL thanh toán VNPay Sandbox
-    const { paymentUrl } =
-      process.env.VNP_MOCK === 'true'
-        ? { paymentUrl: createMockReturnUrl({ bookingCode, amount: newBooking.totalAmount }) }
-        : createPaymentUrl({
-            bookingCode,
-            amount: newBooking.totalAmount,
-            ipAddr,
-            orderInfo: `Thanh toan don dat phong ${bookingCode}`,
-          });
+    const { paymentUrl } = createPaymentUrl({
+      bookingCode,
+      amount: newBooking.totalAmount,
+      ipAddr,
+      orderInfo: `Thanh toan don dat phong ${bookingCode}`,
+    });
 
     res.status(201).json({
       message: 'Tạo đơn đặt phòng thành công, chuyển hướng đến VNPay Sandbox',
