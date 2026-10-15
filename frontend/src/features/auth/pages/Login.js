@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -74,7 +75,10 @@ const Login = () => {
             </Button>
 
             <div className="text-center small text-muted">
-              Chưa có tài khoản? <Link to="/register" className="auth-link">Đăng ký ngay</Link>
+              Chưa có tài khoản?{' '}
+              <Link to="/register/customer" className="auth-link fw-semibold">Đăng ký Người dùng</Link>
+              <span className="mx-2 text-muted">•</span>
+              <Link to="/register/partner" className="auth-link fw-semibold">Đăng ký Đối tác</Link>
             </div>
           </Form>
         </Card.Body>

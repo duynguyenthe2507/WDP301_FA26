@@ -14,7 +14,13 @@ body {
   background-color: #f8f9fa;
 }
 
-h1, h2, h3, h4, h5, h6, .navbar-brand {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand {
   font-family: 'Playfair Display', serif;
 }
 
@@ -49,7 +55,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 
 .hover-lift:hover {
   transform: translateY(-10px);
-  box-shadow: 0 1rem 3rem rgba(0,0,0,.175) !important;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
 }
 
 .hover-warning:hover {
@@ -69,7 +75,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 /* Auth Pages Styling */
 .auth-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(26,32,44,0.9) 100%), url('https://images.unsplash.com/photo-1542314831-c6a4d14d8379?q=80&w=2000&auto=format&fit=crop') no-repeat center center;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(26, 32, 44, 0.9) 100%), url('https://images.unsplash.com/photo-1542314831-c6a4d14d8379?q=80&w=2000&auto=format&fit=crop') no-repeat center center;
   background-size: cover;
   display: flex;
   align-items: center;
@@ -82,7 +88,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   backdrop-filter: blur(10px);
   border: none;
   border-radius: 15px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   width: 100%;
   max-width: 450px;
@@ -141,6 +147,13 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

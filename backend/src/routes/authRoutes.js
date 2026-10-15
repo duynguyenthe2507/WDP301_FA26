@@ -13,13 +13,13 @@ router.get('/me', verifyToken, (req, res) => {
   res.json({ user: req.user });
 });
 
-// Chỉ STAFF và ADMIN mới được truy cập
-router.get('/internal-dashboard', verifyToken, authorizeRoles('STAFF', 'ADMIN'), (req, res) => {
+// Chỉ OPERATIONS_MANAGER và ADMIN mới được truy cập
+router.get('/internal-dashboard', verifyToken, authorizeRoles('OPERATIONS_MANAGER', 'ADMIN'), (req, res) => {
   res.json({ message: 'Khu vực làm việc cho nhân viên & quản trị viên' });
 });
 
-// Chỉ PARTNER được truy cập
-router.get('/partner-portal', verifyToken, authorizeRoles('PARTNER'), (req, res) => {
+// Chỉ HOTEL_PARTNER, PARTNER được truy cập
+router.get('/partner-portal', verifyToken, authorizeRoles('HOTEL_PARTNER'), (req, res) => {
   res.json({ message: 'Cổng thông tin đối tác' });
 });
 

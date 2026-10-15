@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { searchHotels } from '../customerApi';
+import { searchHotels } from '../CustomerApi';
 import HotelCard from '../components/HotelCard';
 import FilterSidebar from '../components/FilterSidebar';
 import SearchBar from '../components/SearchBar';

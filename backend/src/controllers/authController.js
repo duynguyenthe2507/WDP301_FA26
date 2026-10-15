@@ -4,10 +4,10 @@ import User from '../models/User.js';
 
 export const register = async (req, res) => {
   try {
-    const { email, password, full_name, phone_number, role, status } = req.body;
+    const { email, password, fullName, phoneNumber, role, status } = req.body;
 
     // Kiểm tra trạng thái rỗng
-    if (!email || !password || !full_name) {
+    if (!email || !password || !fullName) {
       return res.status(400).json({ message: 'Bắt buộc phải có Email, mật khẩu và tên đầy đủ' });
     }
 
@@ -21,8 +21,9 @@ export const register = async (req, res) => {
     const newUser = await User.create({
       email,
       password,
-      full_name,
-      phone_number,
+      fullName,
+      phoneNumber: phoneNumber || '',
+      avatarUrl: req.body.avatarUrl || '',
       role: role || 'CUSTOMER',
       status: status || 'ACTIVE',
     });
@@ -32,9 +33,12 @@ export const register = async (req, res) => {
       user: {
         _id: newUser._id,
         email: newUser.email,
-        full_name: newUser.full_name,
+        fullName: newUser.fullName,
+        phoneNumber: newUser.phoneNumber,
+        avatarUrl: newUser.avatarUrl,
         role: newUser.role,
         status: newUser.status,
+        isEmailVerified: newUser.isEmailVerified,
       },
     });
   } catch (error) {
@@ -57,15 +61,9 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: 'Email không tồn tại' });
     }
 
-    if (!user.password) {
-      return res.status(400).json({
-        message: 'Tài khoản này không có mật khẩu'
-      });
-    }
-
     // Kiểm tra trạng thái tài khoản
-    if (user.status === 'BLOCKED') {
-      return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa' });
+    if (['BLOCKED', 'SUSPENDED', 'DEACTIVATED'].includes(user.status)) {
+      return res.status(403).json({ message: 'Tài khoản của bạn đã bị tạm khóa hoặc vô hiệu hóa' });
     }
 
     // Kiểm tra mật khẩu
@@ -87,8 +85,12 @@ export const login = async (req, res) => {
       user: {
         _id: user._id,
         email: user.email,
-        full_name: user.full_name,
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        avatarUrl: user.avatarUrl,
         role: user.role,
+        status: user.status,
+        isEmailVerified: user.isEmailVerified,
       },
     });
   } catch (error) {

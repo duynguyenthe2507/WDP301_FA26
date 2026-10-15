@@ -5,6 +5,8 @@ import { AuthProvider } from './context/AuthContext';
 // Auth Pages
 import Login from './features/auth/pages/Login';
 import Register from './features/auth/pages/Register';
+import CustomerRegister from './features/auth/pages/CustomerRegister';
+import PartnerRegister from './features/auth/pages/PartnerRegister';
 
 // Layouts
 import CustomerLayout from './features/customer/components/CustomerLayout';
@@ -14,12 +16,13 @@ import ManagerLayout from './features/platform_manager/components/ManagerLayout'
 
 // Customer Pages
 import Home from './features/customer/pages/Home';
-import RoomsList from './features/customer/pages/RoomsList';
-import RoomDetails from './features/customer/pages/RoomDetails';
-import Booking from './features/customer/pages/Booking';
 import ProfilePage from './features/customer/pages/ProfilePage';
 import HotelSearchPage from './features/customer/pages/HotelSearchPage';
 import HotelDetailsPage from './features/customer/pages/HotelDetailsPage';
+import BookingPage from './features/customer/pages/BookingPage';
+import BookingConfirmationPage from './features/customer/pages/BookingConfirmationPage';
+import VNPayReturnPage from './features/customer/pages/VNPayReturnPage';
+import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
@@ -38,15 +41,19 @@ function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+          <Route path="/register/customer" element={<CustomerRegister />} />
+          <Route path="/register/user" element={<CustomerRegister />} />
+          <Route path="/register/partner" element={<PartnerRegister />} />
+
           {/* Customer Routes (Default) */}
           <Route path="/" element={<CustomerLayout />}>
             <Route index element={<Home />} />
-            <Route path="rooms" element={<RoomsList />} />
-            <Route path="room/:id" element={<RoomDetails />} />
             <Route path="hotels" element={<HotelSearchPage />} />
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
-            <Route path="booking" element={<Booking />} />
+            <Route path="booking" element={<BookingPage />} />
+            <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
+            <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
+            <Route path="booking-history" element={<BookingHistoryPage />} />
 
             {/* Profile - yêu cầu đăng nhập CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
