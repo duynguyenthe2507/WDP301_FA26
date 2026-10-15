@@ -116,6 +116,41 @@ export const createPendingBooking = async (req, res) => {
       }
     }
 
+    // Validate ngày nhận và trả phòng
+    if (!checkInDate || !checkOutDate) {
+      return res.status(400).json({ message: 'Vui lòng chọn ngày nhận phòng và ngày trả phòng' });
+    }
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+
+    if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
+      return res.status(400).json({ message: 'Định dạng ngày nhận/trả phòng không hợp lệ' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkInStart = new Date(checkIn);
+    checkInStart.setHours(0, 0, 0, 0);
+
+    if (checkInStart < today) {
+      return res.status(400).json({ message: 'Ngày nhận phòng không được ở trong quá khứ' });
+    }
+
+    if (checkOut <= checkIn) {
+      return res.status(400).json({ message: 'Ngày trả phòng phải sau ngày nhận phòng ít nhất 1 ngày' });
+    }
+
+    // Validate số lượng phòng đặt
+    if (!bookingDetails || !Array.isArray(bookingDetails) || bookingDetails.length === 0) {
+      return res.status(400).json({ message: 'Vui lòng chọn ít nhất 1 loại phòng để đặt' });
+    }
+
+    const hasInvalidRoom = bookingDetails.some((item) => !item.quantity || Number(item.quantity) <= 0);
+    if (hasInvalidRoom) {
+      return res.status(400).json({ message: 'Số lượng phòng đặt không hợp lệ' });
+    }
+
     // Sinh mã đặt phòng duy nhất: VNS + YYYYMMDD + 4 số ngẫu nhiên
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');

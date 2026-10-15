@@ -10,6 +10,11 @@ import {
   getBookingByCode,
   getMyBookings,
 } from '../controllers/customerController.js';
+import {
+  getHotels,
+  getHotelById,
+  checkRoomAvailability,
+} from '../controllers/hotelController.js';
 import { verifyToken, authorizeRoles, optionalAuth } from '../middlewares/authMiddleware.js';
 
 router.get('/ping', pingCustomer);
@@ -25,6 +30,11 @@ router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 router.get('/my-bookings', optionalAuth, getMyBookings);
 router.get('/bookings/:bookingCode', getBookingByCode);
+
+// Hotel routes (Search, Filter, Detail, Availability)
+router.get('/hotels', getHotels);
+router.get('/hotels/:id', getHotelById);
+router.get('/hotels/:id/availability', checkRoomAvailability);
 
 export default router;
 

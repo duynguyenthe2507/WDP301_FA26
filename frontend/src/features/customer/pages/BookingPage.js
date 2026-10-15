@@ -43,12 +43,34 @@ const BookingPage = () => {
     1
   );
   const quantity = Number(stateData.quantity) || 1;
-
-  // Tính toán chi phí
   const pricePerNight = Number(roomType.price_per_night || roomType.base_price) || 1500000;
-  const roomCost = pricePerNight * nights * quantity;
-  const serviceFee = Math.round(roomCost * 0.1); // 10% thuế & phí
-  const totalAmount = roomCost + serviceFee;
+
+  // Hỗ trợ cả 1 loại phòng và nhiều loại phòng
+  const selectedRooms = stateData.selectedRooms || [
+    {
+      ...roomType,
+      quantity,
+      base_price: pricePerNight,
+      name: roomType.name,
+    },
+  ];
+
+  const bookingDetailsList =
+    stateData.bookingDetails ||
+    selectedRooms.map((r) => ({
+      roomTypeId: r._id || r.id || 'standard',
+      roomTypeName: r.name,
+      quantity: r.quantity || 1,
+      pricePerNight: Number(r.base_price || r.price_per_night) || 1500000,
+      totalPrice: (Number(r.base_price || r.price_per_night) || 1500000) * (r.quantity || 1) * nights,
+    }));
+
+  const totalQuantity = selectedRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+  const roomCost =
+    stateData.roomCost ??
+    bookingDetailsList.reduce((sum, b) => sum + b.totalPrice, 0);
+  const serviceFee = stateData.serviceFee ?? Math.round(roomCost * 0.1); // 10% thuế & phí
+  const totalAmount = stateData.totalAmount ?? (roomCost + serviceFee);
 
   // 1. Thông tin người đặt
   const [bookerInfo, setBookerInfo] = useState({
@@ -194,15 +216,7 @@ const BookingPage = () => {
         checkInDate: checkIn,
         checkOutDate: checkOut,
         totalNights: nights,
-        bookingDetails: [
-          {
-            roomTypeId: roomType.id || roomType._id || 'standard',
-            roomTypeName: roomType.name,
-            quantity,
-            pricePerNight,
-            totalPrice: roomCost,
-          },
-        ],
+        bookingDetails: bookingDetailsList,
         totalAmount,
       };
 
@@ -494,9 +508,15 @@ const BookingPage = () => {
 
                   <div className="p-3 bg-light rounded-3 mb-3">
                     <div className="fw-semibold text-dark mb-2 d-flex align-items-center gap-2">
-                      <FaBed className="text-primary" /> {roomType.name}
+                      <FaBed className="text-primary" /> Phòng đã chọn:
                     </div>
-                    <div className="d-flex justify-content-between text-secondary small mb-1">
+                    {selectedRooms.map((r, idx) => (
+                      <div key={idx} className="d-flex justify-content-between text-secondary small mb-1">
+                        <span>{r.name}</span>
+                        <strong className="text-dark">{r.quantity} phòng</strong>
+                      </div>
+                    ))}
+                    <div className="d-flex justify-content-between text-secondary small mb-1 mt-2 pt-2 border-top">
                       <span>Nhận phòng:</span>
                       <strong className="text-dark">{checkIn} (14:00)</strong>
                     </div>
@@ -506,13 +526,13 @@ const BookingPage = () => {
                     </div>
                     <div className="d-flex justify-content-between text-secondary small">
                       <span>Thời gian:</span>
-                      <strong className="text-dark">{nights} đêm, {quantity} phòng</strong>
+                      <strong className="text-dark">{nights} đêm, {totalQuantity} phòng</strong>
                     </div>
                   </div>
 
                   <h6 className="fw-bold text-dark mb-2">Chi tiết thanh toán</h6>
                   <div className="d-flex justify-content-between text-secondary small mb-2">
-                    <span>Giá phòng ({nights} đêm × {quantity} phòng):</span>
+                    <span>Giá phòng ({nights} đêm × {totalQuantity} phòng):</span>
                     <span className="text-dark">{formatPrice(roomCost)}</span>
                   </div>
                   <div className="d-flex justify-content-between text-secondary small mb-3">

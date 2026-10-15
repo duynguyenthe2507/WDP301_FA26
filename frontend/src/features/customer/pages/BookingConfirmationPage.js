@@ -223,7 +223,7 @@ const BookingConfirmationPage = () => {
                   <FaFileAlt className="text-primary" /> Yêu cầu đặc biệt cho khách sạn (Special Requests)
                 </h6>
                 <div className="p-3 bg-light rounded-3 small text-dark border">
-                  "{booking.specialRequests || booking.notes || booking.guestInfo?.notes}"
+                  {booking.specialRequests || booking.notes || booking.guestInfo?.notes}
                 </div>
               </div>
             )}
