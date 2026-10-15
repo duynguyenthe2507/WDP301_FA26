@@ -16,13 +16,13 @@ const auditLogSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    old_role: String,
-    new_role: String,
     old_status: String,
     new_status: String,
+    old_reason: String,
+    new_reason: String,
   },
   {
-    timestamps: { createdAt: 'created_at', updatedAt: false },
+    timestamps: { createdAt: 'createdAt', updatedAt: false },
   }
 );
 

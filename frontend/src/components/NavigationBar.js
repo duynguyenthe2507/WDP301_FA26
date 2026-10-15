@@ -24,7 +24,7 @@ const NavigationBar = () => {
             {user ? (
               <>
                 <Nav.Link as={Link} to={user.role === 'ADMIN' ? '/admin' : user.role === 'PARTNER' ? '/partner' : user.role === 'STAFF' ? '/manager' : '/'} className="d-flex align-items-center">
-                  <FaUserCircle className="me-1"/> {user.full_name || 'Tài khoản'}
+                  <FaUserCircle className="me-1"/> {user.fullName || 'Tài khoản'}
                 </Nav.Link>
                 <Button onClick={logout} variant="outline-light" className="ms-lg-3 mt-3 mt-lg-0 rounded-pill px-4">
                   Đăng xuất

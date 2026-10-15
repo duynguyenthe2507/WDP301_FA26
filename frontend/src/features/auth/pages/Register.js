@@ -8,8 +8,8 @@ const Register = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    full_name: '',
-    phone_number: '',
+    fullName: '',
+    phoneNumber: '',
     role: 'CUSTOMER'
   });
   
@@ -59,10 +59,10 @@ const Register = () => {
                   <div className="position-relative">
                     <Form.Control 
                       type="text" 
-                      name="full_name"
+                      name="fullName"
                       className="auth-form-control ps-4"
                       placeholder="Nguyễn Văn A" 
-                      value={formData.full_name}
+                      value={formData.fullName}
                       onChange={handleChange}
                       required
                     />
@@ -77,7 +77,7 @@ const Register = () => {
                   <div className="position-relative">
                     <Form.Control 
                       type="text" 
-                      name="phone_number"
+                      name="phoneNumber"
                       className="auth-form-control ps-4"
                       placeholder="0912345678" 
                       value={formData.phone_number}

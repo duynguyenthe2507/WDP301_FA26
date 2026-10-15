@@ -1,309 +1,384 @@
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  Col,
-  Form,
-  Row,
-  Spinner,
-  Table,
-} from "react-bootstrap";
 import { getUsers, updateUser } from "../adminApi";
 
-const emptyFilters = { search: "", role: "", status: "", from: "", to: "" };
+// Tên vai trò để hiển thị cho admin.
+const roleNames = {
+  CUSTOMER: "Khách hàng",
+  PARTNER: "Đối tác",
+  STAFF: "Nhân viên",
+  ADMIN: "Quản trị viên",
+};
 
-const roles = [
-  { value: "CUSTOMER", label: "Khách hàng" },
-  { value: "PARTNER", label: "Đối tác" },
-  { value: "STAFF", label: "Nhân viên" },
-];
+// Tên và màu của từng trạng thái tài khoản.
+const statusNames = {
+  ACTIVE: "Hoạt động",
+  SUSPENDED: "Tạm khóa",
+  BLOCKED: "Bị khóa",
+};
 
-const UserManagement = () => {
-  const [filters, setFilters] = useState(emptyFilters);
-  const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
+const emptyFilters = {
+  search: "",
+  role: "",
+  status: "",
+  from: "",
+  to: "",
+};
+
+function UserManagement() {
+  // Dữ liệu đang nhập trên form tìm kiếm.
+  const [filters, setFilters] = useState({ ...emptyFilters });
+  // Bộ lọc đã bấm nút tìm kiếm.
+  const [appliedFilters, setAppliedFilters] = useState({});
+
   const [users, setUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [role, setRole] = useState("CUSTOMER");
+  const [selectedUser, setSelectedUser] = useState(null);
   const [status, setStatus] = useState("ACTIVE");
+  const [reason, setReason] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [hasError, setHasError] = useState(false);
 
-  const selectedUser = users.find((user) => user._id === selectedUserId);
-
-  // Tải lại danh sách khi admin áp dụng bộ lọc.
+  // Tải lại danh sách khi trang mở hoặc khi admin tìm kiếm.
   useEffect(() => {
-    const loadUsers = async () => {
+    async function loadUsers() {
       setLoading(true);
+
       try {
         const result = await getUsers(appliedFilters);
         setUsers(result.users);
+        setHasError(false);
       } catch (error) {
         setHasError(true);
-        setMessage(
-          error.response?.data?.message || "Không thể tải danh sách tài khoản.",
-        );
-      } finally {
-        setLoading(false);
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.message
+        ) {
+          setMessage(error.response.data.message);
+        } else {
+          setMessage("Không thể tải danh sách tài khoản.");
+        }
       }
-    };
+
+      setLoading(false);
+    }
 
     loadUsers();
   }, [appliedFilters]);
 
-  const changeFilter = (event) => {
-    setFilters({ ...filters, [event.target.name]: event.target.value });
-  };
+  // Ghi lại nội dung vừa nhập vào đúng ô trong form tìm kiếm.
+  function changeFilter(event) {
+    const name = event.target.name;
+    const value = event.target.value;
 
-  const searchUsers = (event) => {
+    setFilters({ ...filters, [name]: value });
+  }
+
+  // Bấm Tìm kiếm: dùng các giá trị đang nhập để tải danh sách.
+  function searchUsers(event) {
     event.preventDefault();
-    setSelectedUserId("");
+    setSelectedUser(null);
     setMessage("");
+    setHasError(false);
     setAppliedFilters({ ...filters });
-  };
+  }
 
-  const clearFilters = () => {
-    setFilters(emptyFilters);
-    setSelectedUserId("");
+  // Xóa các ô lọc và tải lại tất cả tài khoản.
+  function clearFilters() {
+    setFilters({ ...emptyFilters });
+    setSelectedUser(null);
     setMessage("");
-    setAppliedFilters({ ...emptyFilters });
-  };
+    setHasError(false);
+    setAppliedFilters({});
+  }
 
-  const selectUser = (user) => {
-    setSelectedUserId(user._id);
-    setRole(user.role);
+  // Chọn một dòng trong bảng để xem và sửa trạng thái.
+  function selectUser(user) {
+    setSelectedUser(user);
     setStatus(user.status);
+    setReason(user.status_reason || "");
     setMessage("");
-  };
+    setHasError(false);
+  }
 
-  const saveChanges = async () => {
-    if (!selectedUser) return;
-    if (!window.confirm(`Lưu thay đổi cho ${selectedUser.email}?`)) return;
+  // Gửi trạng thái mới lên backend.
+  async function saveChanges() {
+    if (!selectedUser || selectedUser.status === "BLOCKED") {
+      return;
+    }
+
+    if (status !== "ACTIVE" && reason.trim() === "") {
+      setHasError(true);
+      setMessage("Hãy nhập lý do khóa tài khoản.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Xác nhận đổi trạng thái sang "${statusNames[status]}"?`,
+    );
+    if (!confirmed) return;
 
     setSaving(true);
     setMessage("");
+
     try {
-      const result = await updateUser(selectedUser._id, { role, status });
+      const result = await updateUser(selectedUser._id, {
+        status: status,
+        reason: status === "ACTIVE" ? "" : reason.trim(),
+      });
+
       setHasError(false);
       setMessage(result.message);
-      setSelectedUserId("");
-      // Tải lại danh sách để thấy vai trò và trạng thái mới.
+      setSelectedUser(null);
+
+      // Tải lại bảng để hiện trạng thái vừa lưu.
       setAppliedFilters({ ...appliedFilters });
     } catch (error) {
       setHasError(true);
-      setMessage(
-        error.response?.data?.message || "Không thể cập nhật tài khoản.",
-      );
-    } finally {
-      setSaving(false);
+
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setMessage(error.response.data.message);
+      } else {
+        setMessage("Không thể cập nhật tài khoản.");
+      }
     }
-  };
+
+    setSaving(false);
+  }
 
   return (
     <div>
-      <h2>Quản lý tài khoản &amp; phân quyền</h2>
-      <p className="text-muted">
-        Tìm tài khoản, đổi vai trò hoặc kích hoạt và tạm khóa tài khoản.
-      </p>
-
+      <h2>Quản lý tài khoản</h2>
       {message && (
-        <Alert variant={hasError ? "danger" : "success"}>{message}</Alert>
+        <div className={`alert ${hasError ? "alert-danger" : "alert-success"}`}>
+          {message}
+        </div>
       )}
 
-      <Card className="border-0 shadow-sm rounded-4 mb-4">
-        <Card.Body>
-          <Form onSubmit={searchUsers}>
-            <Row className="g-3 align-items-end">
-              <Col md={4}>
-                <Form.Label>Tên, email hoặc số điện thoại</Form.Label>
-                <Form.Control
+      {/* Form tìm tài khoản */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <form onSubmit={searchUsers}>
+            <div className="row g-3">
+              <div className="col-md-4">
+                <label className="form-label">
+                  Tên, email hoặc số điện thoại
+                </label>
+                <input
+                  className="form-control"
                   name="search"
                   value={filters.search}
                   onChange={changeFilter}
                 />
-              </Col>
-              <Col md={2}>
-                <Form.Label>Vai trò</Form.Label>
-                <Form.Select
+              </div>
+
+              <div className="col-md-2">
+                <label className="form-label">Vai trò</label>
+                <select
+                  className="form-select"
                   name="role"
                   value={filters.role}
                   onChange={changeFilter}
                 >
                   <option value="">Tất cả</option>
-                  {roles.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
+                  {Object.entries(roleNames).map(([value, name]) => (
+                    <option key={value} value={value}>
+                      {name}
                     </option>
                   ))}
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>Trạng thái</Form.Label>
-                <Form.Select
+                </select>
+              </div>
+
+              <div className="col-md-2">
+                <label className="form-label">Trạng thái</label>
+                <select
+                  className="form-select"
                   name="status"
                   value={filters.status}
                   onChange={changeFilter}
                 >
                   <option value="">Tất cả</option>
-                  <option value="ACTIVE">Đang hoạt động</option>
-                  <option value="BLOCKED">Tạm khóa</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>Đăng ký từ ngày</Form.Label>
-                <Form.Control
+                  {Object.entries(statusNames).map(([value, name]) => (
+                    <option key={value} value={value}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-md-2">
+                <label className="form-label">Đăng ký từ ngày</label>
+                <input
+                  className="form-control"
                   type="date"
                   name="from"
                   value={filters.from}
                   onChange={changeFilter}
                 />
-              </Col>
-              <Col md={2}>
-                <Form.Label>Đến ngày</Form.Label>
-                <Form.Control
+              </div>
+
+              <div className="col-md-2">
+                <label className="form-label">Đến ngày</label>
+                <input
+                  className="form-control"
                   type="date"
                   name="to"
                   value={filters.to}
                   onChange={changeFilter}
                 />
-              </Col>
-              <Col>
-                <Button type="submit">Tìm kiếm</Button>
-                <Button
-                  type="button"
-                  variant="outline-secondary"
-                  className="ms-2"
-                  onClick={clearFilters}
-                >
-                  Xóa lọc
-                </Button>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
-      </Card>
+              </div>
+            </div>
 
-      <Card className="border-0 shadow-sm rounded-4 mb-4">
-        <Card.Body>
+            <button className="btn btn-primary mt-3" type="submit">
+              Tìm kiếm
+            </button>
+            <button
+              className="btn btn-secondary mt-3 ms-2"
+              type="button"
+              onClick={clearFilters}
+            >
+              Xóa lọc
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Bảng danh sách tài khoản */}
+      <div className="card mb-4">
+        <div className="card-body">
           <h5>Danh sách tài khoản ({users.length})</h5>
+
           {loading ? (
-            <Spinner animation="border" />
+            <p>Đang tải danh sách...</p>
           ) : users.length === 0 ? (
-            <p className="text-muted mb-0">Không tìm thấy tài khoản.</p>
+            <p>Không tìm thấy tài khoản.</p>
           ) : (
             <div className="table-responsive">
-              <Table hover className="align-middle mb-0">
+              <table className="table table-hover align-middle">
                 <thead>
                   <tr>
                     <th>Tài khoản</th>
                     <th>Vai trò</th>
                     <th>Trạng thái</th>
                     <th>Ngày đăng ký</th>
-                    <th />
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user._id}>
                       <td>
-                        {user.full_name}
+                        {user.fullName}
                         <br />
-                        <small className="text-muted">{user.email}</small>
+                        {user.email}
+                      </td>
+                      <td>{roleNames[user.role] || user.role}</td>
+                      <td>{statusNames[user.status] || user.status}</td>
+                      <td>
+                        {new Date(user.createdAt).toLocaleDateString("vi-VN")}
                       </td>
                       <td>
-                        {roles.find((item) => item.value === user.role)?.label}
-                      </td>
-                      <td>
-                        <Badge
-                          bg={
-                            user.status === "ACTIVE" ? "success" : "secondary"
-                          }
-                        >
-                          {user.status === "ACTIVE" ? "Hoạt động" : "Tạm khóa"}
-                        </Badge>
-                      </td>
-                      <td>
-                        {new Date(user.created_at).toLocaleDateString("vi-VN")}
-                      </td>
-                      <td>
-                        <Button
-                          size="sm"
-                          variant="outline-primary"
+                        <button
+                          className="btn btn-outline-primary btn-sm"
+                          type="button"
                           onClick={() => selectUser(user)}
                         >
-                          Chọn
-                        </Button>
+                          Xem chi tiết
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </Table>
+              </table>
             </div>
           )}
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="border-0 shadow-sm rounded-4">
-        <Card.Body>
-          <h5>Cập nhật tài khoản</h5>
+      {/* Thông tin và form đổi trạng thái */}
+      <div className="card">
+        <div className="card-body">
+          <h5>Chi tiết tài khoản</h5>
+
           {!selectedUser ? (
-            <p className="text-muted mb-0">
-              Chọn một tài khoản trong danh sách trước.
-            </p>
+            <p>Chọn một tài khoản trong bảng để xem chi tiết.</p>
           ) : (
             <>
               <p>
-                {selectedUser.full_name} ({selectedUser.email})
+                <strong>Họ tên:</strong> {selectedUser.fullName}
               </p>
-              <Row className="g-3">
-                <Col md={4}>
-                  <Form.Label>Vai trò</Form.Label>
-                  <Form.Select
-                    value={role}
-                    onChange={(event) => setRole(event.target.value)}
+              <p>
+                <strong>Email:</strong> {selectedUser.email}
+              </p>
+              <p>
+                <strong>Số điện thoại:</strong>{" "}
+                {selectedUser.phoneNumber || "Chưa cập nhật"}
+              </p>
+              <p>
+                <strong>Vai trò:</strong>{" "}
+                {roleNames[selectedUser.role] || selectedUser.role}
+              </p>
+              <p>
+                <strong>Trạng thái:</strong> {statusNames[selectedUser.status]}
+              </p>
+
+              {selectedUser.status === "BLOCKED" ? (
+                <div className="alert alert-danger">
+                  Tài khoản đã bị khóa vĩnh viễn và không thể mở lại.
+                  <br />
+                  Lý do: {selectedUser.status_reason || "Không có"}
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3">
+                    <label className="form-label">Trạng thái mới</label>
+                    <select
+                      className="form-select"
+                      value={status}
+                      onChange={(event) => setStatus(event.target.value)}
+                    >
+                      {Object.entries(statusNames).map(([value, name]) => (
+                        <option key={value} value={value}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {status !== "ACTIVE" && (
+                    <div className="mb-3">
+                      <label className="form-label">Lý do khóa</label>
+                      <textarea
+                        className="form-control"
+                        rows="3"
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    onClick={saveChanges}
+                    disabled={saving}
                   >
-                    {roles.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Col>
-                <Col md={4}>
-                  <Form.Label>Trạng thái</Form.Label>
-                  <Form.Select
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value)}
-                  >
-                    <option value="ACTIVE">Đang hoạt động</option>
-                    <option value="BLOCKED">Tạm khóa</option>
-                  </Form.Select>
-                </Col>
-                <Col md={4} className="d-flex align-items-end gap-2">
-                  <Button
-                    variant="outline-secondary"
-                    onClick={() => setRole("CUSTOMER")}
-                  >
-                    Đặt lại quyền
-                  </Button>
-                  <Button onClick={saveChanges} disabled={saving}>
-                    {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                  </Button>
-                </Col>
-              </Row>
-              <small className="text-muted d-block mt-2">
-                Đặt lại quyền chuyển vai trò về Khách hàng. Hãy bấm Lưu thay đổi
-                để xác nhận.
-              </small>
+                    {saving ? "Đang lưu..." : "Xác nhận thay đổi"}
+                  </button>
+                </>
+              )}
             </>
           )}
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 export default UserManagement;

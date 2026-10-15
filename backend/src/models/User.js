@@ -12,12 +12,16 @@ const userSchema = new mongoose.Schema(
         password: {
             type: String,
         }, 
-        full_name: {
+        fullName: {
             type: String,
             required: true,
             trim: true,
         },
-        phone_number: {
+        phoneNumber: {
+            type: String,
+            trim: true,
+        },
+        avatarUrl: {
             type: String,
             trim: true,
         },
@@ -28,12 +32,26 @@ const userSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['ACTIVE', 'BLOCKED'],
+            enum: ['ACTIVE', 'SUSPENDED', 'BLOCKED'],
             default: 'ACTIVE',
+        },
+        isEmailVerified: {
+            type: Boolean,
+            required: false,
+        },
+        createdAt: {
+            type: Date,
+        },
+        updatedAt: {
+            type: Date
+        },
+        status_reason: {
+            type: String,
+            trim: true,
         },
     },
     {
-        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+        timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
     }
 );
 
