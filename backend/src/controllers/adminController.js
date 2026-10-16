@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import AuditLog from '../models/AuditLog.js';
+import SystemConfig from "../models/SystemConfig.js";
+
 
 const roles = ['CUSTOMER', 'PARTNER', 'STAFF', 'ADMIN'];
 const statuses = ['ACTIVE', 'SUSPENDED', 'BLOCKED'];
@@ -195,5 +197,92 @@ export const updateUser = async (req, res) => {
     }
 
     res.status(500).json({ message: 'Không thể cập nhật trạng thái tài khoản' });
+  }
+};
+
+export const getConfig = async (req, res) => {
+  try {
+    // Tìm cấu hình trong DB, nếu chưa có thì tự tạo mới 1 bản ghi mặc định
+    let config = await SystemConfig.findOne();
+    if (!config) {
+      config = await SystemConfig.create({});
+    }
+    res.status(200).json(config);
+  } catch (error) {
+    res.status(500).json({ message: "Không thể tải cấu hình hệ thống" });
+  }
+};
+
+// 2. HÀM CẬP NHẬT CẤU HÌNH (LƯU VÀO DB + GHI LOG)
+export const updateConfig = async (req, res) => {
+  try {
+    const { isMaintenanceMode, maintenanceMessage } = req.body;
+
+    // Tìm cấu hình cũ
+    let config = await SystemConfig.findOne();
+    if (!config) {
+      config = new SystemConfig();
+    }
+
+    // Cập nhật giá trị mới
+    config.isMaintenanceMode = isMaintenanceMode;
+    if (maintenanceMessage !== undefined) {
+      config.maintenanceMessage = maintenanceMessage.trim();
+    }
+    await config.save();
+
+    // GHI NHẬT KÝ KIỂM TOÁN (Audit Log)
+    await AuditLog.create({
+      admin_id: req.user?._id || null,
+      target_user_id: req.user?._id || null,
+      action: "SYSTEM_CONFIG_UPDATED",
+      new_reason: `Cập nhật chế độ bảo trì: ${isMaintenanceMode ? "BẬT" : "TẮT"}. Thông báo: "${config.maintenanceMessage}"`,
+    });
+
+    res.status(200).json({
+      message: "Cập nhật cấu hình hệ thống thành công!",
+      config,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Lỗi cập nhật cấu hình hệ thống" });
+  }
+};
+export const getSystemLogs = async (req, res) => {
+  try {
+    const { action, timeRange, search } = req.query;
+    const filter = {};
+
+    // Lọc theo loại nhật ký (nếu có chọn)
+    if (action && action !== "ALL") {
+      filter.action = action;
+    }
+  // Lọc theo thời gian
+    if (timeRange && timeRange !== "ALL") {
+      const now = new Date();
+      let startDate = new Date();
+
+      if (timeRange === "TODAY") {
+        startDate.setHours(0, 0, 0, 0); 
+      } else if (timeRange === "7DAYS") {
+        startDate.setDate(now.getDate() - 7);
+      } else if (timeRange === "30DAYS") {
+        startDate.setDate(now.getDate() - 30);
+      }
+
+      filter.createdAt = { $gte: startDate };
+    }
+    // Lọc theo từ khóa tìm kiếm trong lý do/chi tiết
+    if (search) {
+      filter.new_reason = { $regex: search, $options: "i" };
+    }
+
+    // Lấy toàn bộ Log từ DB (mới nhất lên đầu)
+    const logs = await AuditLog.find(filter)
+      .populate("admin_id", "fullName email")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ logs });
+  } catch (error) {
+    res.status(500).json({ message: "Không thể tải nhật ký hệ thống" });
   }
 };

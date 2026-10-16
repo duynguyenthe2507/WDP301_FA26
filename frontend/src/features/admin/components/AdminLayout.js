@@ -27,7 +27,7 @@ const AdminLayout = () => {
               <Nav.Link as={Link} to="/admin/system-config">
                 Cấu hình hệ thống
               </Nav.Link>
-              <Nav.Link as={Link} to="/admin/system-diary">
+              <Nav.Link as={Link} to="/admin/logs">
                 Nhật ký hệ thống
               </Nav.Link>
               <Nav.Link className="text-danger" onClick={logout}>

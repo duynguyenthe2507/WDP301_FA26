@@ -23,6 +23,8 @@ import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
+import SystemConfiguration from './features/admin/pages/SystemConfiguration';
+import SystemLog from './features/admin/pages/SystemLog';
 
 
 function App() {
@@ -33,32 +35,34 @@ function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+
           {/* Customer Routes (Default) */}
-        <Route path="/" element={<CustomerLayout />}>
-          <Route index element={<Home />} />
-          <Route path="rooms" element={<RoomsList />} />
-          <Route path="room/:id" element={<RoomDetails />} />
-          <Route path="booking" element={<Booking />} />
-        </Route>
+          <Route path="/" element={<CustomerLayout />}>
+            <Route index element={<Home />} />
+            <Route path="rooms" element={<RoomsList />} />
+            <Route path="room/:id" element={<RoomDetails />} />
+            <Route path="booking" element={<Booking />} />
+          </Route>
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="users" element={<UserManagement />} />
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="system-config" element={<SystemConfiguration />} />
+            <Route path="logs" element={<SystemLog />} />
+          </Route>
 
-        {/* Hotel Partner Routes */}
-        <Route path="/partner" element={<PartnerLayout />}>
-          <Route index element={<PartnerDashboard />} />
-          {/* Add more partner routes here */}
-        </Route>
+          {/* Hotel Partner Routes */}
+          <Route path="/partner" element={<PartnerLayout />}>
+            <Route index element={<PartnerDashboard />} />
+            {/* Add more partner routes here */}
+          </Route>
 
-        {/* Platform Manager Routes */}
-        <Route path="/manager" element={<ManagerLayout />}>
-          <Route index element={<ManagerDashboard />} />
-          {/* Add more manager routes here */}
-        </Route>
+          {/* Platform Manager Routes */}
+          <Route path="/manager" element={<ManagerLayout />}>
+            <Route index element={<ManagerDashboard />} />
+            {/* Add more manager routes here */}
+          </Route>
         </Routes>
       </AuthProvider>
     </Router>

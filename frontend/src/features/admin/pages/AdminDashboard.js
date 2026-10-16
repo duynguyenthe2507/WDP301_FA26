@@ -3,7 +3,6 @@ import { Row, Col, Card } from "react-bootstrap";
 import axios from "axios";
 
 const AdminDashboard = () => {
-  // BƯỚC 1: Nơi chứa 4 con số thống kê + danh sách nhật ký
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -13,7 +12,6 @@ const AdminDashboard = () => {
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // BƯỚC 2: Gọi Backend khi mở trang
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -38,17 +36,13 @@ const AdminDashboard = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  });
 
-  // BƯỚC 3: Vẽ giao diện (Khớp 100% với form mẫu đơn giản)
   return (
     <div>
-      <h3 className="fw-bold mb-4">Bảng điều khiển Quản trị viên (Admin)</h3>
-
-      {/* 4 Ô THỐNG KÊ PHÍA TRÊN */}
-      <Row className="g-3 mb-4">
+       <Row className="g-3 mb-4">
         <Col md={3}>
-          <Card className="text-center p-3 border shadow-sm">
+          <Card className="text-center p-3 border">
             <Card.Body>
               <Card.Title className="fw-bold text-uppercase fs-6">
                 TỔNG SỐ TÀI KHOẢN
@@ -61,7 +55,7 @@ const AdminDashboard = () => {
         </Col>
 
         <Col md={3}>
-          <Card className="text-center p-3 border shadow-sm">
+          <Card className="text-center p-3 border">
             <Card.Body>
               <Card.Title className="fw-bold text-uppercase fs-6">
                 ĐANG HOẠT ĐỘNG
@@ -74,7 +68,7 @@ const AdminDashboard = () => {
         </Col>
 
         <Col md={3}>
-          <Card className="text-center p-3 border shadow-sm">
+          <Card className="text-center p-3 border">
             <Card.Body>
               <Card.Title className="fw-bold text-uppercase fs-6">
                 TẠM KHÓA
@@ -87,7 +81,7 @@ const AdminDashboard = () => {
         </Col>
 
         <Col md={3}>
-          <Card className="text-center p-3 border shadow-sm">
+          <Card className="text-center p-3 border">
             <Card.Body>
               <Card.Title className="fw-bold text-uppercase fs-6">
                 BỊ KHÓA
@@ -100,8 +94,7 @@ const AdminDashboard = () => {
         </Col>
       </Row>
 
-      {/* KHU VỰC NHẬT KÝ KIỂM TOÁN GẦN ĐÂY */}
-      <Card className="border shadow-sm p-3">
+      <Card className="border p-3">
         <Card.Body>
           <h5 className="fw-bold mb-3 text-uppercase">
             NHẬT KÝ KIỂM TOÁN GẦN ĐÂY
