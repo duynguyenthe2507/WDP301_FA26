@@ -14,6 +14,10 @@ const steps = [
   "Đăng",
 ];
 
+// The pricing screen was removed from the partner setup flow.
+const propertySetupSteps = ["Vị trí", "Tiện nghi", "Phòng", "Ảnh", "Chi tiết", "Hồ sơ", "Đăng"];
+void steps;
+
 const PartnerPropertyLocation = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -37,7 +41,7 @@ const PartnerPropertyLocation = () => {
         <div className="row gx-4 gx-lg-5">
           <aside className="col-lg-3 mb-4 mb-lg-0">
             <ol className="list-unstyled mb-0">
-              {steps.map((step, index) => {
+              {propertySetupSteps.map((step, index) => {
                 const active = index === 0;
                 const currentStep = 0;
                 const complete = index < currentStep;
@@ -48,7 +52,7 @@ const PartnerPropertyLocation = () => {
                     className="d-flex position-relative pb-3"
                     style={{ minHeight: "45px" }}
                   >
-                    {index < steps.length - 1 && (
+                    {index < propertySetupSteps.length - 1 && (
                       <span
                         aria-hidden="true"
                         className="position-absolute"
@@ -246,14 +250,14 @@ const PartnerPropertyLocation = () => {
             variant="outline-primary"
             className="rounded-pill px-4"
             size="sm"
-            onClick={() => navigate("/partner")}
+            onClick={() => navigate("/partner/terms")}
           >
             Quay trở lại
           </Button>
           <Button
             className="rounded-pill px-4"
             size="sm"
-            onClick={() => console.info("Location saved", form)}
+            onClick={() => navigate("/partner/property-amenities")}
           >
             Tiếp theo
           </Button>

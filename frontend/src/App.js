@@ -21,6 +21,12 @@ import Booking from './features/customer/pages/Booking';
 //Partners Pages
 import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
 import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
+import PartnerPropertyAmenities from './features/hotel_partner/pages/PartnerPropertyAmenities';
+import PartnerPropertyRooms from './features/hotel_partner/pages/PartnerPropertyRooms';
+import PartnerPropertyPhotos from './features/hotel_partner/pages/PartnerPropertyPhotos';
+import PartnerPropertyDetails from './features/hotel_partner/pages/PartnerPropertyDetails';
+import PartnerPropertyProfile from './features/hotel_partner/pages/PartnerPropertyProfile';
+import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerPropertyPublish';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -56,7 +62,12 @@ function App() {
           <Route index element={<PartnerDashboard />} />
           <Route path="terms" element={<PartnerTerms />} />
           <Route path="property-location" element={<PartnerPropertyLocation />} />
-          {/* Add more partner routes here */}
+          <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
+          <Route path="property-rooms" element={<PartnerPropertyRooms />} />
+          <Route path="property-photos" element={<PartnerPropertyPhotos />} />
+          <Route path="property-details" element={<PartnerPropertyDetails />} />
+          <Route path="property-profile" element={<PartnerPropertyProfile />} />
+          <Route path="property-publish" element={<PartnerPropertyPublish />} />
         </Route>
 
         {/* Platform Manager Routes */}
