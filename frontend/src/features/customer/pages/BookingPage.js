@@ -1,12 +1,33 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { FaCalendarAlt, FaUser, FaPhoneAlt, FaEnvelope, FaBed, FaShieldAlt, FaArrowLeft, FaCheck } from 'react-icons/fa';
+import {
+  FaCalendarAlt,
+  FaUser,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaBed,
+  FaShieldAlt,
+  FaArrowLeft,
+  FaCheck,
+  FaHotel,
+  FaUserFriends,
+  FaInfoCircle,
+  FaCheckCircle,
+} from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import { createPendingBooking } from '../CustomerApi';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
+
+// Helper lấy sức chứa của phòng
+const getCapacityCount = (room) => {
+  if (room?.capacity?.adults) return Number(room.capacity.adults);
+  if (room?.adultCapacity) return Number(room.adultCapacity);
+  if (room?.max_occupancy) return Number(room.max_occupancy);
+  return 2;
+};
 
 const BookingPage = () => {
   const location = useLocation();
@@ -39,11 +60,11 @@ const BookingPage = () => {
   const nights = Math.max(
     1,
     Number(stateData.nights) ||
-    Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
-    1
+      Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
+      1
   );
   const quantity = Number(stateData.quantity) || 1;
-  const pricePerNight = Number(roomType.price_per_night || roomType.base_price) || 1500000;
+  const pricePerNight = Number(roomType.price_per_night || roomType.base_price || roomType.basePrice) || 1500000;
 
   // Hỗ trợ cả 1 loại phòng và nhiều loại phòng
   const selectedRooms = stateData.selectedRooms || [
@@ -57,15 +78,25 @@ const BookingPage = () => {
 
   const bookingDetailsList =
     stateData.bookingDetails ||
-    selectedRooms.map((r) => ({
-      roomTypeId: r._id || r.id || 'standard',
-      roomTypeName: r.name,
-      quantity: r.quantity || 1,
-      pricePerNight: Number(r.base_price || r.price_per_night) || 1500000,
-      totalPrice: (Number(r.base_price || r.price_per_night) || 1500000) * (r.quantity || 1) * nights,
-    }));
+    selectedRooms.map((r) => {
+      const rPrice = Number(r.base_price || r.basePrice || r.price_per_night) || 1500000;
+      const rQty = Number(r.quantity) || 1;
+      return {
+        roomTypeId: r._id || r.id || 'standard',
+        roomTypeName: r.name,
+        quantity: rQty,
+        pricePerNight: rPrice,
+        totalPrice: rPrice * rQty * nights,
+      };
+    });
 
   const totalQuantity = selectedRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+  const totalGuestsCapacity = selectedRooms.reduce((sum, r) => {
+    const cap = getCapacityCount(r);
+    const qty = Number(r.quantity) || 1;
+    return sum + cap * qty;
+  }, 0);
+
   const roomCost =
     stateData.roomCost ??
     bookingDetailsList.reduce((sum, b) => sum + b.totalPrice, 0);
@@ -98,7 +129,7 @@ const BookingPage = () => {
     phoneNumber: '',
   });
 
-  // 4. Yêu cầu đặc biệt cho khách sạn (dùng chung cho cả đơn phòng)
+  // 4. Yêu cầu đặc biệt cho khách sạn
   const [specialRequests, setSpecialRequests] = useState('');
 
   // State lỗi validation và xử lý submit
@@ -209,9 +240,9 @@ const BookingPage = () => {
         guestInfo: isSelfGuest
           ? { fullName: '', phoneNumber: '' }
           : {
-            fullName: guestInfo.fullName.trim(),
-            phoneNumber: guestInfo.phoneNumber.trim(),
-          },
+              fullName: guestInfo.fullName.trim(),
+              phoneNumber: guestInfo.phoneNumber.trim(),
+            },
         specialRequests: specialRequests.trim(),
         checkInDate: checkIn,
         checkOutDate: checkOut,
@@ -247,18 +278,18 @@ const BookingPage = () => {
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
       <Container>
         {/* Breadcrumb / Quay lại */}
-        <div className="mb-3">
+        <div className="mb-4">
           <Link
             to={hotel._id ? `/hotels/${hotel._id}` : '/hotels'}
             className="text-decoration-none text-secondary small d-inline-flex align-items-center"
           >
             <FaArrowLeft className="me-1" /> Quay lại thông tin khách sạn
           </Link>
-          <h3 className="fw-bold text-dark mt-2 mb-1" style={{ fontSize: '1.65rem' }}>
-            Thông tin đặt phòng
+          <h3 className="fw-bold text-dark mt-2 mb-1" style={{ fontSize: '1.75rem' }}>
+            Kiểm tra & Xác nhận đặt phòng
           </h3>
           <p className="text-muted small mb-0">
-            Vui lòng kiểm tra kỹ thông tin liên hệ và chi tiết phòng trước khi tiến hành thanh toán qua VNPAY.
+            Vui lòng kiểm tra chi tiết các loại phòng và thông tin liên hệ trước khi thanh toán qua VNPAY.
           </p>
         </div>
 
@@ -271,7 +302,58 @@ const BookingPage = () => {
         <Row className="g-4">
           {/* CỘT TRÁI: FORM KIỂM TRA THÔNG TIN */}
           <Col lg={7}>
-            {/* 1. THÔNG TIN NGƯỜI ĐẶT */}
+            {/* KHỐI 1: TÓM TẮT CHUYẾN ĐI (DATES & HOTEL SUMMARY) */}
+            <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white overflow-hidden">
+              <Card.Body className="p-4">
+                <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+                  <div>
+                    <h5 className="fw-bold text-dark mb-1">{hotel.name}</h5>
+                    <div className="text-muted small d-flex align-items-center gap-1">
+                      <FaHotel className="text-secondary" /> {hotel.address}
+                    </div>
+                  </div>
+                  <Link
+                    to={hotel._id ? `/hotels/${hotel._id}` : '/hotels'}
+                    className="btn btn-outline-primary btn-sm rounded-pill px-3"
+                  >
+                    Thay đổi phòng
+                  </Link>
+                </div>
+
+                <Row className="g-3 text-center text-sm-start">
+                  <Col xs={6} sm={3}>
+                    <div className="text-muted small mb-1">
+                      <FaCalendarAlt className="me-1 text-primary" /> Nhận phòng
+                    </div>
+                    <div className="fw-bold text-dark">{checkIn}</div>
+                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>Từ 14:00</div>
+                  </Col>
+                  <Col xs={6} sm={3}>
+                    <div className="text-muted small mb-1">
+                      <FaCalendarAlt className="me-1 text-primary" /> Trả phòng
+                    </div>
+                    <div className="fw-bold text-dark">{checkOut}</div>
+                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>Trước 12:00</div>
+                  </Col>
+                  <Col xs={6} sm={3}>
+                    <div className="text-muted small mb-1">
+                      <FaBed className="me-1 text-primary" /> Số lượng phòng
+                    </div>
+                    <div className="fw-bold text-dark">{totalQuantity} phòng</div>
+                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>{selectedRooms.length} loại phòng</div>
+                  </Col>
+                  <Col xs={6} sm={3}>
+                    <div className="text-muted small mb-1">
+                      <FaUserFriends className="me-1 text-primary" /> Sức chứa đoàn
+                    </div>
+                    <div className="fw-bold text-dark">{totalGuestsCapacity} khách</div>
+                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>{nights} đêm lưu trú</div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+
+            {/* KHỐI 2: THÔNG TIN NGƯỜI ĐẶT */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
@@ -349,7 +431,7 @@ const BookingPage = () => {
               </Card.Body>
             </Card>
 
-            {/* 2. THÔNG TIN KHÁCH NHẬN PHÒNG */}
+            {/* KHỐI 3: THÔNG TIN KHÁCH NHẬN PHÒNG */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <h5 className="fw-bold text-dark mb-3 pb-2 border-bottom">
@@ -370,7 +452,7 @@ const BookingPage = () => {
                     type="radio"
                     id="guest-other"
                     name="guestOption"
-                    label="Tôi đặt phòng cho người khác"
+                    label="Tôi đặt phòng cho người khác (hoặc đại diện đoàn nhận)"
                     checked={!isSelfGuest}
                     onChange={() => setIsSelfGuest(false)}
                     className="fw-semibold text-dark"
@@ -380,7 +462,7 @@ const BookingPage = () => {
                 {!isSelfGuest && (
                   <div className="p-3 bg-light rounded-3 border mt-3">
                     <h6 className="fw-bold text-dark mb-3">
-                      Thông tin khách sẽ nhận phòng tại khách sạn
+                      Thông tin người đại diện nhận phòng tại khách sạn
                     </h6>
                     <Row className="g-3">
                       <Col md={12}>
@@ -426,7 +508,7 @@ const BookingPage = () => {
               </Card.Body>
             </Card>
 
-            {/* 3. YÊU CẦU ĐẶC BIỆT CHO KHÁCH SẠN (DÙNG CHUNG CẢ ĐƠN PHÒNG) */}
+            {/* KHỐI 4: YÊU CẦU ĐẶC BIỆT CHO KHÁCH SẠN */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <h5 className="fw-bold text-dark mb-2 pb-2 border-bottom">
@@ -447,7 +529,7 @@ const BookingPage = () => {
               </Card.Body>
             </Card>
 
-            {/* 4. PHƯƠNG THỨC THANH TOÁN VNPAY */}
+            {/* KHỐI 5: PHƯƠNG THỨC THANH TOÁN VNPAY */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <h5 className="fw-bold text-dark mb-3 pb-2 border-bottom">
@@ -491,7 +573,7 @@ const BookingPage = () => {
           {/* CỘT PHẢI: TÓM TẮT ĐẶT PHÒNG VÀ GIÁ TIỀN */}
           <Col lg={5}>
             <div style={{ position: 'sticky', top: '1.5rem' }}>
-              <Card className="border-0 shadow-sm rounded-3 bg-white overflow-hidden">
+              <Card className="border-0 shadow-sm rounded-3 bg-white overflow-hidden mb-3">
                 {hotel.featured_image && (
                   <div style={{ height: '160px', overflow: 'hidden' }}>
                     <img
@@ -506,17 +588,9 @@ const BookingPage = () => {
                   <h6 className="fw-bold text-dark mb-1">{hotel.name}</h6>
                   <p className="text-muted small mb-3">{hotel.address}</p>
 
-                  <div className="p-3 bg-light rounded-3 mb-3">
-                    <div className="fw-semibold text-dark mb-2 d-flex align-items-center gap-2">
-                      <FaBed className="text-primary" /> Phòng đã chọn:
-                    </div>
-                    {selectedRooms.map((r, idx) => (
-                      <div key={idx} className="d-flex justify-content-between text-secondary small mb-1">
-                        <span>{r.name}</span>
-                        <strong className="text-dark">{r.quantity} phòng</strong>
-                      </div>
-                    ))}
-                    <div className="d-flex justify-content-between text-secondary small mb-1 mt-2 pt-2 border-top">
+                  {/* THỜI GIAN LƯU TRÚ */}
+                  <div className="p-3 bg-light rounded-3 mb-3 border">
+                    <div className="d-flex justify-content-between text-secondary small mb-1">
                       <span>Nhận phòng:</span>
                       <strong className="text-dark">{checkIn} (14:00)</strong>
                     </div>
@@ -524,33 +598,65 @@ const BookingPage = () => {
                       <span>Trả phòng:</span>
                       <strong className="text-dark">{checkOut} (12:00)</strong>
                     </div>
-                    <div className="d-flex justify-content-between text-secondary small">
+                    <div className="d-flex justify-content-between text-secondary small pt-1 border-top">
                       <span>Thời gian:</span>
                       <strong className="text-dark">{nights} đêm, {totalQuantity} phòng</strong>
                     </div>
                   </div>
 
-                  <h6 className="fw-bold text-dark mb-2">Chi tiết thanh toán</h6>
-                  <div className="d-flex justify-content-between text-secondary small mb-2">
-                    <span>Giá phòng ({nights} đêm × {totalQuantity} phòng):</span>
-                    <span className="text-dark">{formatPrice(roomCost)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between text-secondary small mb-3">
-                    <span>Thuế & phí dịch vụ (10%):</span>
-                    <span className="text-dark">{formatPrice(serviceFee)}</span>
-                  </div>
+                  {/* CHI TIẾT TÍNH TIỀN TỪNG LOẠI PHÒNG */}
+                  <div className="mb-3">
+                    <div className="fw-bold text-dark small text-uppercase mb-2 pb-1 border-bottom">
+                      Bảng phân tích chi phí ({selectedRooms.length} loại phòng)
+                    </div>
 
-                  <div className="pt-2 border-top d-flex justify-content-between align-items-center mb-4">
-                    <span className="fw-bold text-dark">Tổng tiền thanh toán:</span>
-                    <span className="fs-4 fw-bold text-primary">
-                      {formatPrice(totalAmount)}
-                    </span>
+                    <div className="d-flex flex-column gap-2 mb-3">
+                      {selectedRooms.map((r, idx) => {
+                        const qty = Number(r.quantity) || 1;
+                        const price = Number(r.base_price || r.basePrice || r.price_per_night) || 0;
+                        const itemTotal = price * qty * nights;
+                        return (
+                          <div key={r._id || r.id || idx} className="d-flex justify-content-between align-items-start small">
+                            <div className="pe-2 text-truncate" style={{ maxWidth: '68%' }}>
+                              <div className="fw-medium text-dark text-truncate" title={r.name}>
+                                {r.name}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                {formatPrice(price)} × {qty} phòng × {nights} đêm
+                              </div>
+                            </div>
+                            <span className="fw-semibold text-dark text-nowrap">
+                              {formatPrice(itemTotal)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="d-flex justify-content-between text-secondary small mb-1 pt-2 border-top">
+                      <span>Tạm tính tiền phòng:</span>
+                      <span className="text-dark fw-semibold">{formatPrice(roomCost)}</span>
+                    </div>
+                    <div className="d-flex justify-content-between text-secondary small mb-2">
+                      <span>Thuế & phí dịch vụ (10%):</span>
+                      <span className="text-dark fw-semibold">{formatPrice(serviceFee)}</span>
+                    </div>
+
+                    <div className="pt-2 border-top d-flex justify-content-between align-items-center">
+                      <div>
+                        <span className="fw-bold text-dark d-block">Tổng tiền thanh toán:</span>
+                        <span className="text-muted" style={{ fontSize: '0.75rem' }}>Đã bao gồm thuế & phí</span>
+                      </div>
+                      <span className="fs-4 fw-bold text-primary">
+                        {formatPrice(totalAmount)}
+                      </span>
+                    </div>
                   </div>
 
                   <Button
                     onClick={handlePayment}
                     disabled={isSubmitting}
-                    className="w-100 py-3 fw-bold rounded-3 shadow-sm border-0 d-flex align-items-center justify-content-center gap-2"
+                    className="w-100 py-3 fw-bold rounded-3 shadow-sm border-0 d-flex align-items-center justify-content-center gap-2 mt-2"
                     style={{ backgroundColor: '#005baa', fontSize: '1.05rem' }}
                   >
                     {isSubmitting ? (
@@ -563,8 +669,24 @@ const BookingPage = () => {
                     )}
                   </Button>
 
-                  <div className="text-center text-muted small mt-2" style={{ fontSize: '0.8rem' }}>
+                  <div className="text-center text-muted small mt-2" style={{ fontSize: '0.78rem' }}>
                     Nhấn thanh toán đồng nghĩa bạn đồng ý với Điều khoản đặt phòng của VinaStay.
+                  </div>
+
+                  {/* CAM KẾT VÀ BẢO MẬT */}
+                  <div className="mt-3 pt-3 border-top small text-secondary d-flex flex-column gap-1">
+                    <div className="d-flex align-items-center gap-2">
+                      <FaCheckCircle className="text-success" size={13} />
+                      <span>Xác nhận đặt phòng ngay lập tức</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <FaShieldAlt className="text-primary" size={13} />
+                      <span>Giao dịch an toàn & bảo mật VNPAY Sandbox</span>
+                    </div>
+                    <div className="d-flex align-items-center gap-2">
+                      <FaInfoCircle className="text-info" size={13} />
+                      <span>Hỗ trợ khách hàng 24/7 qua tổng đài</span>
+                    </div>
                   </div>
                 </Card.Body>
               </Card>

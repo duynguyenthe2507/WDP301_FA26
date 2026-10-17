@@ -18,7 +18,7 @@ const bookingSchema = new mongoose.Schema(
     },
     hotelName: {
       type: String,
-      default: 'Khách sạn VinaStay',
+      default: '',
     },
     hotelAddress: {
       type: String,
