@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { AuthContext } from '../../../context/AuthContext';
 import { Container, Row, Col, Badge } from 'react-bootstrap';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaMapMarkerAlt, FaBed } from 'react-icons/fa';
 import { getHotelById, checkAvailability } from '../CustomerApi';
 import ImageGallery from '../components/ImageGallery';
@@ -40,6 +41,10 @@ const calculateNights = (checkInStr, checkOutStr) => {
 const HotelDetailsPage = () => {
   const { hotelId } = useParams();
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
+  const location = useLocation();
+  // Lựa chọn (ngày, số phòng) được giữ lại khi khách đăng nhập xong và quay về trang này
+  const restored = location.state?.restoreSelection;
 
   const today = getLocalDateString(new Date());
 
@@ -49,8 +54,8 @@ const HotelDetailsPage = () => {
   const [error, setError] = useState('');
 
   // Booking Date state
-  const [checkIn, setCheckIn] = useState(today);
-  const [checkOut, setCheckOut] = useState(addDays(today, 1));
+  const [checkIn, setCheckIn] = useState(restored?.checkIn || today);
+  const [checkOut, setCheckOut] = useState(restored?.checkOut || addDays(today, 1));
   const minCheckOut = addDays(checkIn, 1);
   const nights = calculateNights(checkIn, checkOut);
 
@@ -59,7 +64,7 @@ const HotelDetailsPage = () => {
   const [availLoading, setAvailLoading] = useState(false);
   const [availError, setAvailError] = useState('');
   const [warningMessage, setWarningMessage] = useState('');
-  const [roomQuantities, setRoomQuantities] = useState({});
+  const [roomQuantities, setRoomQuantities] = useState(restored?.roomQuantities || {});
 
   // 1. Tải thông tin khách sạn
   useEffect(() => {
@@ -191,6 +196,19 @@ const HotelDetailsPage = () => {
     }
     if (!checkIn || !checkOut || checkOut <= checkIn) {
       alert('Khoảng thời gian nhận phòng và trả phòng không hợp lệ.');
+      return;
+    }
+
+    // Khách chưa đăng nhập: sang trang đăng nhập, xong sẽ quay lại đúng trang chọn phòng này
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: {
+            pathname: `/hotels/${hotelId}`,
+            state: { restoreSelection: { checkIn, checkOut, roomQuantities } },
+          },
+        },
+      });
       return;
     }
 
@@ -328,6 +346,7 @@ const HotelDetailsPage = () => {
           {/* CỘT PHẢI: CARD THÔNG TIN ĐẶT PHÒNG */}
           <Col lg={5} xl={4}>
             <BookingSummaryCard
+              isGuest={!user}
               checkIn={checkIn}
               checkOut={checkOut}
               today={today}

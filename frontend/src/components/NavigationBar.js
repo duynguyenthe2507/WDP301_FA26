@@ -47,10 +47,7 @@ const NavigationBar = () => {
               </>
             ) : (
               <>
-                <Nav.Link as={Link} to="/booking-history" active={location.pathname === '/booking-history'} className="d-flex align-items-center me-lg-2">
-                  <FaHistory className="me-1" /> Tra cứu đơn đặt
-                </Nav.Link>
-                <Button as={Link} to="/login" variant="outline-light" className="ms-lg-2 mt-3 mt-lg-0 rounded-pill px-4">
+                <Button as={Link} to="/login" state={{ from: location }} variant="outline-light" className="ms-lg-2 mt-3 mt-lg-0 rounded-pill px-4">
                   Đăng nhập
                 </Button>
                 <Button as={Link} to="/register" variant="warning" className="ms-lg-2 mt-3 mt-lg-0 fw-semibold rounded-pill px-4">

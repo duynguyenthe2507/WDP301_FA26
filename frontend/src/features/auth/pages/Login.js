@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Form, Button, Card, Alert } from 'react-bootstrap';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
 
@@ -11,6 +11,7 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +21,7 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:9999/api/auth/login', { email, password });
       const data = response.data;
-      login(data.user, data.token);
+      login(data.user, data.token, location.state?.from);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại');
     } finally {

@@ -1,68 +1,73 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { Container, Row, Col, Card, Badge, Button, Form, InputGroup, Spinner, Alert, Nav } from 'react-bootstrap';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { Container, Row, Col, Modal, Button, Form, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  FaCalendarAlt,
-  FaHotel,
-  FaBed,
-  FaMoneyBillWave,
-  FaFileInvoice,
-  FaSearch,
-  FaCheckCircle,
-  FaClock,
-  FaTimesCircle,
-  FaUser,
-  FaPhoneAlt,
-  FaEnvelope,
-  FaArrowLeft,
-  FaSuitcaseRolling,
-  FaRedo,
-  FaCopy,
-} from 'react-icons/fa';
+import { FaStar } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import { getMyBookings } from '../CustomerApi';
 
+// Định dạng tiền tệ VND
 const formatPrice = (price) =>
-  new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
+  new Intl.NumberFormat('vi-VN').format(price || 0) + ' ₫';
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleDateString('vi-VN', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+// Định dạng ngày hiển thị dd - dd/mm/yyyy
+const formatStayDates = (checkInDate, checkOutDate) => {
+  if (!checkInDate || !checkOutDate) return '';
+  const dIn = new Date(checkInDate);
+  const dOut = new Date(checkOutDate);
+
+  const dayIn = String(dIn.getDate()).padStart(2, '0');
+  const dayOut = String(dOut.getDate()).padStart(2, '0');
+  const monthOut = String(dOut.getMonth() + 1).padStart(2, '0');
+  const yearOut = dOut.getFullYear();
+
+  return `${dayIn} – ${dayOut}/${monthOut}/${yearOut}`;
 };
+
+
+// Ảnh phòng mặc định ấm cúng tương tự như trên thiết kế mẫu
+const DEFAULT_ROOM_IMAGE =
+  'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80';
 
 const BookingHistoryPage = () => {
   const navigate = useNavigate();
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
-  const [copiedCode, setCopiedCode] = useState(null);
+  const [activeTab, setActiveTab] = useState('ALL');
 
-  const fetchBookings = async (statusFilter = selectedStatus, search = searchTerm) => {
+  // Timer đồng hồ đếm ngược thời gian thực cho đơn chờ thanh toán
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Modal Đánh giá kỳ nghỉ
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedReviewBooking, setSelectedReviewBooking] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Modal Thông tin hoàn tiền
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [selectedRefundBooking, setSelectedRefundBooking] = useState(null);
+
+  // Cập nhật currentTime mỗi giây để đếm ngược chính xác
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Tải danh sách đơn đặt phòng
+  const fetchBookings = async () => {
     setLoading(true);
     setError('');
     try {
       const params = {};
-      if (statusFilter && statusFilter !== 'ALL') {
-        params.status = statusFilter;
+      if (user?.email) {
+        params.email = user.email;
       }
-      if (search && search.trim()) {
-        params.search = search.trim();
-      }
-      // Nếu chưa đăng nhập nhưng có nhập email tra cứu
-      if (!user && guestEmail.trim()) {
-        params.email = guestEmail.trim();
-      }
-
       const res = await getMyBookings(params);
       if (res.data?.success) {
         setBookings(res.data.bookings || []);
@@ -71,311 +76,853 @@ const BookingHistoryPage = () => {
       }
     } catch (err) {
       console.error('Lỗi tải lịch sử đặt phòng:', err);
-      setError(err.response?.data?.message || 'Không thể tải lịch sử đặt phòng. Vui lòng thử lại sau.');
+      setError(
+        err.response?.data?.message ||
+        'Không thể tải lịch sử đặt phòng. Vui lòng thử lại sau.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBookings(selectedStatus, searchTerm);
-  }, [user, selectedStatus]);
+    fetchBookings();
+  }, [user]);
 
-  const handleSearchSubmit = (e) => {
+  // Phân loại trạng thái đặt phòng
+  const categorizeBooking = (booking) => {
+    const now = new Date(currentTime);
+    const checkOut = booking.checkOutDate ? new Date(booking.checkOutDate) : null;
+
+    if (booking.bookingStatus === 'CANCELLED') {
+      return 'CANCELLED';
+    }
+
+    if (booking.bookingStatus === 'PENDING_PAYMENT') {
+      return 'PENDING';
+    }
+
+    if (
+      booking.bookingStatus === 'COMPLETED' ||
+      (booking.bookingStatus === 'CONFIRMED' && checkOut && checkOut < now)
+    ) {
+      return 'COMPLETED';
+    }
+
+    if (booking.bookingStatus === 'CONFIRMED') {
+      return 'UPCOMING';
+    }
+
+    return 'UPCOMING';
+  };
+
+  // Tính số lượng đơn theo từng tab
+  const counts = useMemo(() => {
+    const c = {
+      all: bookings.length,
+      upcoming: 0,
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    bookings.forEach((b) => {
+      const cat = categorizeBooking(b);
+      if (cat === 'UPCOMING') c.upcoming += 1;
+      else if (cat === 'PENDING') c.pending += 1;
+      else if (cat === 'COMPLETED') c.completed += 1;
+      else if (cat === 'CANCELLED') c.cancelled += 1;
+    });
+
+    return c;
+  }, [bookings, currentTime]);
+
+  // Sắp xếp thứ tự hiển thị: Sắp tới -> Chờ thanh toán -> Đã hoàn thành -> Đã hủy
+  const STATUS_PRIORITY = {
+    UPCOMING: 1,
+    PENDING: 2,
+    COMPLETED: 3,
+    CANCELLED: 4,
+  };
+
+  // Lọc danh sách booking theo tab được chọn và sắp xếp chuẩn theo mẫu
+  const filteredBookings = useMemo(() => {
+    let list = bookings;
+    if (activeTab !== 'ALL') {
+      list = bookings.filter((b) => categorizeBooking(b) === activeTab);
+    }
+    return [...list].sort((a, b) => {
+      const pA = STATUS_PRIORITY[categorizeBooking(a)] || 99;
+      const pB = STATUS_PRIORITY[categorizeBooking(b)] || 99;
+      return pA - pB;
+    });
+  }, [bookings, activeTab, currentTime]);
+
+  // Lấy mốc thời gian hết hạn thanh toán (pendingExpiresAt hoặc createdAt + 10 phút)
+  const getExpiresTime = (booking) => {
+    if (booking?.pendingExpiresAt) {
+      return new Date(booking.pendingExpiresAt).getTime();
+    }
+    if (booking?.createdAt) {
+      return new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
+    }
+    return null;
+  };
+
+  // Tính thời gian đếm ngược dạng mm:ss cho đơn Chờ thanh toán chuẩn xác từng giây đồng bộ
+  const getRemainingTime = (booking) => {
+    const expiresAt = getExpiresTime(booking);
+    if (!expiresAt) return '00:00';
+    const diff = Math.max(0, expiresAt - currentTime);
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Lấy chữ cái viết tắt đại diện Avatar (ví dụ: "Nguyễn Minh Anh" -> "MA")
+  const getUserInitials = (name) => {
+    if (!name) return 'MA';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const displayName = user?.fullName || 'Nguyễn Minh Anh';
+  const displayInitials = getUserInitials(displayName);
+
+  // Xử lý nộp đánh giá
+  const handleOpenReview = (booking) => {
+    setSelectedReviewBooking(booking);
+    setRating(5);
+    setReviewComment('');
+    setReviewSubmitted(false);
+    setShowReviewModal(true);
+  };
+
+  const handleSubmitReview = (e) => {
     e.preventDefault();
-    fetchBookings(selectedStatus, searchTerm);
+    setReviewSubmitted(true);
+    setTimeout(() => {
+      setShowReviewModal(false);
+      setReviewSubmitted(false);
+    }, 1200);
   };
 
-  const handleCopyCode = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+  // Xử lý mở thông tin hoàn tiền
+  const handleOpenRefund = (booking) => {
+    setSelectedRefundBooking(booking);
+    setShowRefundModal(true);
   };
 
-  const getStatusBadge = (bookingStatus, paymentStatus) => {
-    if (bookingStatus === 'CONFIRMED' || paymentStatus === 'PAID') {
-      return (
-        <Badge bg="success" className="px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1">
-          <FaCheckCircle /> Đã thanh toán & Xác nhận
-        </Badge>
-      );
-    }
-    if (bookingStatus === 'CANCELLED' || paymentStatus === 'FAILED') {
-      return (
-        <Badge bg="danger" className="px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1">
-          <FaTimesCircle /> Đã hủy / Thất bại
-        </Badge>
-      );
-    }
-    return (
-      <Badge bg="warning" text="dark" className="px-3 py-2 fs-7 fw-semibold d-inline-flex align-items-center gap-1">
-        <FaClock /> Chờ thanh toán
-      </Badge>
-    );
-  };
+  // Tabs cấu hình
+  const tabList = [
+    { id: 'ALL', label: `Tất cả (${counts.all})` },
+    { id: 'UPCOMING', label: `Sắp tới (${counts.upcoming})` },
+    { id: 'PENDING', label: `Chờ thanh toán (${counts.pending})` },
+    { id: 'COMPLETED', label: `Đã hoàn thành (${counts.completed})` },
+    { id: 'CANCELLED', label: `Đã hủy (${counts.cancelled})` },
+  ];
 
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '90vh', padding: '2.5rem 0 4rem' }}>
-      <Container>
-        {/* THANH ĐIỀU HƯỚNG BREADCRUMB */}
-        <div className="d-flex align-items-center justify-content-between mb-4">
-          <div>
-            <Link to="/" className="text-decoration-none text-muted small d-inline-flex align-items-center gap-1 mb-1">
-              <FaArrowLeft size={12} /> Quay lại trang chủ
-            </Link>
-            <h2 className="fw-bold text-dark mb-1">Lịch Sử Đặt Phòng</h2>
-            <p className="text-secondary small mb-0">
-              Quản lý và theo dõi trạng thái các đơn đặt phòng khách sạn của bạn tại VinaStay.
-            </p>
-          </div>
-          <Link
-            to="/hotels"
-            className="btn btn-primary px-3 py-2 rounded-pill fw-semibold shadow-sm d-none d-sm-inline-flex align-items-center gap-2"
-            style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
-          >
-            <FaHotel /> Đặt thêm khách sạn
-          </Link>
-        </div>
+    <div
+      style={{
+        backgroundColor: '#f8fafc',
+        minHeight: '100vh',
+        padding: '24px 0 60px',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      }}
+    >
+      <Container style={{ maxWidth: '1500px' }}>
 
-        {/* THÔNG BÁO TRA CỨU KHI CHƯA ĐĂNG NHẬP */}
-        {!user && (
-          <Alert variant="info" className="border-0 shadow-sm rounded-3 mb-4">
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-              <div>
-                <strong>Bạn chưa đăng nhập?</strong>
-                <div className="small text-muted mt-1">
-                  Đăng nhập để đồng bộ toàn bộ đơn phòng, hoặc nhập địa chỉ email bạn đã dùng khi đặt phòng để tra cứu nhanh.
+        {/* TIÊU ĐỀ TRANG */}
+        <h1
+          style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            color: '#0f172a',
+            marginBottom: '4px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Lịch sử đặt phòng
+        </h1>
+        <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '28px' }}>
+          Theo dõi kỳ nghỉ, thanh toán và các yêu cầu gắn với đặt phòng của bạn.
+        </p>
+
+        {/* BỐ CỤC 2 CỘT */}
+        <Row className="g-4">
+          {/* CỘT TRÁI: SIDEBAR THÔNG TIN TÀI KHOẢN */}
+          <Col lg={3} md={4}>
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '20px 16px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              }}
+            >
+              {/* Profile Card Header */}
+              <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    backgroundColor: '#fef3c7',
+                    color: '#92400e',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '14.5px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {displayInitials}
+                </div>
+                <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      fontSize: '14.5px',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {displayName}
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                    Tài khoản khách hàng
+                  </div>
                 </div>
               </div>
-              <div className="d-flex gap-2">
-                <Form onSubmit={handleSearchSubmit} className="d-flex gap-2">
-                  <Form.Control
-                    size="sm"
-                    type="email"
-                    placeholder="Nhập email người đặt..."
-                    value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    style={{ minWidth: '220px' }}
-                  />
-                  <Button size="sm" variant="primary" type="submit" style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}>
-                    Tìm
-                  </Button>
-                </Form>
-                <Link to="/login" className="btn btn-sm btn-outline-primary fw-semibold">
-                  Đăng nhập
-                </Link>
+
+              {/* Menu điều hướng sidebar */}
+              <div className="d-flex flex-column gap-1">
+                {/* Lịch sử đặt phòng (Active) */}
+                <div
+                  style={{
+                    backgroundColor: '#eff6ff',
+                    color: '#0284c7',
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Lịch sử đặt phòng
+                </div>
+
+                <div
+                  onClick={() => navigate('/profile')}
+                  style={{
+                    color: '#334155',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  Hồ sơ cá nhân
+                </div>
+
+                <div
+                  onClick={() => navigate('/profile')}
+                  style={{
+                    color: '#334155',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  Đổi mật khẩu
+                </div>
+
+                <div
+                  onClick={() => setActiveTab('COMPLETED')}
+                  style={{
+                    color: '#334155',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  Đánh giá của tôi
+                </div>
+
+                <div
+                  onClick={() => alert('Bộ phận Chăm sóc khách hàng VinaStay luôn sẵn sàng hỗ trợ qua hotline 1900 6868 hoặc email support@vinastay.vn.')}
+                  style={{
+                    color: '#334155',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  Khiếu nại của tôi
+                </div>
+
+                <div style={{ borderTop: '1px solid #f1f5f9', margin: '8px 0' }} />
+
+                <div
+                  onClick={logout}
+                  style={{
+                    color: '#64748b',
+                    padding: '9px 12px',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    borderRadius: '8px',
+                    transition: 'color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
+                >
+                  Đăng xuất
+                </div>
               </div>
             </div>
-          </Alert>
-        )}
+          </Col>
 
-        {/* BỘ LỌC TRẠNG THÁI & TÌM KIẾM */}
-        <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
-          <Card.Body className="p-3">
-            <Row className="g-3 align-items-center justify-content-between">
-              <Col md={7}>
-                <Nav variant="pills" activeKey={selectedStatus} onSelect={(k) => setSelectedStatus(k || 'ALL')} className="gap-2">
-                  <Nav.Item>
-                    <Nav.Link eventKey="ALL" className="rounded-pill px-3 py-1 text-sm">
-                      Tất cả
-                    </Nav.Link>
-                  </Nav.Item>
-                  <Nav.Item>
-                    <Nav.Link eventKey="CONFIRMED" className="rounded-pill px-3 py-1 text-sm">
-                      Đã xác nhận
-                    </Nav.Link>
-                  </Nav.Item>
-                  <Nav.Item>
-                    <Nav.Link eventKey="PENDING_PAYMENT" className="rounded-pill px-3 py-1 text-sm">
-                      Chờ thanh toán
-                    </Nav.Link>
-                  </Nav.Item>
-                  <Nav.Item>
-                    <Nav.Link eventKey="CANCELLED" className="rounded-pill px-3 py-1 text-sm">
-                      Đã hủy
-                    </Nav.Link>
-                  </Nav.Item>
-                </Nav>
-              </Col>
-
-              <Col md={5}>
-                <Form onSubmit={handleSearchSubmit}>
-                  <InputGroup size="sm">
-                    <Form.Control
-                      placeholder="Tìm theo mã phòng hoặc tên khách sạn..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="border-end-0 rounded-start-pill ps-3"
-                    />
-                    <Button
-                      type="submit"
-                      variant="outline-secondary"
-                      className="rounded-end-pill px-3 border-start-0"
-                    >
-                      <FaSearch />
-                    </Button>
-                  </InputGroup>
-                </Form>
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
-
-        {/* DANH SÁCH ĐƠN ĐẶT PHÒNG */}
-        {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
-            <h6 className="mt-3 text-secondary fw-semibold">Đang tải lịch sử đơn đặt phòng...</h6>
-          </div>
-        ) : error ? (
-          <Alert variant="danger" className="text-center py-4 rounded-3 border-0 shadow-sm">
-            <p className="mb-2">{error}</p>
-            <Button size="sm" variant="outline-danger" onClick={() => fetchBookings()} className="d-inline-flex align-items-center gap-1">
-              <FaRedo /> Thử lại
-            </Button>
-          </Alert>
-        ) : bookings.length === 0 ? (
-          <Card className="border-0 shadow-sm rounded-3 bg-white text-center py-5">
-            <Card.Body>
-              <div className="mb-3 text-muted">
-                <FaSuitcaseRolling size={64} style={{ opacity: 0.35, color: '#005baa' }} />
-              </div>
-              <h5 className="fw-bold text-dark">Chưa có đơn đặt phòng nào</h5>
-              <p className="text-secondary small mb-4" style={{ maxWidth: '420px', margin: '0 auto' }}>
-                {searchTerm || selectedStatus !== 'ALL'
-                  ? 'Không tìm thấy đơn đặt phòng nào phù hợp với bộ lọc hiện tại. Bạn hãy thử bỏ bộ lọc.'
-                  : 'Bạn chưa thực hiện đơn đặt phòng nào trên VinaStay. Hãy khám phá ngay các khách sạn sang trọng với ưu đãi tốt nhất!'}
-              </p>
-              <Link
-                to="/hotels"
-                className="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm"
-                style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
-              >
-                Khám phá khách sạn ngay
-              </Link>
-            </Card.Body>
-          </Card>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {bookings.map((booking) => {
-              const roomDetail = booking.bookingDetails?.[0] || {};
-              const isCancelled = booking.bookingStatus === 'CANCELLED';
-              const isPaid = !isCancelled && (booking.paymentStatus === 'PAID' || booking.bookingStatus === 'CONFIRMED');
-              const isPending = !isCancelled && !isPaid;
-
-              return (
-                <Card key={booking._id || booking.bookingCode} className="border-0 shadow-sm rounded-3 overflow-hidden bg-white">
-                  {/* HEADER CARD */}
+          {/* CỘT PHẢI: BỘ LỌC TABS & DANH SÁCH ĐƠN PHÒNG */}
+          <Col lg={9} md={8}>
+            {/* THANH TABS TRẠNG THÁI */}
+            <div
+              className="d-flex align-items-center gap-4 flex-wrap mb-4"
+              style={{
+                borderBottom: '1px solid #e2e8f0',
+                paddingBottom: '0',
+              }}
+            >
+              {tabList.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
                   <div
-                    className="p-3 px-md-4 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom"
-                    style={{ backgroundColor: '#fafbfc' }}
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      cursor: 'pointer',
+                      fontSize: '13.5px',
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? '#0284c7' : '#64748b',
+                      paddingBottom: '11px',
+                      borderBottom: isActive ? '2px solid #0284c7' : '2px solid transparent',
+                      marginBottom: '-1px',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.color = '#0f172a';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.color = '#64748b';
+                    }}
                   >
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                      <span className="text-secondary small">Mã đơn:</span>
-                      <strong className="text-dark font-monospace fs-6">{booking.bookingCode}</strong>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="p-0 text-muted"
-                        title="Sao chép mã"
-                        onClick={() => handleCopyCode(booking.bookingCode)}
-                      >
-                        <FaCopy size={14} className={copiedCode === booking.bookingCode ? 'text-success' : ''} />
-                      </Button>
-                      {copiedCode === booking.bookingCode && (
-                        <span className="badge bg-success" style={{ fontSize: '0.7rem' }}>Đã chép!</span>
-                      )}
-                      <span className="text-muted d-none d-md-inline">•</span>
-                      <small className="text-muted">
-                        Ngày đặt: {new Date(booking.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                      </small>
-                    </div>
-
-                    <div>{getStatusBadge(booking.bookingStatus, booking.paymentStatus)}</div>
+                    {tab.label}
                   </div>
+                );
+              })}
+            </div>
 
-                  {/* BODY CARD */}
-                  <Card.Body className="p-3 p-md-4">
-                    <Row className="g-3 align-items-center">
-                      {/* Cột 1: Thông tin khách sạn & phòng */}
-                      <Col lg={5}>
-                        <h5 className="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
-                          <FaHotel className="text-primary" />
-                          {booking.hotelName || 'Khách sạn VinaStay'}
-                        </h5>
-                        <p className="text-muted small mb-2 text-truncate" title={booking.hotelAddress}>
-                          {booking.hotelAddress || 'Địa chỉ đang cập nhật'}
-                        </p>
+            {/* DANH SÁCH ĐƠN PHÒNG */}
+            {loading ? (
+              <div className="text-center py-5">
+                <Spinner animation="border" variant="primary" style={{ width: '2.5rem', height: '2.5rem' }} />
+                <div className="mt-3 text-secondary small">Đang tải lịch sử đơn đặt phòng...</div>
+              </div>
+            ) : error ? (
+              <div
+                style={{
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  color: '#991b1b',
+                  textAlign: 'center',
+                }}
+              >
+                <p className="mb-2">{error}</p>
+                <Button size="sm" variant="outline-danger" onClick={fetchBookings}>
+                  Thử lại
+                </Button>
+              </div>
+            ) : filteredBookings.length === 0 ? (
+              <div
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '15px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                  Không có đơn đặt phòng nào trong mục này
+                </div>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
+                  Các đơn đặt phòng của bạn sẽ hiển thị tại đây khi có phát sinh giao dịch.
+                </div>
+                <Link
+                  to="/hotels"
+                  className="btn btn-sm btn-primary px-3 py-2 rounded-2"
+                  style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
+                >
+                  Khám phá khách sạn ngay
+                </Link>
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-3">
+                {filteredBookings.map((booking) => {
+                  const category = categorizeBooking(booking);
+                  const detailsList = Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
+                    ? booking.bookingDetails
+                    : [];
+                  const roomCount = detailsList.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0) || 1;
+                  const roomName = detailsList.length > 1
+                    ? `${detailsList[0].roomTypeName || 'Phòng'} (+${detailsList.length - 1} loại phòng khác)`
+                    : (detailsList[0]?.roomTypeName || 'Deluxe giường đôi');
+                  const hotelName = booking.hotelName || 'Hanoi Heritage Hotel';
+                  const totalNights = booking.totalNights || 2;
+                  const stayDateStr = formatStayDates(booking.checkInDate, booking.checkOutDate);
 
-                        <div className="bg-light p-2 rounded-2 small text-secondary">
-                          <FaBed className="text-primary me-1" />
-                          <strong className="text-dark">{roomDetail.roomTypeName || 'Phòng Deluxe'}</strong>
-                          <span className="ms-1">({roomDetail.quantity || 1} phòng • {booking.totalNights || 1} đêm)</span>
+                  // 1. Phân loại cấu hình giao diện theo trạng thái
+                  let badgeConfig = {
+                    text: 'Đã xác nhận',
+                    style: {
+                      backgroundColor: '#ecfdf5',
+                      color: '#16a34a',
+                      border: '1px solid #bbf7d0',
+                    },
+                  };
+
+                  let detailLine = `${totalNights} đêm · ${roomCount} phòng · 2 người lớn`;
+                  let paymentLine = 'Thanh toán: Đã thanh toán';
+                  let actionBtn = (
+                    <button
+                      onClick={() =>
+                        navigate(`/booking/confirmation/${booking.bookingCode}`, {
+                          state: { booking },
+                        })
+                      }
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #d1d5db',
+                        color: '#1f2937',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        padding: '7px 18px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                    >
+                      Xem chi tiết
+                    </button>
+                  );
+
+                  if (category === 'PENDING') {
+                    badgeConfig = {
+                      text: 'Chờ thanh toán',
+                      style: {
+                        backgroundColor: '#fefce8',
+                        color: '#ca8a04',
+                        border: '1px solid #fef08a',
+                      },
+                    };
+                    const remainingStr = getRemainingTime(booking);
+                    const expTime = getExpiresTime(booking);
+                    if (expTime) {
+                      const exp = new Date(expTime);
+                      const expHour = String(exp.getHours()).padStart(2, '0');
+                      const expMin = String(exp.getMinutes()).padStart(2, '0');
+                      const expDay = String(exp.getDate()).padStart(2, '0');
+                      const expMonth = String(exp.getMonth() + 1).padStart(2, '0');
+                      const expYear = exp.getFullYear();
+                      detailLine = `Đang giữ phòng · hết hạn ${expHour}:${expMin} ngày ${expDay}/${expMonth}/${expYear}`;
+                    }
+                    paymentLine = 'Thanh toán: Chưa thanh toán';
+                    actionBtn = (
+                      <button
+                        onClick={() => {
+                          navigate(`/booking/confirmation/${booking.bookingCode}`, {
+                            state: { booking },
+                          });
+                        }}
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #d1d5db',
+                          color: '#1f2937',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '7px 18px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      >
+                        Thanh toán - còn {remainingStr}
+                      </button>
+                    );
+                  } else if (category === 'COMPLETED') {
+                    badgeConfig = {
+                      text: 'Đã hoàn thành',
+                      style: {
+                        backgroundColor: '#f3f4f6',
+                        color: '#6b7280',
+                        border: '1px solid #e5e7eb',
+                      },
+                    };
+                    const outDate = booking.checkOutDate ? new Date(booking.checkOutDate) : new Date();
+                    const day = String(outDate.getDate()).padStart(2, '0');
+                    const month = String(outDate.getMonth() + 1).padStart(2, '0');
+                    const year = outDate.getFullYear();
+                    detailLine = `Đã trả phòng ${day}/${month}/${year} · 12:00`;
+                    paymentLine = 'Thanh toán: Đã thanh toán';
+                    actionBtn = (
+                      <button
+                        onClick={() => handleOpenReview(booking)}
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #d1d5db',
+                          color: '#1f2937',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '7px 18px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      >
+                        Đánh giá kỳ nghỉ
+                      </button>
+                    );
+                  } else if (category === 'CANCELLED') {
+                    badgeConfig = {
+                      text: 'Đã hủy',
+                      style: {
+                        backgroundColor: '#f1f5f9',
+                        color: '#64748b',
+                        border: '1px solid #e2e8f0',
+                      },
+                    };
+                    detailLine = 'Lịch sử đặt phòng được giữ lại sau khi hủy';
+                    paymentLine =
+                      booking.paymentStatus === 'PAID'
+                        ? 'Thanh toán: Đã thanh toán · Hoàn tiền đang xử lý'
+                        : 'Thanh toán: Đã hủy';
+                    actionBtn = (
+                      <button
+                        onClick={() => handleOpenRefund(booking)}
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #d1d5db',
+                          color: '#1f2937',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '7px 18px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      >
+                        Xem thông tin hoàn tiền
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={booking._id || booking.bookingCode}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '20px 24px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                      }}
+                    >
+                      {/* DÒNG TIÊU ĐỀ THẺ (MÃ ĐƠN & HUY HIỆU TRẠNG THÁI) */}
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: '14px',
+                            color: '#0f172a',
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          {booking.bookingCode}
                         </div>
-                      </Col>
-
-                      {/* Cột 2: Thời gian lưu trú & Khách */}
-                      <Col sm={6} lg={4}>
-                        <div className="d-flex flex-column gap-2 small">
-                          <div className="d-flex align-items-center gap-2">
-                            <FaCalendarAlt className="text-primary" />
-                            <div>
-                              <span className="text-muted">Nhận phòng: </span>
-                              <strong className="text-dark">{formatDate(booking.checkInDate)}</strong>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center gap-2">
-                            <FaCalendarAlt className="text-danger" />
-                            <div>
-                              <span className="text-muted">Trả phòng: </span>
-                              <strong className="text-dark">{formatDate(booking.checkOutDate)}</strong>
-                            </div>
-                          </div>
-                          <div className="d-flex align-items-center gap-2 text-muted">
-                            <FaUser size={12} />
-                            <span>Khách: <strong className="text-dark">{booking.bookerInfo?.fullName || 'Khách hàng'}</strong></span>
-                          </div>
+                        <div
+                          style={{
+                            ...badgeConfig.style,
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '3px 10px',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          {badgeConfig.text}
                         </div>
-                      </Col>
+                      </div>
 
-                      {/* Cột 3: Giá tiền & Nút hành động */}
-                      <Col sm={6} lg={3} className="text-sm-end">
-                        <div className="mb-2">
-                          <span className="text-secondary small d-block">Tổng chi phí</span>
-                          <strong className="text-primary fs-4 fw-bold">{formatPrice(booking.totalAmount)}</strong>
-                        </div>
-
-                        <div className="d-flex flex-column flex-sm-row justify-content-lg-end gap-2">
-                          <Link
-                            to={`/booking/confirmation/${booking.bookingCode}`}
-                            state={{ booking }}
-                            className="btn btn-outline-primary btn-sm px-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
-                          >
-                            <FaFileInvoice /> {isPaid ? 'Xem hóa đơn' : 'Xem chi tiết'}
-                          </Link>
-
-                          {isPending && (
-                            <Button
-                              as={Link}
-                              to="/booking"
-                              state={{ booking }}
-                              size="sm"
-                              variant="warning"
-                              className="fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                      {/* PHẦN NỘI DUNG CHÍNH (ẢNH - THÔNG TIN - NÚT) */}
+                      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-3">
+                        {/* ẢNH & THÔNG TIN CHI TIẾT */}
+                        <div className="d-flex gap-3 align-items-start" style={{ flex: 1, minWidth: 0 }}>
+                          <img
+                            src={booking.hotelImage || DEFAULT_ROOM_IMAGE}
+                            alt={hotelName}
+                            style={{
+                              width: '135px',
+                              height: '92px',
+                              borderRadius: '8px',
+                              objectFit: 'cover',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: '15.5px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                marginBottom: '3px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
                             >
-                              <FaRedo /> Thanh toán ngay
-                            </Button>
-                          )}
+                              {hotelName}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '13px',
+                                color: '#475569',
+                                marginBottom: '4px',
+                              }}
+                            >
+                              {roomName} · {stayDateStr}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '12.5px',
+                                color: '#64748b',
+                                marginBottom: '3px',
+                              }}
+                            >
+                              {detailLine}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '12.5px',
+                                color: '#64748b',
+                                marginBottom: '6px',
+                              }}
+                            >
+                              {paymentLine}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '15.5px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                              }}
+                            >
+                              {formatPrice(booking.totalAmount)}
+                            </div>
+                          </div>
                         </div>
-                      </Col>
-                    </Row>
-                  </Card.Body>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+
+                        {/* NÚT HÀNH ĐỘNG GÓC PHẢI */}
+                        <div className="text-end" style={{ flexShrink: 0 }}>
+                          {actionBtn}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* HỘP LƯU Ý MÀU XANH DƯỚI CÙNG */}
+            <div
+              style={{
+                backgroundColor: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '8px',
+                padding: '13px 20px',
+                marginTop: '28px',
+                color: '#0284c7',
+                fontSize: '13px',
+                lineHeight: 1.5,
+              }}
+            >
+              Chỉ đặt phòng đã hoàn thành và chưa đánh giá mới có thể gửi đánh giá. Đặt phòng hết hạn giữ phòng không thể tiếp tục thanh toán.
+            </div>
+          </Col>
+        </Row>
       </Container>
+
+      {/* MODAL ĐÁNH GIÁ KỲ NGHỈ */}
+      <Modal
+        show={showReviewModal}
+        onHide={() => setShowReviewModal(false)}
+        centered
+        backdrop="static"
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+            Đánh giá kỳ nghỉ
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          {reviewSubmitted ? (
+            <div className="text-center py-4 text-success">
+              <div style={{ fontSize: '36px', marginBottom: '8px' }}>✓</div>
+              <h6 className="fw-bold mb-1">Cảm ơn bạn đã gửi đánh giá!</h6>
+              <p className="small text-muted mb-0">Đánh giá của bạn giúp VinaStay hoàn thiện chất lượng dịch vụ mỗi ngày.</p>
+            </div>
+          ) : (
+            <Form onSubmit={handleSubmitReview}>
+              <div className="mb-3">
+                <div style={{ fontSize: '14.5px', fontWeight: 600, color: '#1e293b' }}>
+                  {selectedReviewBooking?.hotelName || 'Khách sạn'}
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                  Mã đơn: {selectedReviewBooking?.bookingCode}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label small fw-semibold text-dark">Chấm điểm kỳ nghỉ của bạn:</label>
+                <div className="d-flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <FaStar
+                      key={star}
+                      size={24}
+                      style={{
+                        cursor: 'pointer',
+                        color: star <= rating ? '#eab308' : '#e2e8f0',
+                        transition: 'color 0.15s ease',
+                      }}
+                      onClick={() => setRating(star)}
+                    />
+                  ))}
+                  <span className="ms-2 small fw-semibold text-secondary align-self-center">
+                    {rating === 5 ? 'Tuyệt vời (5/5)' : rating === 4 ? 'Rất tốt (4/5)' : rating === 3 ? 'Hài lòng (3/5)' : 'Chưa tốt'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label small fw-semibold text-dark">Chia sẻ cảm nhận chi tiết:</label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  placeholder="Không gian phòng, thái độ nhân viên, vị trí và dịch vụ tại khách sạn..."
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  style={{ fontSize: '13px', borderRadius: '8px' }}
+                />
+              </div>
+
+              <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+                <Button variant="light" size="sm" onClick={() => setShowReviewModal(false)}>
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
+                >
+                  Gửi đánh giá
+                </Button>
+              </div>
+            </Form>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* MODAL THÔNG TIN HOÀN TIỀN */}
+      <Modal
+        show={showRefundModal}
+        onHide={() => setShowRefundModal(false)}
+        centered
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+            Thông tin hoàn tiền
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2">
+          {selectedRefundBooking && (
+            <div className="small">
+              <div className="p-3 rounded-2 mb-3" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">Mã đơn phòng:</span>
+                  <strong>{selectedRefundBooking.bookingCode}</strong>
+                </div>
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">Khách sạn:</span>
+                  <strong>{selectedRefundBooking.hotelName}</strong>
+                </div>
+                <div className="d-flex justify-content-between mb-1">
+                  <span className="text-muted">Số tiền hoàn trả:</span>
+                  <strong className="text-success">{formatPrice(selectedRefundBooking.totalAmount)}</strong>
+                </div>
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Phương thức hoàn:</span>
+                  <span>Cổng thanh toán VNPAY / Tài khoản nguồn</span>
+                </div>
+              </div>
+
+              <div className="text-secondary mb-3">
+                <div className="fw-semibold text-dark mb-1">Tiến độ xử lý hoàn tiền:</div>
+                <ul className="ps-3 mb-0">
+                  <li>Yêu cầu hủy phòng đã được hệ thống tiếp nhận thành công.</li>
+                  <li>Lệnh hoàn tiền đang được đối soát tự động cùng ngân hàng liên kết.</li>
+                  <li>Thời gian tiền về tài khoản: từ <strong>3 đến 5 ngày làm việc</strong> (không tính Thứ 7, Chủ nhật).</li>
+                </ul>
+              </div>
+
+              <div className="text-end border-top pt-3">
+                <Button variant="secondary" size="sm" onClick={() => setShowRefundModal(false)}>
+                  Đã hiểu
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };

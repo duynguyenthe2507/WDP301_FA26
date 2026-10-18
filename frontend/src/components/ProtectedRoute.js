@@ -1,9 +1,10 @@
 import React, { useContext } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading, loggedOutRef } = useContext(AuthContext);
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -13,7 +14,12 @@ const ProtectedRoute = ({ allowedRoles }) => {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  // Lưu lại trang (kèm state) đang truy cập để quay lại sau khi đăng nhập
+  if (!user) {
+    // Vừa bấm đăng xuất: về trang chủ thay vì sang trang đăng nhập
+    if (loggedOutRef?.current) return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;

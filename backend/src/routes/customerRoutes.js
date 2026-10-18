@@ -15,7 +15,7 @@ import {
   getHotelById,
   checkRoomAvailability,
 } from '../controllers/hotelController.js';
-import { verifyToken, authorizeRoles, optionalAuth } from '../middlewares/authMiddleware.js';
+import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 router.get('/ping', pingCustomer);
 
@@ -25,11 +25,12 @@ router.put('/profile', verifyToken, authorizeRoles('CUSTOMER'), updateProfile);
 router.put('/change-password', verifyToken, authorizeRoles('CUSTOMER'), changePassword);
 
 // VNPay Sandbox Booking & Payment routes
-router.post('/bookings/pending', optionalAuth, createPendingBooking);
+// Đặt phòng & xem đơn yêu cầu đăng nhập CUSTOMER (khách vãng lai chỉ được xem phòng)
+router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), createPendingBooking);
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
-router.get('/my-bookings', optionalAuth, getMyBookings);
-router.get('/bookings/:bookingCode', getBookingByCode);
+router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
+router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
 
 // Hotel routes (Search, Filter, Detail, Availability)
 router.get('/hotels', getHotels);

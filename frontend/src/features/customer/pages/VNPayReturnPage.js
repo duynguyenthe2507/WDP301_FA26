@@ -22,6 +22,8 @@ const VNPayReturnPage = () => {
   const bankCode = searchParams.get('vnp_BankCode');
   const amount = Number(searchParams.get('vnp_Amount')) / 100 || 0;
 
+  const [isExpired, setIsExpired] = useState(false);
+
   useEffect(() => {
     const processReturn = async () => {
       const params = Object.fromEntries([...searchParams]);
@@ -36,6 +38,9 @@ const VNPayReturnPage = () => {
       try {
         const res = await verifyVNPayPayment(params);
         setLoading(false);
+        if (res.data?.isExpired) {
+          setIsExpired(true);
+        }
         if (res.data?.success && responseCode === '00') {
           setSuccess(true);
           setMessage('Giao dịch thanh toán thành công!');
@@ -136,20 +141,30 @@ const VNPayReturnPage = () => {
                     <span className="badge bg-danger">{responseCode || 'FAILED'}</span>
                   </div>
                   <div className="text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.85rem' }}>
-                    Giao dịch chưa được trừ tiền hoặc bạn đã hủy trong quá trình thanh toán trên VNPAY. Bạn có thể tiến hành thanh toán lại đơn phòng này.
+                    {isExpired ? (
+                      <span className="text-danger fw-semibold">
+                        Đơn đặt phòng này đã quá thời hạn thanh toán 10 phút và đã được hệ thống tự động xóa. Vui lòng chọn và đặt phòng mới.
+                      </span>
+                    ) : (
+                      <span>
+                        Giao dịch chưa được trừ tiền hoặc bạn đã hủy trong quá trình thanh toán trên VNPAY. Bạn có thể tiến hành thanh toán lại đơn phòng này trong vòng 10 phút.
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="d-flex flex-column flex-sm-row justify-content-center gap-2">
-                  <Button
-                    onClick={() => navigate('/booking', { state: { booking } })}
-                    className="btn btn-primary px-4 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
-                    style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
-                  >
-                    <FaRedo /> Thử thanh toán lại
-                  </Button>
-                  <Link to="/hotels" className="btn btn-outline-secondary px-4 py-2">
-                    Quay lại danh sách khách sạn
+                  {!isExpired && (
+                    <Button
+                      onClick={() => navigate('/booking', { state: { booking } })}
+                      className="btn btn-primary px-4 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                      style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
+                    >
+                      <FaRedo /> Thử thanh toán lại
+                    </Button>
+                  )}
+                  <Link to="/hotels" className="btn btn-outline-primary px-4 py-2 fw-semibold">
+                    {isExpired ? 'Đặt lại phòng mới' : 'Quay lại danh sách khách sạn'}
                   </Link>
                 </div>
               </div>

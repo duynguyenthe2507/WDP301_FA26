@@ -14,6 +14,7 @@ import {
   FaUserFriends,
   FaInfoCircle,
   FaCheckCircle,
+  FaClock,
 } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import { createPendingBooking } from '../CustomerApi';
@@ -35,21 +36,42 @@ const BookingPage = () => {
   const { user } = useContext(AuthContext);
 
   // Nhận thông tin đặt phòng từ trang chi tiết hoặc dùng dữ liệu mặc định
-  const stateData = location.state || {};
-  const hotel = stateData.hotel || {
-    _id: 'hotel_01',
-    name: 'Khách sạn VinaStay Grand Luxury',
-    address: '123 Đường Trần Phú, Phường Lộc Thọ, TP. Nha Trang',
-    featured_image:
-      'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80',
-  };
+  const rawState = location.state || {};
+  const pendingBooking = rawState.booking;
 
-  const roomType = stateData.roomType || {
-    id: 'room_deluxe',
-    name: 'Phòng Deluxe Hướng Biển',
-    price_per_night: 1500000,
-    base_price: 1500000,
-  };
+  // Thanh toán lại đơn cũ: dựng dữ liệu từ đơn đã lưu thay vì dùng giá mặc định
+  const stateData = pendingBooking
+    ? {
+      hotel: { _id: pendingBooking.hotelId, name: pendingBooking.hotelName, address: pendingBooking.hotelAddress },
+      checkIn: new Date(pendingBooking.checkInDate).toISOString().split('T')[0],
+      checkOut: new Date(pendingBooking.checkOutDate).toISOString().split('T')[0],
+      nights: pendingBooking.totalNights,
+      bookingDetails: pendingBooking.bookingDetails,
+      selectedRooms: (pendingBooking.bookingDetails || []).map((d) => ({
+        _id: d.roomTypeId,
+        name: d.roomTypeName,
+        quantity: d.quantity,
+        base_price: d.pricePerNight,
+      })),
+      totalAmount: pendingBooking.totalAmount,
+    }
+    : rawState;
+  const hotel = stateData.hotel || {};
+
+  const roomType = stateData.roomType || {};
+
+  // Nếu người dùng nhấn vào thanh toán lại một đơn cũ nhưng đã quá 10 phút
+  useEffect(() => {
+    if (pendingBooking) {
+      const expiresAt = pendingBooking.pendingExpiresAt
+        ? new Date(pendingBooking.pendingExpiresAt).getTime()
+        : new Date(pendingBooking.createdAt).getTime() + 10 * 60 * 1000;
+      if (Date.now() >= expiresAt) {
+        alert('Đơn đặt phòng này đã quá thời hạn 10 phút để thanh toán và đã bị xóa trên hệ thống. Vui lòng đặt lại phòng mới.');
+        navigate('/hotels');
+      }
+    }
+  }, [pendingBooking, navigate]);
 
   const checkIn =
     stateData.checkIn ||
@@ -60,8 +82,8 @@ const BookingPage = () => {
   const nights = Math.max(
     1,
     Number(stateData.nights) ||
-      Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
-      1
+    Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
+    1
   );
   const quantity = Number(stateData.quantity) || 1;
   const pricePerNight = Number(roomType.price_per_night || roomType.base_price || roomType.basePrice) || 1500000;
@@ -100,8 +122,8 @@ const BookingPage = () => {
   const roomCost =
     stateData.roomCost ??
     bookingDetailsList.reduce((sum, b) => sum + b.totalPrice, 0);
-  const serviceFee = stateData.serviceFee ?? Math.round(roomCost * 0.1); // 10% thuế & phí
-  const totalAmount = stateData.totalAmount ?? (roomCost + serviceFee);
+  const totalAmount = stateData.totalAmount ?? Math.round(roomCost * 1.1);
+  const serviceFee = stateData.serviceFee ?? Math.max(0, totalAmount - roomCost); // 10% thuế & phí
 
   // 1. Thông tin người đặt
   const [bookerInfo, setBookerInfo] = useState({
@@ -240,9 +262,9 @@ const BookingPage = () => {
         guestInfo: isSelfGuest
           ? { fullName: '', phoneNumber: '' }
           : {
-              fullName: guestInfo.fullName.trim(),
-              phoneNumber: guestInfo.phoneNumber.trim(),
-            },
+            fullName: guestInfo.fullName.trim(),
+            phoneNumber: guestInfo.phoneNumber.trim(),
+          },
         specialRequests: specialRequests.trim(),
         checkInDate: checkIn,
         checkOutDate: checkOut,
@@ -671,6 +693,11 @@ const BookingPage = () => {
 
                   <div className="text-center text-muted small mt-2" style={{ fontSize: '0.78rem' }}>
                     Nhấn thanh toán đồng nghĩa bạn đồng ý với Điều khoản đặt phòng của VinaStay.
+                  </div>
+
+                  <div className="p-2 bg-warning-subtle text-warning-emphasis border border-warning rounded-2 text-center small mt-2" style={{ fontSize: '0.8rem' }}>
+                    <FaClock className="text-danger me-1" />
+                    Đơn phòng chỉ được giữ chỗ trong <strong>10 phút</strong>. Sau 10 phút chưa thanh toán, hệ thống sẽ tự động hủy và xóa đơn.
                   </div>
 
                   {/* CAM KẾT VÀ BẢO MẬT */}

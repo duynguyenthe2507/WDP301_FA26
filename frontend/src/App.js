@@ -50,13 +50,13 @@ function App() {
             <Route index element={<Home />} />
             <Route path="hotels" element={<HotelSearchPage />} />
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
-            <Route path="booking" element={<BookingPage />} />
-            <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
             <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
-            <Route path="booking-history" element={<BookingHistoryPage />} />
 
-            {/* Profile - yêu cầu đăng nhập CUSTOMER */}
+            {/* Đặt phòng, lịch sử, profile - yêu cầu đăng nhập CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="booking" element={<BookingPage />} />
+              <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
+              <Route path="booking-history" element={<BookingHistoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
           </Route>

@@ -15,22 +15,62 @@ const BookingConfirmationPage = () => {
   const [loading, setLoading] = useState(!location.state?.booking);
   const [error, setError] = useState('');
 
+  const isCancelled = booking?.bookingStatus === 'CANCELLED';
+  const isPaid = !isCancelled && (booking?.paymentStatus === 'PAID' || booking?.bookingStatus === 'CONFIRMED');
+  const isPending = !isCancelled && !isPaid;
+
+  const [isExpired, setIsExpired] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
   useEffect(() => {
-    if (!booking && bookingCode) {
-      setLoading(true);
+    if (bookingCode) {
+      if (!booking) setLoading(true);
       getBookingByCode(bookingCode)
         .then((res) => {
-          setBooking(res.data?.booking);
+          if (res.data?.booking) {
+            setBooking(res.data.booking);
+          }
         })
         .catch((err) => {
           console.error('Lỗi khi tải thông tin đơn đặt phòng:', err);
-          setError(err.response?.data?.message || 'Không tìm thấy thông tin đơn đặt phòng');
+          if (!booking) {
+            setError(err.response?.data?.message || 'Không tìm thấy thông tin đơn đặt phòng');
+          }
         })
         .finally(() => {
           setLoading(false);
         });
     }
-  }, [bookingCode, booking]);
+  }, [bookingCode]);
+
+  useEffect(() => {
+    if (!booking || !isPending) return;
+
+    const calculateRemaining = () => {
+      const expiresAt = booking.pendingExpiresAt
+        ? new Date(booking.pendingExpiresAt).getTime()
+        : new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
+      return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+    };
+
+    const initialLeft = calculateRemaining();
+    setRemainingSeconds(initialLeft);
+    if (initialLeft <= 0) {
+      setIsExpired(true);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const left = calculateRemaining();
+      setRemainingSeconds(left);
+      if (left <= 0) {
+        setIsExpired(true);
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPending, booking]);
 
   if (loading) {
     return (
@@ -46,7 +86,7 @@ const BookingConfirmationPage = () => {
       <Container className="py-5" style={{ minHeight: '60vh' }}>
         <Alert variant="danger" className="text-center p-4 rounded-3 border-0 shadow-sm">
           <h5 className="fw-bold mb-2">Không tìm thấy đơn đặt phòng</h5>
-          <p className="small mb-3">{error || 'Mã đơn không tồn tại hoặc đã bị hủy.'}</p>
+          <p className="small mb-3">{error || 'Mã đơn không tồn tại hoặc đã bị hủy/xóa do hết hạn.'}</p>
           <Link to="/" className="btn btn-outline-secondary btn-sm">
             Quay về trang chủ
           </Link>
@@ -55,16 +95,46 @@ const BookingConfirmationPage = () => {
     );
   }
 
-  const roomDetail = booking.bookingDetails?.[0] || {};
-  const isCancelled = booking.bookingStatus === 'CANCELLED';
-  const isPaid = !isCancelled && (booking.paymentStatus === 'PAID' || booking.bookingStatus === 'CONFIRMED');
-  const isPending = !isCancelled && !isPaid;
+  const bookingDetails =
+    Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
+      ? booking.bookingDetails
+      : [
+        {
+          roomTypeName: booking.roomTypeName || 'Phòng Deluxe',
+          quantity: booking.roomQuantity || 1,
+          pricePerNight:
+            booking.pricePerNight ||
+            Math.round((booking.totalAmount || 0) / (booking.totalNights || 1)),
+          totalPrice: booking.totalAmount || 0,
+        },
+      ];
+
+  const totalRoomsCount = bookingDetails.reduce(
+    (sum, r) => sum + (Number(r.quantity) || 1),
+    0
+  );
+
+  const totalRoomCost = bookingDetails.reduce((sum, r) => {
+    const lineTotal =
+      Number(r.totalPrice) ||
+      (Number(r.pricePerNight) || 0) *
+      (Number(r.quantity) || 1) *
+      (Number(booking.totalNights) || 1);
+    return sum + lineTotal;
+  }, 0);
+
+  const serviceFee = Math.max(0, (booking.totalAmount || 0) - totalRoomCost);
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2.5rem 0 4rem' }}>
-      <Container style={{ maxWidth: '850px' }}>
+      <Container style={{ maxWidth: '1000px' }}>
         {/* THANH THÔNG BÁO TRẠNG THÁI */}
+
         <div className="bg-white p-4 rounded-3 shadow-sm border mb-4 text-center">
+          <div className="align-items-center gap-2 px-3 py-1 bg-light border rounded-pill">
+            <span className="text-secondary small">Mã đặt phòng:</span>
+            <strong className="text-primary font-monospace">{booking.bookingCode}</strong>
+          </div>
           {isPaid ? (
             <>
               <FaCheckCircle className="text-success mb-2" size={48} />
@@ -82,20 +152,36 @@ const BookingConfirmationPage = () => {
                 {booking.cancellationReason && ` Lý do hủy: ${booking.cancellationReason}.`}
               </p>
             </>
+          ) : isExpired ? (
+            <>
+              <FaTimesCircle className="text-danger mb-2" size={48} />
+              <h4 className="fw-bold text-danger mb-1">Đơn Đặt Phòng Đã Quá Hạn Thanh Toán</h4>
+              <p className="text-muted small mb-3">
+                Đơn đặt phòng này đã quá thời hạn <strong>10 phút</strong> và đã được hệ thống tự động xóa. Vui lòng đặt lại phòng mới.
+              </p>
+            </>
           ) : (
             <>
               <FaClock className="text-warning mb-2" size={48} />
               <h4 className="fw-bold text-warning mb-1">Đơn Đặt Phòng Đang Chờ Thanh Toán</h4>
-              <p className="text-muted small mb-3">
-                Đơn phòng của bạn đã được khởi tạo thành công nhưng <strong>chưa được thanh toán</strong>. Vui lòng hoàn tất thanh toán để khách sạn giữ phòng cho bạn.
+              <p className="text-muted small mb-2">
+                Đơn phòng của bạn đã được khởi tạo thành công nhưng <strong>chưa được thanh toán</strong>. Vui lòng hoàn tất thanh toán trước khi hết giờ để giữ phòng.
               </p>
+              <div className="p-3 bg-warning-subtle border border-warning rounded-3 my-3 d-inline-flex flex-column align-items-center">
+                <div className="text-dark small fw-semibold d-flex align-items-center gap-1 mb-1">
+                  <FaClock className="text-danger" /> Thời gian giữ chỗ và thanh toán còn lại:
+                </div>
+                <div className="fs-3 fw-bold text-danger font-monospace">
+                  {Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:{(remainingSeconds % 60).toString().padStart(2, '0')}
+                </div>
+                <small className="text-muted" style={{ fontSize: '0.78rem' }}>
+                  (Sau 10 phút chưa thanh toán, đơn sẽ tự động bị xóa khỏi hệ thống)
+                </small>
+              </div>
             </>
           )}
 
-          <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-pill">
-            <span className="text-secondary small">Mã đặt phòng:</span>
-            <strong className="text-primary font-monospace">{booking.bookingCode}</strong>
-          </div>
+
         </div>
 
         {/* PHIẾU XÁC NHẬN (VOUCHER) */}
@@ -163,21 +249,58 @@ const BookingConfirmationPage = () => {
                 </div>
               </Col>
 
+              {/* DANH SÁCH CHI TIẾT CÁC PHÒNG ĐÃ CHỌN */}
               <Col md={12}>
-                <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
-                  <div>
-                    <strong className="text-dark d-block">
-                      <FaBed className="text-primary me-2" />
-                      {roomDetail.roomTypeName || 'Phòng Deluxe'}
-                    </strong>
-                    <span className="text-secondary small">
-                      Số lượng: {roomDetail.quantity || 1} phòng • Thời gian lưu trú: {booking.totalNights} đêm
-                    </span>
-                  </div>
-                  <div className="text-end">
-                    <span className="text-secondary small d-block">Đơn giá / đêm</span>
-                    <strong className="text-dark">{formatPrice(roomDetail.pricePerNight || 0)}</strong>
-                  </div>
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="fw-bold text-dark small mb-0 d-flex align-items-center gap-2">
+                    <FaBed className="text-primary" /> Danh sách phòng đã đặt ({bookingDetails.length} loại phòng)
+                  </h6>
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 small">
+                    Tổng số lượng: {totalRoomsCount} phòng • {booking.totalNights} đêm
+                  </span>
+                </div>
+
+                <div className="d-flex flex-column gap-2">
+                  {bookingDetails.map((room, idx) => {
+                    const rQty = Number(room.quantity) || 1;
+                    const rPrice = Number(room.pricePerNight) || 0;
+                    const rTotal =
+                      Number(room.totalPrice) ||
+                      rPrice * rQty * (Number(booking.totalNights) || 1);
+
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-2"
+                      >
+                        <div>
+                          <strong className="text-dark d-block">
+                            <span className="badge bg-secondary me-2">#{idx + 1}</span>
+                            {room.roomTypeName || 'Phòng Deluxe'}
+                          </strong>
+                          <div className="text-secondary small mt-1 d-flex flex-wrap align-items-center gap-2">
+                            <span>
+                              Số lượng: <strong className="text-dark">{rQty} phòng</strong>
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Thời gian lưu trú: <strong className="text-dark">{booking.totalNights} đêm</strong>
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Đơn giá: <strong className="text-dark">{formatPrice(rPrice)} / phòng / đêm</strong>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <span className="text-secondary small d-block">Thành tiền</span>
+                          <strong className="text-primary fs-6 fw-bold">
+                            {formatPrice(rTotal)}
+                          </strong>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </Col>
             </Row>
@@ -273,6 +396,49 @@ const BookingConfirmationPage = () => {
                   </div>
                 )}
 
+                {/* BẢNG KÊ CHI TIẾT CHI PHÍ CHO CÁC PHÒNG */}
+                <div className="p-3 bg-light rounded-3 border my-3">
+                  <div className="fw-semibold text-dark small mb-2 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                    <span>Bảng kê chi tiết chi phí ({totalRoomsCount} phòng)</span>
+                    <span className="text-secondary fw-normal">Đã gồm thuế GTGT & phí DV</span>
+                  </div>
+
+                  <div className="d-flex flex-column gap-2 mb-2">
+                    {bookingDetails.map((room, idx) => {
+                      const rQty = Number(room.quantity) || 1;
+                      const rPrice = Number(room.pricePerNight) || 0;
+                      const rTotal =
+                        Number(room.totalPrice) ||
+                        rPrice * rQty * (Number(booking.totalNights) || 1);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="d-flex justify-content-between text-secondary small"
+                        >
+                          <span>
+                            {idx + 1}. {room.roomTypeName || 'Phòng'} ({rQty} phòng ×{' '}
+                            {booking.totalNights} đêm × {formatPrice(rPrice)})
+                          </span>
+                          <strong className="text-dark">{formatPrice(rTotal)}</strong>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="d-flex justify-content-between text-secondary small pt-2 border-top">
+                    <span>Tạm tính tiền phòng:</span>
+                    <strong className="text-dark">{formatPrice(totalRoomCost)}</strong>
+                  </div>
+
+                  {serviceFee > 0 && (
+                    <div className="d-flex justify-content-between text-secondary small mt-1">
+                      <span>Thuế GTGT & Phí dịch vụ:</span>
+                      <strong className="text-dark">{formatPrice(serviceFee)}</strong>
+                    </div>
+                  )}
+                </div>
+
                 <div className="d-flex justify-content-between pt-2 border-top fs-6">
                   <span className="fw-bold text-dark">
                     {isPaid ? 'Tổng tiền đã thanh toán:' : 'Tổng tiền cần thanh toán:'}
@@ -296,7 +462,7 @@ const BookingConfirmationPage = () => {
               <FaHistory /> Lịch sử đặt phòng
             </Link>
 
-            {isPending && (
+            {isPending && !isExpired && (
               <Button
                 as={Link}
                 to="/booking"
@@ -305,7 +471,19 @@ const BookingConfirmationPage = () => {
                 variant="warning"
                 className="fw-semibold d-inline-flex align-items-center gap-1"
               >
-                <FaCreditCard /> Thanh toán ngay
+                <FaCreditCard /> Thanh toán ngay ({Math.floor(remainingSeconds / 60)}:{(remainingSeconds % 60).toString().padStart(2, '0')})
+              </Button>
+            )}
+
+            {isPending && isExpired && (
+              <Button
+                as={Link}
+                to="/hotels"
+                size="sm"
+                variant="danger"
+                className="fw-semibold d-inline-flex align-items-center gap-1"
+              >
+                Đơn đã hết hạn - Đặt lại phòng
               </Button>
             )}
 
