@@ -137,32 +137,17 @@ const BookingHistoryPage = () => {
     return c;
   }, [bookings, currentTime]);
 
-  // Sắp xếp thứ tự hiển thị: Sắp tới -> Chờ thanh toán -> Đã hoàn thành -> Đã hủy
-  const STATUS_PRIORITY = {
-    UPCOMING: 1,
-    PENDING: 2,
-    COMPLETED: 3,
-    CANCELLED: 4,
-  };
-
-  // Lọc danh sách booking theo tab được chọn và sắp xếp chuẩn theo mẫu
+  // Lọc danh sách booking theo tab được chọn, sắp xếp từ mới nhất đến cũ nhất
   const filteredBookings = useMemo(() => {
     let list = bookings;
     if (activeTab !== 'ALL') {
       list = bookings.filter((b) => categorizeBooking(b) === activeTab);
     }
-    return [...list].sort((a, b) => {
-      const pA = STATUS_PRIORITY[categorizeBooking(a)] || 99;
-      const pB = STATUS_PRIORITY[categorizeBooking(b)] || 99;
-      return pA - pB;
-    });
+    return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [bookings, activeTab, currentTime]);
 
-  // Lấy mốc thời gian hết hạn thanh toán (pendingExpiresAt hoặc createdAt + 10 phút)
+  // Lấy mốc thời gian hết hạn thanh toán (createdAt + 10 phút)
   const getExpiresTime = (booking) => {
-    if (booking?.pendingExpiresAt) {
-      return new Date(booking.pendingExpiresAt).getTime();
-    }
     if (booking?.createdAt) {
       return new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
     }

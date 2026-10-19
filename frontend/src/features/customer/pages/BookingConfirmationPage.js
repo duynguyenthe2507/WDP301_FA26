@@ -47,9 +47,7 @@ const BookingConfirmationPage = () => {
     if (!booking || !isPending) return;
 
     const calculateRemaining = () => {
-      const expiresAt = booking.pendingExpiresAt
-        ? new Date(booking.pendingExpiresAt).getTime()
-        : new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
+      const expiresAt = new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
       return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
     };
 
@@ -484,17 +482,6 @@ const BookingConfirmationPage = () => {
                 className="fw-semibold d-inline-flex align-items-center gap-1"
               >
                 Đơn đã hết hạn - Đặt lại phòng
-              </Button>
-            )}
-
-            {isPaid && (
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={() => window.print()}
-                className="d-inline-flex align-items-center gap-1"
-              >
-                <FaPrint /> In hóa đơn
               </Button>
             )}
 

@@ -80,10 +80,6 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       default: 'VNPAY',
     },
-    pendingExpiresAt: {
-      type: Date,
-      default: () => new Date(Date.now() + 10 * 60 * 1000), // Hết hạn sau 10 phút nếu chưa thanh toán
-    },
     vnpayTransaction: {
       vnp_TxnRef: { type: String },
       vnp_TransactionNo: { type: String },
@@ -98,9 +94,6 @@ const bookingSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// TTL Index: MongoDB tự động xóa document khi vượt quá pendingExpiresAt
-bookingSchema.index({ pendingExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
 export default Booking;

@@ -2,16 +2,12 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import {
-  FaCalendarAlt,
   FaUser,
   FaPhoneAlt,
   FaEnvelope,
-  FaBed,
   FaShieldAlt,
   FaArrowLeft,
   FaCheck,
-  FaHotel,
-  FaUserFriends,
   FaInfoCircle,
   FaCheckCircle,
   FaClock,
@@ -21,14 +17,6 @@ import { createPendingBooking } from '../CustomerApi';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
-
-// Helper lấy sức chứa của phòng
-const getCapacityCount = (room) => {
-  if (room?.capacity?.adults) return Number(room.capacity.adults);
-  if (room?.adultCapacity) return Number(room.adultCapacity);
-  if (room?.max_occupancy) return Number(room.max_occupancy);
-  return 2;
-};
 
 const BookingPage = () => {
   const location = useLocation();
@@ -63,9 +51,7 @@ const BookingPage = () => {
   // Nếu người dùng nhấn vào thanh toán lại một đơn cũ nhưng đã quá 10 phút
   useEffect(() => {
     if (pendingBooking) {
-      const expiresAt = pendingBooking.pendingExpiresAt
-        ? new Date(pendingBooking.pendingExpiresAt).getTime()
-        : new Date(pendingBooking.createdAt).getTime() + 10 * 60 * 1000;
+      const expiresAt = new Date(pendingBooking.createdAt).getTime() + 10 * 60 * 1000;
       if (Date.now() >= expiresAt) {
         alert('Đơn đặt phòng này đã quá thời hạn 10 phút để thanh toán và đã bị xóa trên hệ thống. Vui lòng đặt lại phòng mới.');
         navigate('/hotels');
@@ -113,11 +99,6 @@ const BookingPage = () => {
     });
 
   const totalQuantity = selectedRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
-  const totalGuestsCapacity = selectedRooms.reduce((sum, r) => {
-    const cap = getCapacityCount(r);
-    const qty = Number(r.quantity) || 1;
-    return sum + cap * qty;
-  }, 0);
 
   const roomCost =
     stateData.roomCost ??
@@ -324,58 +305,7 @@ const BookingPage = () => {
         <Row className="g-4">
           {/* CỘT TRÁI: FORM KIỂM TRA THÔNG TIN */}
           <Col lg={7}>
-            {/* KHỐI 1: TÓM TẮT CHUYẾN ĐI (DATES & HOTEL SUMMARY) */}
-            <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white overflow-hidden">
-              <Card.Body className="p-4">
-                <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
-                  <div>
-                    <h5 className="fw-bold text-dark mb-1">{hotel.name}</h5>
-                    <div className="text-muted small d-flex align-items-center gap-1">
-                      <FaHotel className="text-secondary" /> {hotel.address}
-                    </div>
-                  </div>
-                  <Link
-                    to={hotel._id ? `/hotels/${hotel._id}` : '/hotels'}
-                    className="btn btn-outline-primary btn-sm rounded-pill px-3"
-                  >
-                    Thay đổi phòng
-                  </Link>
-                </div>
-
-                <Row className="g-3 text-center text-sm-start">
-                  <Col xs={6} sm={3}>
-                    <div className="text-muted small mb-1">
-                      <FaCalendarAlt className="me-1 text-primary" /> Nhận phòng
-                    </div>
-                    <div className="fw-bold text-dark">{checkIn}</div>
-                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>Từ 14:00</div>
-                  </Col>
-                  <Col xs={6} sm={3}>
-                    <div className="text-muted small mb-1">
-                      <FaCalendarAlt className="me-1 text-primary" /> Trả phòng
-                    </div>
-                    <div className="fw-bold text-dark">{checkOut}</div>
-                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>Trước 12:00</div>
-                  </Col>
-                  <Col xs={6} sm={3}>
-                    <div className="text-muted small mb-1">
-                      <FaBed className="me-1 text-primary" /> Số lượng phòng
-                    </div>
-                    <div className="fw-bold text-dark">{totalQuantity} phòng</div>
-                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>{selectedRooms.length} loại phòng</div>
-                  </Col>
-                  <Col xs={6} sm={3}>
-                    <div className="text-muted small mb-1">
-                      <FaUserFriends className="me-1 text-primary" /> Sức chứa đoàn
-                    </div>
-                    <div className="fw-bold text-dark">{totalGuestsCapacity} khách</div>
-                    <div className="text-muted small" style={{ fontSize: '0.8rem' }}>{nights} đêm lưu trú</div>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-
-            {/* KHỐI 2: THÔNG TIN NGƯỜI ĐẶT */}
+            {/* KHỐI 1: THÔNG TIN NGƯỜI ĐẶT */}
             <Card className="border-0 shadow-sm rounded-3 mb-4 bg-white">
               <Card.Body className="p-4">
                 <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">

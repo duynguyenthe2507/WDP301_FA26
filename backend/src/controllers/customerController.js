@@ -78,17 +78,13 @@ export const changePassword = async (req, res) => {
 // Tự động xóa các đơn đặt phòng ở trạng thái chờ thanh toán quá 10 phút
 export const cleanExpiredPendingBookings = async () => {
   try {
-    const now = new Date();
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
     const deleteResult = await Booking.deleteMany({
       bookingCode: { $ne: 'VS051226-096' },
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
-      $or: [
-        { pendingExpiresAt: { $lte: now } },
-        { createdAt: { $lte: tenMinutesAgo } },
-      ],
+      createdAt: { $lte: tenMinutesAgo },
     });
 
     if (deleteResult.deletedCount > 0) {
@@ -214,7 +210,6 @@ export const createPendingBooking = async (req, res) => {
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: 'UNPAID',
       paymentMethod: 'VNPAY',
-      pendingExpiresAt: new Date(Date.now() + 10 * 60 * 1000), // Hết hạn và tự xóa sau 10 phút nếu chưa thanh toán
     });
 
     await newBooking.save();
@@ -289,7 +284,6 @@ export const verifyVNPayPayment = async (req, res) => {
     if (isSuccess) {
       booking.bookingStatus = 'CONFIRMED';
       booking.paymentStatus = 'PAID';
-      booking.pendingExpiresAt = null; // Gỡ hạn để MongoDB không bao giờ xóa đơn đã thanh toán thành công
       booking.vnpayTransaction = {
         vnp_TxnRef: bookingCode,
         vnp_TransactionNo: transactionNo || `VNP${Date.now()}`,
@@ -308,9 +302,7 @@ export const verifyVNPayPayment = async (req, res) => {
       });
     } else {
       // Nếu thanh toán thất bại và đã quá 10 phút -> Xóa luôn đơn
-      const isExpired = booking.pendingExpiresAt
-        ? new Date(booking.pendingExpiresAt) <= new Date()
-        : new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
+      const isExpired = new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
         await Booking.deleteOne({ _id: booking._id });
@@ -358,19 +350,15 @@ export const getBookingByCode = async (req, res) => {
       return res.status(403).json({ message: 'Bạn không có quyền xem đơn đặt phòng này' });
     }
 
-    // Đảm bảo đơn mẫu VS051226-096 luôn duy trì pendingExpiresAt hợp lệ cho trải nghiệm test
+    // Đảm bảo đơn mẫu VS051226-096 luôn còn hạn thanh toán cho trải nghiệm test
     if (booking.bookingCode === 'VS051226-096') {
-      const exp = booking.pendingExpiresAt ? new Date(booking.pendingExpiresAt).getTime() : 0;
-      if (!exp || exp <= Date.now()) {
-        booking.pendingExpiresAt = new Date(Date.now() + 8 * 60 * 1000 + 32 * 1000);
-        booking.createdAt = new Date(Date.now() - (10 * 60 * 1000 - (8 * 60 * 1000 + 32 * 1000)));
-        await Booking.updateOne({ _id: booking._id }, { $set: { pendingExpiresAt: booking.pendingExpiresAt, createdAt: booking.createdAt } });
+      if (Date.now() - new Date(booking.createdAt).getTime() >= 10 * 60 * 1000) {
+        booking.createdAt = new Date(Date.now() - 90 * 1000);
+        await Booking.updateOne({ _id: booking._id }, { $set: { createdAt: booking.createdAt } });
       }
     } else if (booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID') {
       // Nếu đơn phòng đang ở trạng thái PENDING_PAYMENT nhưng đã quá 10 phút -> Xóa luôn
-      const isExpired = booking.pendingExpiresAt
-        ? new Date(booking.pendingExpiresAt) <= new Date()
-        : new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
+      const isExpired = new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
         await Booking.deleteOne({ _id: booking._id });
@@ -436,19 +424,15 @@ export const getMyBookings = async (req, res) => {
 
     let bookings = await Booking.find(filter).sort({ createdAt: -1 });
 
-    // Đảm bảo đơn chờ thanh toán luôn có pendingExpiresAt đồng bộ chính xác
+    // Đơn mẫu VS051226-096 luôn còn hạn thanh toán cho trải nghiệm test
     bookings.forEach((b) => {
-      if (b.bookingStatus === 'PENDING_PAYMENT') {
-        if (b.bookingCode === 'VS051226-096') {
-          const exp = b.pendingExpiresAt ? new Date(b.pendingExpiresAt).getTime() : 0;
-          if (!exp || exp <= Date.now()) {
-            b.pendingExpiresAt = new Date(Date.now() + 8 * 60 * 1000 + 32 * 1000);
-            b.createdAt = new Date(Date.now() - (10 * 60 * 1000 - (8 * 60 * 1000 + 32 * 1000)));
-            Booking.updateOne({ _id: b._id }, { $set: { pendingExpiresAt: b.pendingExpiresAt, createdAt: b.createdAt } }).exec();
-          }
-        } else if (!b.pendingExpiresAt && b.createdAt) {
-          b.pendingExpiresAt = new Date(new Date(b.createdAt).getTime() + 10 * 60 * 1000);
-        }
+      if (
+        b.bookingStatus === 'PENDING_PAYMENT' &&
+        b.bookingCode === 'VS051226-096' &&
+        Date.now() - new Date(b.createdAt).getTime() >= 10 * 60 * 1000
+      ) {
+        b.createdAt = new Date(Date.now() - 90 * 1000);
+        Booking.updateOne({ _id: b._id }, { $set: { createdAt: b.createdAt } }).exec();
       }
     });
 
