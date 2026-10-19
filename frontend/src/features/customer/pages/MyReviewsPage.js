@@ -3,16 +3,12 @@ import { Container, Row, Col, Button, Form, Spinner, Alert } from 'react-bootstr
 import { useNavigate } from 'react-router-dom';
 import {
   FaStar,
-  FaTrash,
   FaEdit,
-  FaSave,
-  FaTimes,
   FaPlus,
   FaReply,
   FaCheckCircle,
   FaExclamationCircle,
   FaArrowLeft,
-  FaClock,
 } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
@@ -85,7 +81,7 @@ const MyReviewsPage = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Review đang được chọn để "Xem chi tiết / Chỉnh sửa"
+  // Review đang được chọn để "Chỉnh sửa"
   // null = đang ở chế độ xem List đánh giá
   const [selectedReview, setSelectedReview] = useState(null);
 
@@ -96,7 +92,6 @@ const MyReviewsPage = () => {
     images: [],
   });
   const [saveLoading, setSaveLoading] = useState(false);
-  const [newImageUrl, setNewImageUrl] = useState('');
 
   // Hộp xác nhận xóa đánh giá (hiển thị inline bên dưới thẻ đánh giá)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -128,7 +123,7 @@ const MyReviewsPage = () => {
     loadData();
   }, []);
 
-  // Mở màn hình Xem chi tiết & Chỉnh sửa review
+  // Mở màn hình Chỉnh sửa review
   const handleOpenDetail = (review) => {
     setSelectedReview(review);
     setEditForm({
@@ -145,7 +140,6 @@ const MyReviewsPage = () => {
   const handleBackToList = () => {
     setSelectedReview(null);
     setEditForm({ rating: 5, comment: '', images: [] });
-    setNewImageUrl('');
   };
 
   // Lưu thay đổi đánh giá
@@ -211,18 +205,6 @@ const MyReviewsPage = () => {
       ...prev,
       images: prev.images.filter((_, idx) => idx !== indexToRemove),
     }));
-  };
-
-  // Thêm ảnh bằng URL
-  const handleAddImageUrl = () => {
-    if (!newImageUrl.trim()) return;
-    const url = newImageUrl.trim();
-    const fileName = url.split('/').pop()?.split('?')[0] || 'review-photo.jpg';
-    setEditForm((prev) => ({
-      ...prev,
-      images: [...prev.images, { url, publicId: fileName }],
-    }));
-    setNewImageUrl('');
   };
 
   // Upload ảnh từ máy tính (base64)
@@ -315,7 +297,7 @@ const MyReviewsPage = () => {
                   <FaArrowLeft size={12} /> Quay lại danh sách đánh giá
                 </button>
 
-                {/* CARD CHI TIẾT & CHỈNH SỬA REVIEW (Khớp wireframe 1) */}
+                {/* CARD CHI TIẾT & CHỈNH SỬA REVIEW */}
                 {(() => {
                   const rev = selectedReview;
                   const booking = rev.bookingId || {};
@@ -1105,7 +1087,7 @@ const MyReviewsPage = () => {
                                   gap: '6px',
                                 }}
                               >
-                                <FaEdit size={11} /> Xem chi tiết / Chỉnh sửa
+                                <FaEdit size={11} /> Chỉnh sửa
                               </button>
                             </div>
                           </div>

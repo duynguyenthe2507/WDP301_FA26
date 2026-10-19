@@ -3,6 +3,24 @@ import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import Hotel from '../models/Hotel.js';
 
+// Tính lại điểm trung bình và tổng số đánh giá của khách sạn (0 review thì điểm = 0)
+const updateHotelRatingSummary = async (hotelId) => {
+  if (!hotelId) return;
+
+  const reviews = await Review.find({ hotelId }).select('rating');
+
+  let sum = 0;
+  for (const r of reviews) {
+    sum += r.rating;
+  }
+  const average = reviews.length > 0 ? Number((sum / reviews.length).toFixed(1)) : 0;
+
+  await Hotel.updateOne(
+    { _id: hotelId },
+    { $set: { 'ratingSummary.averageRating': average, 'ratingSummary.totalReviews': reviews.length } }
+  ).catch(() => {});
+};
+
 // GET /api/customer/reviews
 // Lấy tất cả đánh giá của khách hàng đang đăng nhập
 export const getMyReviews = async (req, res) => {
@@ -84,15 +102,13 @@ export const getPendingReviewBookings = async (req, res) => {
       return false;
     });
 
-    // 2. Lấy danh sách bookingId đã được đánh giá
-    const reviewedBookingIds = (await Review.find().select('bookingId').lean())
-      .map((r) => r.bookingId?.toString())
-      .filter(Boolean);
+    // 2. Chỉ tìm review của chính các đơn đã hoàn thành này
+    const completedIds = completedBookings.map((b) => b._id);
+    const reviews = await Review.find({ bookingId: { $in: completedIds } }).select('bookingId').lean();
+    const reviewedIds = new Set(reviews.map((r) => r.bookingId.toString()));
 
-    // 3. Lọc ra những đơn CHƯA được đánh giá (1 Booking tương ứng tối đa 1 Review)
-    const pendingBookings = completedBookings.filter(
-      (b) => !reviewedBookingIds.includes(b._id.toString())
-    );
+    // 3. Đơn nào không có trong danh sách đã đánh giá thì là CHƯA đánh giá
+    const pendingBookings = completedBookings.filter((b) => !reviewedIds.has(b._id.toString()));
 
     res.status(200).json({
       success: true,
@@ -174,24 +190,7 @@ export const createReview = async (req, res) => {
       createdAt: new Date(),
     });
 
-    // Cập nhật ratingSummary cho khách sạn
-    if (hotelObjectId) {
-      const allHotelReviews = await Review.find({ hotelId: hotelObjectId }).select('rating');
-      const totalReviews = allHotelReviews.length;
-      const averageRating = totalReviews > 0
-        ? Number((allHotelReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1))
-        : numRating;
-
-      await Hotel.updateOne(
-        { _id: hotelObjectId },
-        {
-          $set: {
-            'ratingSummary.averageRating': averageRating,
-            'ratingSummary.totalReviews': totalReviews,
-          },
-        }
-      ).catch(() => {});
-    }
+    await updateHotelRatingSummary(hotelObjectId);
 
     const populatedReview = await Review.findById(newReview._id)
       .populate({
@@ -318,24 +317,7 @@ export const deleteReview = async (req, res) => {
     const hotelId = review.hotelId;
     await Review.deleteOne({ _id: id });
 
-    // Cập nhật lại rating summary cho khách sạn
-    if (hotelId) {
-      const allHotelReviews = await Review.find({ hotelId }).select('rating');
-      const totalReviews = allHotelReviews.length;
-      const averageRating = totalReviews > 0
-        ? Number((allHotelReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1))
-        : 0;
-
-      await Hotel.updateOne(
-        { _id: hotelId },
-        {
-          $set: {
-            'ratingSummary.averageRating': averageRating,
-            'ratingSummary.totalReviews': totalReviews,
-          },
-        }
-      ).catch(() => {});
-    }
+    await updateHotelRatingSummary(hotelId);
 
     res.status(200).json({
       success: true,

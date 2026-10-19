@@ -61,7 +61,6 @@ const WriteReviewPage = () => {
   const [images, setImages] = useState([]);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [newImageUrl, setNewImageUrl] = useState('');
 
   // Tải thông tin kỳ nghỉ
   useEffect(() => {
@@ -109,15 +108,6 @@ const WriteReviewPage = () => {
       reader.readAsDataURL(file);
     });
     e.target.value = null;
-  };
-
-  // Thêm ảnh bằng URL
-  const handleAddUrlImage = () => {
-    if (!newImageUrl.trim()) return;
-    const url = newImageUrl.trim();
-    const fileName = url.split('/').pop()?.split('?')[0] || 'review-photo.jpg';
-    setImages((prev) => [...prev, { url, publicId: fileName }]);
-    setNewImageUrl('');
   };
 
   // Xóa ảnh
@@ -551,27 +541,6 @@ const WriteReviewPage = () => {
                             style={{ display: 'none' }}
                           />
                         </label>
-                      </div>
-
-                      {/* URL input dự phòng nhanh */}
-                      <div className="d-flex gap-2 mt-2">
-                        <Form.Control
-                          type="url"
-                          size="sm"
-                          placeholder="Hoặc dán đường dẫn ảnh (URL) vào đây..."
-                          value={newImageUrl}
-                          onChange={(e) => setNewImageUrl(e.target.value)}
-                          style={{ fontSize: '12px' }}
-                        />
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          type="button"
-                          onClick={handleAddUrlImage}
-                          style={{ fontSize: '12px' }}
-                        >
-                          Thêm ảnh
-                        </Button>
                       </div>
 
                       {/* DANH SÁCH ẢNH ĐÍNH KÈM */}
