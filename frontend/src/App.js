@@ -24,6 +24,7 @@ import BookingConfirmationPage from './features/customer/pages/BookingConfirmati
 import VNPayReturnPage from './features/customer/pages/VNPayReturnPage';
 import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
 import MyReviewsPage from './features/customer/pages/MyReviewsPage';
+import WriteReviewPage from './features/customer/pages/WriteReviewPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
@@ -59,10 +60,14 @@ function App() {
               <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
               <Route path="booking-history" element={<BookingHistoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="change-password" element={<ProfilePage section="password" />} />
               <Route path="my-reviews" element={<MyReviewsPage />} />
               <Route path="reviews" element={<MyReviewsPage />} />
+              <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
+              <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
             </Route>
           </Route>
+
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>

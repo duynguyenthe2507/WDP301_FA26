@@ -18,6 +18,7 @@ import {
 import {
   getMyReviews,
   getPendingReviewBookings,
+  getBookingReviewInfo,
   createReview,
   updateReview,
   deleteReview,
@@ -42,9 +43,11 @@ router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), ge
 // Đánh giá kỳ nghỉ (Customer Reviews)
 router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
 router.get('/reviews/pending-bookings', verifyToken, authorizeRoles('CUSTOMER'), getPendingReviewBookings);
+router.get('/reviews/booking-info/:bookingId', verifyToken, authorizeRoles('CUSTOMER'), getBookingReviewInfo);
 router.post('/reviews', verifyToken, authorizeRoles('CUSTOMER'), createReview);
 router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview);
 router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
+
 
 // Hotel routes (Search, Filter, Detail, Availability)
 router.get('/hotels', getHotels);

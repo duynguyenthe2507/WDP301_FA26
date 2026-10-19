@@ -28,9 +28,6 @@ const NavigationBar = () => {
                     <Nav.Link as={Link} to="/booking-history" active={location.pathname === '/booking-history'} className="d-flex align-items-center">
                       <FaHistory className="me-1" /> Lịch sử đặt phòng
                     </Nav.Link>
-                    <Nav.Link as={Link} to="/my-reviews" active={location.pathname === '/my-reviews'} className="d-flex align-items-center">
-                      <FaStar className="me-1 text-warning" /> Đánh giá của tôi
-                    </Nav.Link>
                     <Nav.Link as={Link} to="/profile" active={location.pathname === '/profile'} className="d-flex align-items-center">
                       <FaUserCircle className="me-1" /> {user.fullName || 'Hồ sơ'}
                     </Nav.Link>

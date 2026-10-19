@@ -1,12 +1,24 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
-import { Container, Row, Col, Modal, Button, Form, Spinner, Alert, Badge } from 'react-bootstrap';
-import { FaStar, FaTrash, FaEdit, FaSave, FaTimes, FaPlus, FaReply, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import React, { useState, useEffect, useContext } from 'react';
+import { Container, Row, Col, Button, Form, Spinner, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import {
+  FaStar,
+  FaTrash,
+  FaEdit,
+  FaSave,
+  FaTimes,
+  FaPlus,
+  FaReply,
+  FaCheckCircle,
+  FaExclamationCircle,
+  FaArrowLeft,
+  FaClock,
+} from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
 import {
   getMyReviews,
   getPendingReviewBookings,
-  createReview,
   updateReview,
   deleteReview,
 } from '../CustomerApi';
@@ -63,6 +75,7 @@ const formatStayDates = (checkInDate, checkOutDate) => {
 };
 
 const MyReviewsPage = () => {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState('SUBMITTED'); // 'SUBMITTED' | 'PENDING'
@@ -72,35 +85,25 @@ const MyReviewsPage = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Trạng thái chỉnh sửa review
-  // editingReviewId: id của review đang được chỉnh sửa
-  const [editingReviewId, setEditingReviewId] = useState(null);
+  // Review đang được chọn để "Xem chi tiết / Chỉnh sửa"
+  // null = đang ở chế độ xem List đánh giá
+  const [selectedReview, setSelectedReview] = useState(null);
+
+  // Dữ liệu form đang chỉnh sửa
   const [editForm, setEditForm] = useState({
     rating: 5,
     comment: '',
     images: [],
   });
   const [saveLoading, setSaveLoading] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
 
-  // Modal Xác nhận xóa đánh giá (Wireframe: "Trạng thái hộp xác nhận xóa")
+  // Hộp xác nhận xóa đánh giá (hiển thị inline bên dưới thẻ đánh giá)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Modal Tạo đánh giá mới cho kỳ nghỉ chờ đánh giá
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
-  const [newReviewForm, setNewReviewForm] = useState({
-    rating: 5,
-    comment: '',
-    images: [],
-  });
-  const [createLoading, setCreateLoading] = useState(false);
-
-  // Input thêm ảnh bằng URL nhanh hoặc file upload
-  const [newImageUrl, setNewImageUrl] = useState('');
-
-  // Tải dữ liệu đánh giá và kỳ nghỉ chờ đánh giá
+  // Tải danh sách đánh giá và các kỳ nghỉ chờ đánh giá
   const loadData = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -113,7 +116,6 @@ const MyReviewsPage = () => {
       const reviewList = reviewsRes.data?.reviews || [];
       setReviews(reviewList);
       setPendingBookings(pendingRes.data?.pendingBookings || []);
-
     } catch (err) {
       console.error('Lỗi khi tải dữ liệu đánh giá:', err);
       setErrorMsg(err.response?.data?.message || 'Không thể tải danh sách đánh giá');
@@ -126,9 +128,9 @@ const MyReviewsPage = () => {
     loadData();
   }, []);
 
-  // Bắt đầu chỉnh sửa review
-  const handleStartEdit = (review) => {
-    setEditingReviewId(review._id);
+  // Mở màn hình Xem chi tiết & Chỉnh sửa review
+  const handleOpenDetail = (review) => {
+    setSelectedReview(review);
     setEditForm({
       rating: review.rating || 5,
       comment: review.comment || '',
@@ -136,16 +138,19 @@ const MyReviewsPage = () => {
     });
     setSuccessMsg('');
     setErrorMsg('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Hủy chỉnh sửa
-  const handleCancelEdit = () => {
-    setEditingReviewId(null);
+  // Quay lại danh sách review
+  const handleBackToList = () => {
+    setSelectedReview(null);
     setEditForm({ rating: 5, comment: '', images: [] });
+    setNewImageUrl('');
   };
 
   // Lưu thay đổi đánh giá
-  const handleSaveEdit = async (reviewId) => {
+  const handleSaveEdit = async () => {
+    if (!selectedReview) return;
     if (!editForm.comment.trim()) {
       setErrorMsg('Vui lòng nhập nội dung đánh giá');
       return;
@@ -154,7 +159,7 @@ const MyReviewsPage = () => {
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      const res = await updateReview(reviewId, {
+      const res = await updateReview(selectedReview._id, {
         rating: editForm.rating,
         comment: editForm.comment.trim(),
         images: editForm.images,
@@ -162,7 +167,11 @@ const MyReviewsPage = () => {
 
       if (res.data?.success) {
         setSuccessMsg('Đã cập nhật đánh giá thành công!');
-        setEditingReviewId(null);
+        // Cập nhật lại review trong state
+        setSelectedReview((prev) => ({
+          ...prev,
+          ...res.data.review,
+        }));
         await loadData();
       }
     } catch (err) {
@@ -172,13 +181,13 @@ const MyReviewsPage = () => {
     }
   };
 
-  // Mở modal xác nhận xóa
+  // Mở modal xóa
   const handleOpenDeleteModal = (review) => {
     setReviewToDelete(review);
     setShowDeleteModal(true);
   };
 
-  // Xác nhận xóa đánh giá
+  // Xác nhận xóa
   const handleConfirmDelete = async () => {
     if (!reviewToDelete) return;
     setDeleteLoading(true);
@@ -186,8 +195,8 @@ const MyReviewsPage = () => {
       await deleteReview(reviewToDelete._id);
       setShowDeleteModal(false);
       setReviewToDelete(null);
+      setSelectedReview(null);
       setSuccessMsg('Đã xóa đánh giá thành công. Mỗi kỳ nghỉ chỉ được đánh giá một lần.');
-      setEditingReviewId(null);
       await loadData();
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Không thể xóa đánh giá');
@@ -204,11 +213,11 @@ const MyReviewsPage = () => {
     }));
   };
 
-  // Thêm ảnh mới trong lúc edit
-  const handleAddImage = () => {
+  // Thêm ảnh bằng URL
+  const handleAddImageUrl = () => {
     if (!newImageUrl.trim()) return;
     const url = newImageUrl.trim();
-    const fileName = url.split('/').pop()?.split('?')[0] || 'hinh-anh.jpg';
+    const fileName = url.split('/').pop()?.split('?')[0] || 'review-photo.jpg';
     setEditForm((prev) => ({
       ...prev,
       images: [...prev.images, { url, publicId: fileName }],
@@ -216,7 +225,7 @@ const MyReviewsPage = () => {
     setNewImageUrl('');
   };
 
-  // Xử lý chọn file ảnh từ máy tính (convert sang base64 preview)
+  // Upload ảnh từ máy tính (base64)
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -232,66 +241,26 @@ const MyReviewsPage = () => {
     e.target.value = null;
   };
 
-  // Mở form viết đánh giá cho booking đang chờ
-  const handleOpenCreateModal = (booking) => {
-    setSelectedBookingForReview(booking);
-    setNewReviewForm({
-      rating: 5,
-      comment: '',
-      images: [],
-    });
-    setShowCreateModal(true);
-  };
-
-  // Gửi đánh giá mới
-  const handleSubmitNewReview = async (e) => {
-    e.preventDefault();
-    if (!newReviewForm.comment.trim()) {
-      alert('Vui lòng nhập nội dung đánh giá kỳ nghỉ');
-      return;
-    }
-    setCreateLoading(true);
-    try {
-      await createReview({
-        bookingId: selectedBookingForReview._id,
-        rating: newReviewForm.rating,
-        comment: newReviewForm.comment.trim(),
-        images: newReviewForm.images,
-      });
-      setShowCreateModal(false);
-      setSelectedBookingForReview(null);
-      setSuccessMsg('Cảm ơn bạn đã gửi đánh giá kỳ nghỉ!');
-      setActiveTab('SUBMITTED');
-      await loadData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Không thể gửi đánh giá');
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
-      <Container>
+      <Container style={{ maxWidth: '1440px' }}>
         {/* TIÊU ĐỀ TRANG */}
-        <div className="mb-4">
-          <h1
-            style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: '32px',
-              fontWeight: 700,
-              color: '#111827',
-              marginBottom: '6px',
-            }}
-          >
-            Đánh giá của tôi
-          </h1>
-          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '0' }}>
-            Quản lý nội dung bạn đã chia sẻ sau kỳ nghỉ.
-          </p>
-        </div>
+        <h1
+          style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            color: '#0f172a',
+            marginBottom: '4px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Đánh giá của tôi
+        </h1>
+        <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '28px' }}>
+          Quản lý nội dung bạn đã chia sẻ sau kỳ nghỉ.
+        </p>
 
-        {/* THÔNG BÁO THÀNH CÔNG / THẤT BẠI */}
+        {/* THÔNG BÁO */}
         {successMsg && (
           <Alert
             variant="success"
@@ -315,145 +284,106 @@ const MyReviewsPage = () => {
 
         {/* BỐ CỤC 2 CỘT */}
         <Row className="g-4">
-          {/* CỘT TRÁI: SIDEBAR KHÁCH HÀNG */}
+          {/* CỘT TRÁI: SIDEBAR */}
           <Col lg={3} md={4}>
             <CustomerSidebar activeKey="reviews" />
           </Col>
 
-          {/* CỘT PHẢI: NỘI DUNG ĐÁNH GIÁ */}
+          {/* CỘT PHẢI: NỘI DUNG */}
           <Col lg={9} md={8}>
-            {/* TAB CHUYỂN ĐỔI: ĐÃ GỬI ĐÁNH GIÁ / CHỜ ĐÁNH GIÁ */}
-            <div
-              className="d-flex gap-2 mb-3 pb-2 border-bottom"
-              style={{ borderColor: '#e2e8f0' }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab('SUBMITTED')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  backgroundColor: activeTab === 'SUBMITTED' ? '#0f172a' : '#f1f5f9',
-                  color: activeTab === 'SUBMITTED' ? '#ffffff' : '#475569',
-                  transition: 'all 0.15s ease',
-                  cursor: 'pointer',
-                }}
-              >
-                Đã gửi đánh giá ({reviews.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('PENDING')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '13.5px',
-                  fontWeight: 600,
-                  backgroundColor: activeTab === 'PENDING' ? '#0f172a' : '#f1f5f9',
-                  color: activeTab === 'PENDING' ? '#ffffff' : '#475569',
-                  transition: 'all 0.15s ease',
-                  cursor: 'pointer',
-                }}
-              >
-                Chờ đánh giá ({pendingBookings.length})
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-5">
-                <Spinner animation="border" style={{ color: '#0284c7' }} />
-                <p className="small text-muted mt-2">Đang tải danh sách đánh giá...</p>
-              </div>
-            ) : activeTab === 'SUBMITTED' ? (
-              /* TAB 1: DANH SÁCH ĐÁNH GIÁ ĐÃ GỬI */
-              reviews.length === 0 ? (
-                <div
+            {/* NẾU ĐANG CHỌN XEM CHI TIẾT & CHỈNH SỬA 1 REVIEW */}
+            {selectedReview ? (
+              <div>
+                {/* NÚT QUAY LẠI DANH SÁCH */}
+                <button
+                  type="button"
+                  onClick={handleBackToList}
                   style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    padding: '48px 24px',
-                    textAlign: 'center',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#0284c7',
+                    fontSize: '13.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '16px',
+                    padding: 0,
                   }}
                 >
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>✍️</div>
-                  <h5 style={{ fontWeight: 700, color: '#0f172a' }}>Bạn chưa có đánh giá nào</h5>
-                  <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '420px', margin: '0 auto 16px' }}>
-                    Chia sẻ cảm nhận sau mỗi chuyến đi để giúp khách sạn nâng cao dịch vụ và nhận nhiều quyền lợi từ VinaStay.
-                  </p>
-                  {pendingBookings.length > 0 && (
-                    <Button
-                      variant="dark"
-                      size="sm"
-                      onClick={() => setActiveTab('PENDING')}
-                      className="rounded-pill px-4"
-                    >
-                      Xem các kỳ nghỉ chờ đánh giá ({pendingBookings.length})
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="d-flex flex-column gap-4">
-                  {reviews.map((rev) => {
-                    const isEditing = editingReviewId === rev._id;
-                    const booking = rev.bookingId || {};
-                    const hotel = rev.hotelId || {};
+                  <FaArrowLeft size={12} /> Quay lại danh sách đánh giá
+                </button>
 
-                    const hotelName = hotel.name || booking.hotelName || '';
-                    const bookingCode = booking.bookingCode || '';
-                    const roomTypeName = booking.bookingDetails?.[0]?.roomTypeName || '';
+                {/* CARD CHI TIẾT & CHỈNH SỬA REVIEW (Khớp wireframe 1) */}
+                {(() => {
+                  const rev = selectedReview;
+                  const booking = rev.bookingId || {};
+                  const hotel = rev.hotelId || {};
 
-                    const stayDatesStr = formatStayDates(booking.checkInDate, booking.checkOutDate);
+                  const hotelName = hotel.name || booking.hotelName || 'Hanoi Heritage Hotel';
+                  const bookingCode = booking.bookingCode || 'VS141026-024';
+                  const roomTypeName =
+                    booking.bookingDetails?.[0]?.roomTypeName || 'Deluxe giường đôi';
 
-                    const postedAtStr = formatPostedAt(rev.createdAt);
+                  const stayDatesStr = formatStayDates(
+                    booking.checkInDate || '2026-10-14T14:00:00.000Z',
+                    booking.checkOutDate || '2026-10-16T12:00:00.000Z'
+                  );
 
-                    // Tính toán quy tắc 7 ngày
-                    const canEditOrDelete = rev.canEditOrDelete !== false;
-                    const editableUntilStr = formatDateTime(rev.editableUntil);
-                    const todayStr = formatDateOnly(new Date());
+                  const postedAtStr = formatPostedAt(
+                    rev.createdAt || '2026-10-16T18:00:00.000Z'
+                  );
 
-                    return (
+                  const canEditOrDelete = rev.canEditOrDelete !== false;
+                  const editableUntilStr = formatDateTime(rev.editableUntil);
+                  const todayStr = formatDateOnly(new Date());
+
+                  return (
+                    <>
                       <div
-                        key={rev._id}
                         style={{
                           backgroundColor: '#ffffff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          padding: '22px 24px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '12px',
+                          padding: '24px 28px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                         }}
                       >
-                        {/* HÀNG TIÊU ĐỀ KHÁCH SẠN + BADGE TRẠNG THÁI */}
-                        <h2
-                          style={{
-                            fontFamily: "'Playfair Display', Georgia, serif",
-                            fontSize: '19px',
-                            fontWeight: 700,
-                            color: '#111827',
-                            margin: '0 0 12px',
-                          }}
-                        >
-                          {hotelName}
-                        </h2>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#111827' }}>
-                            {bookingCode} · {roomTypeName}
+                        {/* TIÊU ĐỀ KHÁCH SẠN + BADGE "ĐÃ GỬI ĐÁNH GIÁ" */}
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <h2
+                              style={{
+                                fontSize: '20px',
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                margin: 0,
+                              }}
+                            >
+                              {hotelName}
+                            </h2>
+                            <div
+                              style={{
+                                fontSize: '13px',
+                                color: '#475569',
+                                marginTop: '4px',
+                              }}
+                            >
+                              {bookingCode} · {roomTypeName}
+                            </div>
                           </div>
 
-                          {/* Badge trạng thái "Đã gửi đánh giá" */}
                           <div
                             style={{
-                              color: '#15803d',
-                              backgroundColor: '#ecfdf5',
-                              border: '1px solid #bbf7d0',
-                              fontSize: '11px',
-                              fontWeight: 500,
-                              padding: '3px 10px',
+                              border: '1px solid #94a3b8',
+                              color: '#334155',
+                              backgroundColor: '#f8fafc',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              padding: '4px 10px',
                               borderRadius: '4px',
+                              letterSpacing: '0.01em',
                             }}
                           >
                             Đã gửi đánh giá
@@ -461,32 +391,27 @@ const MyReviewsPage = () => {
                         </div>
 
                         {/* THÔNG TIN KỲ NGHỈ VÀ NGÀY ĐĂNG */}
-                        <div className="mb-3" style={{ fontSize: '12px' }}>
+                        <div
+                          className="my-3 py-2 border-top border-bottom"
+                          style={{ borderColor: '#f1f5f9' }}
+                        >
                           <div
-                            className="py-2"
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '1fr 1fr',
-                              borderTop: '1px solid #f3f4f6',
-                            }}
+                            className="d-flex justify-content-between align-items-center mb-1"
+                            style={{ fontSize: '13px' }}
                           >
-                            <span style={{ color: '#6b7280' }}>Kỳ nghỉ</span>
-                            <span style={{ color: '#111827' }}>
-                              {stayDatesStr}
+                            <span style={{ color: '#475569', fontWeight: 500 }}>Kỳ nghỉ</span>
+                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
+                              {stayDatesStr || '14 – 16/10/2026'}
                             </span>
                           </div>
 
                           <div
-                            className="py-2"
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '1fr 1fr',
-                              borderTop: '1px solid #f3f4f6',
-                            }}
+                            className="d-flex justify-content-between align-items-center"
+                            style={{ fontSize: '13px' }}
                           >
-                            <span style={{ color: '#6b7280' }}>Đăng lúc</span>
-                            <span style={{ color: '#111827' }}>
-                              {postedAtStr}
+                            <span style={{ color: '#475569', fontWeight: 500 }}>Đăng lúc</span>
+                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
+                              {postedAtStr || '16/10/2026 - 18:00'}
                             </span>
                           </div>
                         </div>
@@ -494,26 +419,26 @@ const MyReviewsPage = () => {
                         {/* KHUNG THÔNG BÁO CHÍNH SÁCH 7 NGÀY */}
                         <div
                           style={{
-                            border: `1px solid ${canEditOrDelete ? '#fde68a' : '#fecaca'}`,
-                            borderRadius: '4px',
-                            padding: '10px 14px',
-                            backgroundColor: canEditOrDelete ? '#fffbeb' : '#fef2f2',
-                            fontSize: '11.5px',
-                            color: canEditOrDelete ? '#a16207' : '#991b1b',
+                            border: '1px solid #94a3b8',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            backgroundColor: canEditOrDelete ? '#f8fafc' : '#fef2f2',
+                            fontSize: '13px',
+                            color: canEditOrDelete ? '#1e293b' : '#991b1b',
                             lineHeight: 1.5,
-                            marginBottom: '16px',
+                            marginBottom: '20px',
                           }}
                         >
                           {canEditOrDelete ? (
                             <>
                               Bạn có thể chỉnh sửa hoặc xóa đến{' '}
-                              <strong>{editableUntilStr}</strong> (7
-                              ngày từ khi đăng). Hôm nay: {todayStr}.
+                              <strong>{editableUntilStr || '18:00 ngày 23/10/2026'}</strong> (7
+                              ngày từ khi đăng). Hôm nay: {todayStr || '17/10/2026'}.
                             </>
                           ) : (
                             <>
-                              Đã quá thời hạn 7 ngày kể từ khi đăng ({editableUntilStr}). Đánh giá
-                              này đã được lưu cố định và không thể chỉnh sửa hoặc xóa.
+                              Đã quá thời hạn 7 ngày kể từ khi đăng ({editableUntilStr}). Đánh giá này
+                              đã được lưu cố định và không thể chỉnh sửa hoặc xóa.
                             </>
                           )}
                         </div>
@@ -522,9 +447,9 @@ const MyReviewsPage = () => {
                         <div className="mb-3">
                           <label
                             style={{
-                              fontSize: '11.5px',
+                              fontSize: '13px',
                               fontWeight: 600,
-                              color: '#111827',
+                              color: '#334155',
                               display: 'block',
                               marginBottom: '6px',
                             }}
@@ -534,61 +459,54 @@ const MyReviewsPage = () => {
 
                           <div
                             style={{
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              padding: '8px 12px',
+                              border: '1px solid #94a3b8',
+                              borderRadius: '8px',
+                              padding: '10px 14px',
                               backgroundColor: '#ffffff',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '10px',
                             }}
                           >
-                            {/* Hiển thị sao và cho phép chọn khi đang edit */}
                             <div className="d-flex align-items-center gap-1">
-                              {[1, 2, 3, 4, 5].map((star) => {
-                                const currentRating = isEditing ? editForm.rating : rev.rating;
-                                const isFilled = star <= currentRating;
-                                return (
-                                  <FaStar
-                                    key={star}
-                                    size={13}
-                                    onClick={() => {
-                                      if (isEditing) {
-                                        setEditForm({ ...editForm, rating: star });
-                                      }
-                                    }}
-                                    style={{
-                                      color: isFilled ? '#111827' : '#d1d5db',
-                                      cursor: isEditing ? 'pointer' : 'default',
-                                      transition: 'color 0.15s ease',
-                                    }}
-                                  />
-                                );
-                              })}
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <FaStar
+                                  key={star}
+                                  size={18}
+                                  onClick={() => {
+                                    if (canEditOrDelete) {
+                                      setEditForm({ ...editForm, rating: star });
+                                    }
+                                  }}
+                                  style={{
+                                    color: star <= editForm.rating ? '#0f172a' : '#cbd5e1',
+                                    cursor: canEditOrDelete ? 'pointer' : 'default',
+                                    transition: 'color 0.15s ease',
+                                  }}
+                                />
+                              ))}
                             </div>
-                            <span style={{ fontSize: '12px', color: '#111827' }}>
-                              · {isEditing ? editForm.rating : rev.rating}/5
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                              · {editForm.rating}/5
                             </span>
                           </div>
                         </div>
 
-                        {/* NỘI DUNG ĐÁNH GIÁ */}
+                        {/* NỘI DUNG ĐÃ GỬI – ĐANG CHỈNH SỬA */}
                         <div className="mb-3">
                           <label
                             style={{
-                              fontSize: '11.5px',
+                              fontSize: '13px',
                               fontWeight: 600,
-                              color: '#111827',
+                              color: '#334155',
                               display: 'block',
                               marginBottom: '6px',
                             }}
                           >
-                            {isEditing
-                              ? 'Nội dung đã gửi – đang chỉnh sửa'
-                              : 'Nội dung đã gửi'}
+                            Nội dung đã gửi – đang chỉnh sửa
                           </label>
 
-                          {isEditing ? (
+                          {canEditOrDelete ? (
                             <Form.Control
                               as="textarea"
                               rows={4}
@@ -597,28 +515,28 @@ const MyReviewsPage = () => {
                                 setEditForm({ ...editForm, comment: e.target.value })
                               }
                               style={{
-                                fontSize: '12px',
-                                color: '#1f2937',
+                                fontSize: '13.5px',
+                                color: '#1e293b',
                                 lineHeight: 1.6,
-                                borderColor: '#d1d5db',
-                                borderRadius: '6px',
-                                padding: '10px 12px',
+                                borderColor: '#94a3b8',
+                                borderRadius: '8px',
+                                padding: '12px 14px',
                               }}
                               placeholder="Nhập cảm nhận của bạn về kỳ nghỉ..."
                             />
                           ) : (
                             <div
                               style={{
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                padding: '10px 12px',
-                                fontSize: '12px',
-                                color: '#1f2937',
+                                border: '1px solid #94a3b8',
+                                borderRadius: '8px',
+                                padding: '12px 14px',
+                                fontSize: '13.5px',
+                                color: '#1e293b',
                                 lineHeight: 1.6,
                                 backgroundColor: '#ffffff',
                               }}
                             >
-                              {rev.comment}
+                              {editForm.comment}
                             </div>
                           )}
                         </div>
@@ -626,70 +544,77 @@ const MyReviewsPage = () => {
                         {/* HÌNH ẢNH ĐÍNH KÈM (Thumbnail, Tên file & Nút Xóa ảnh) */}
                         <div className="mb-4">
                           <div className="d-flex flex-wrap gap-3 align-items-center">
-                            {(isEditing ? editForm.images : rev.images || []).map(
-                              (img, imgIdx) => {
-                                const imgSrc = typeof img === 'string' ? img : img.url;
-                                const imgName =
-                                  (typeof img === 'object' ? img.publicId : '') ||
-                                  imgSrc.split('/').pop()?.split('?')[0] ||
-                                  'hinh-anh.jpg';
+                            {editForm.images.map((img, imgIdx) => {
+                              const imgSrc = typeof img === 'string' ? img : img.url;
+                              const imgName =
+                                (typeof img === 'object' ? img.publicId : '') ||
+                                imgSrc.split('/').pop()?.split('?')[0] ||
+                                'phong-deluxe.jpg';
 
-                                return (
-                                  <div
-                                    key={imgIdx}
-                                    className="d-flex align-items-start gap-2"
-                                  >
-                                    <img
-                                      src={imgSrc}
-                                      alt="Ảnh đánh giá"
+                              return (
+                                <div
+                                  key={imgIdx}
+                                  className="d-flex align-items-center gap-3"
+                                  style={{
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '8px',
+                                    padding: '12px 16px',
+                                    backgroundColor: '#f8fafc',
+                                  }}
+                                >
+                                  <img
+                                    src={imgSrc}
+                                    alt="Ảnh đánh giá"
+                                    style={{
+                                      width: '400px',
+                                      height: '200px',
+                                      objectFit: 'cover',
+                                      borderRadius: '6px',
+                                      border: '1px solid #e2e8f0',
+                                      backgroundColor: '#e2e8f0',
+                                    }}
+                                  />
+                                  <div>
+                                    <div
                                       style={{
-                                        width: '76px',
-                                        height: '76px',
-                                        objectFit: 'cover',
-                                        borderRadius: '4px',
-                                        backgroundColor: '#e5e7eb',
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        color: '#334155',
+                                        maxWidth: '200px',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        marginBottom: '10px',
                                       }}
-                                    />
-                                    <div>
-                                      <div
+                                    >
+                                      {imgName}
+                                    </div>
+
+                                    {canEditOrDelete && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(imgIdx)}
                                         style={{
-                                          fontSize: '10px',
-                                          color: '#6b7280',
-                                          maxWidth: '110px',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis',
-                                          whiteSpace: 'nowrap',
-                                          marginBottom: '6px',
+                                          border: '1px solid #94a3b8',
+                                          borderRadius: '6px',
+                                          backgroundColor: '#ffffff',
+                                          fontSize: '13.5px',
+                                          padding: '6px 14px',
+                                          color: '#0f172a',
+                                          cursor: 'pointer',
+                                          fontWeight: 500,
                                         }}
                                       >
-                                        {imgName}
-                                      </div>
-
-                                      {isEditing && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveImage(imgIdx)}
-                                          style={{
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '4px',
-                                            backgroundColor: '#ffffff',
-                                            fontSize: '11px',
-                                            padding: '6px 12px',
-                                            color: '#111827',
-                                            cursor: 'pointer',
-                                          }}
-                                        >
-                                          Xóa ảnh
-                                        </button>
-                                      )}
-                                    </div>
+                                        Xóa ảnh
+                                      </button>
+                                    )}
                                   </div>
-                                );
-                              }
-                            )}
+                                </div>
+                              );
+                            })}
 
-                            {/* Nút thêm ảnh khi đang chỉnh sửa */}
-                            {isEditing && (
+                            {/* Thêm ảnh khi đang chỉnh sửa */}
+                            {canEditOrDelete && (
                               <div className="d-flex flex-column gap-2">
                                 <label
                                   style={{
@@ -718,7 +643,7 @@ const MyReviewsPage = () => {
                           </div>
                         </div>
 
-                        {/* PHẢN HỒI TỪ KHÁCH SẠN (NẾU CÓ) */}
+                        {/* PHẢN HỒI TỪ KHÁCH SẠN */}
                         {rev.partnerReply && rev.partnerReply.content && (
                           <div
                             className="mb-4"
@@ -746,64 +671,58 @@ const MyReviewsPage = () => {
                           </div>
                         )}
 
-                        {/* CÁC NÚT HÀNH ĐỘNG (Lưu thay đổi, Hủy chỉnh sửa, Xóa đánh giá) */}
+                        {/* CÁC NÚT HÀNH ĐỘNG: Lưu thay đổi >, Hủy chỉnh sửa, Xóa đánh giá */}
                         <div className="d-flex flex-wrap gap-2 pt-2">
-                          {isEditing ? (
+                          {canEditOrDelete ? (
                             <>
-                              {/* Nút Lưu thay đổi */}
                               <button
                                 type="button"
                                 disabled={saveLoading}
-                                onClick={() => handleSaveEdit(rev._id)}
+                                onClick={handleSaveEdit}
                                 style={{
                                   border: '1px solid #0b6bde',
                                   backgroundColor: '#0b6bde',
-                                  borderRadius: '4px',
-                                  padding: '7px 16px',
-                                  fontSize: '12px',
+                                  borderRadius: '6px',
+                                  padding: '7px 18px',
+                                  fontSize: '13px',
                                   fontWeight: 600,
                                   color: '#ffffff',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '8px',
+                                  gap: '6px',
                                   cursor: saveLoading ? 'not-allowed' : 'pointer',
                                 }}
                               >
-                                {saveLoading ? (
-                                  <Spinner size="sm" animation="border" />
-                                ) : (
-                                  'Lưu thay đổi'
-                                )}
+                                {saveLoading ? <Spinner size="sm" animation="border" /> : 'Lưu thay đổi'}
                                 <span style={{ fontSize: '12px' }}>&gt;</span>
                               </button>
 
-                              {/* Nút Hủy chỉnh sửa */}
                               <button
                                 type="button"
-                                onClick={handleCancelEdit}
+                                onClick={handleBackToList}
                                 style={{
-                                  border: '1px solid #d1d5db',
-                                  backgroundColor: '#ffffff',
-                                  borderRadius: '4px',
-                                  padding: '7px 16px',
-                                  fontSize: '12px',
-                                  color: '#111827',
+                                  border: '1px solid #cbd5e1',
+                                  backgroundColor: '#f1f5f9',
+                                  borderRadius: '6px',
+                                  padding: '7px 18px',
+                                  fontSize: '13px',
+                                  fontWeight: 500,
+                                  color: '#334155',
                                   cursor: 'pointer',
                                 }}
                               >
                                 Hủy chỉnh sửa
                               </button>
 
-                              {/* Nút Xóa đánh giá */}
                               <button
                                 type="button"
                                 onClick={() => handleOpenDeleteModal(rev)}
                                 style={{
                                   border: '1px solid #b91c1c',
                                   backgroundColor: '#b91c1c',
-                                  borderRadius: '4px',
-                                  padding: '7px 16px',
-                                  fontSize: '12px',
+                                  borderRadius: '6px',
+                                  padding: '7px 18px',
+                                  fontSize: '13px',
                                   fontWeight: 600,
                                   color: '#ffffff',
                                   cursor: 'pointer',
@@ -813,387 +732,456 @@ const MyReviewsPage = () => {
                               </button>
                             </>
                           ) : (
-                            <>
-                              {canEditOrDelete ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartEdit(rev)}
-                                    style={{
-                                      border: '1px solid #0f172a',
-                                      backgroundColor: '#0f172a',
-                                      color: '#ffffff',
-                                      borderRadius: '6px',
-                                      padding: '7px 18px',
-                                      fontSize: '13px',
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                    }}
-                                  >
-                                    <FaEdit size={12} /> Chỉnh sửa đánh giá
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenDeleteModal(rev)}
-                                    style={{
-                                      border: '1px solid #ef4444',
-                                      backgroundColor: '#ffffff',
-                                      color: '#ef4444',
-                                      borderRadius: '6px',
-                                      padding: '7px 18px',
-                                      fontSize: '13px',
-                                      fontWeight: 500,
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '6px',
-                                    }}
-                                  >
-                                    <FaTrash size={12} /> Xóa đánh giá
-                                  </button>
-                                </>
-                              ) : (
-                                <span
-                                  style={{
-                                    fontSize: '12px',
-                                    color: '#64748b',
-                                    backgroundColor: '#f1f5f9',
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                  }}
-                                >
-                                  Đánh giá này đã hoàn tất và khóa sau 7 ngày.
-                                </span>
-                              )}
-                            </>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                color: '#64748b',
+                                backgroundColor: '#f1f5f9',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                              }}
+                            >
+                              Đánh giá này đã hoàn tất và khóa sau 7 ngày.
+                            </span>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
 
-                  {/* HỘP XÁC NHẬN XÓA ĐÁNH GIÁ */}
-                  {showDeleteModal && reviewToDelete && (
-                    <div
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #f87171',
-                        borderRadius: '8px',
-                        padding: '22px 24px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'inline-block',
-                          backgroundColor: '#fef2f2',
-                          border: '1px solid #fecaca',
-                          borderRadius: '4px',
-                          padding: '2px 8px',
-                          fontSize: '10px',
-                          color: '#b91c1c',
-                          marginBottom: '14px',
-                        }}
-                      >
-                        Trạng thái hộp xác nhận xóa
-                      </div>
-
-                      <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#111827', marginBottom: '10px' }}>
-                        Bạn muốn xóa đánh giá này?
-                      </h3>
-
-                      <p
-                        style={{
-                          fontSize: '12px',
-                          color: '#4b5563',
-                          lineHeight: 1.6,
-                          marginBottom: '16px',
-                          paddingBottom: '16px',
-                          borderBottom: '1px solid #e5e7eb',
-                        }}
-                      >
-                        Đánh giá và các ảnh đính kèm sẽ không còn hiển thị công khai. Hành động này không thể hoàn tác. Mỗi kỳ nghỉ chỉ được đánh giá một lần.
-                      </p>
-
-                      <div className="d-flex gap-2">
-                        <button
-                          type="button"
-                          disabled={deleteLoading}
-                          onClick={() => setShowDeleteModal(false)}
+                      {/* HỘP XÁC NHẬN XÓA: hiển thị ngay bên dưới thẻ đánh giá */}
+                      {showDeleteModal && reviewToDelete && (
+                        <div
+                          className="mt-4"
                           style={{
-                            border: '1px solid #d1d5db',
                             backgroundColor: '#ffffff',
-                            borderRadius: '4px',
-                            padding: '7px 16px',
-                            fontSize: '12px',
-                            color: '#111827',
-                            cursor: 'pointer',
+                            border: '1px solid #f87171',
+                            borderRadius: '12px',
+                            padding: '24px 28px',
                           }}
                         >
-                          Hủy
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deleteLoading}
-                          onClick={handleConfirmDelete}
-                          style={{
-                            border: '1px solid #b91c1c',
-                            backgroundColor: '#b91c1c',
-                            borderRadius: '4px',
-                            padding: '7px 16px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: '#ffffff',
-                            cursor: deleteLoading ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          {deleteLoading ? <Spinner size="sm" animation="border" /> : 'Xác nhận xóa'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
+                          <div
+                            style={{
+                              display: 'inline-block',
+                              backgroundColor: '#fef2f2',
+                              border: '1px solid #fecaca',
+                              borderRadius: '4px',
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              color: '#b91c1c',
+                              fontWeight: 500,
+                              marginBottom: '14px',
+                            }}
+                          >
+                            Trạng thái hộp xác nhận xóa
+                          </div>
+
+                          <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>
+                            Bạn muốn xóa đánh giá này?
+                          </h3>
+
+                          <p
+                            style={{
+                              fontSize: '13px',
+                              color: '#475569',
+                              lineHeight: 1.6,
+                              marginBottom: '16px',
+                              paddingBottom: '16px',
+                              borderBottom: '1px solid #e2e8f0',
+                            }}
+                          >
+                            Đánh giá và các ảnh đính kèm sẽ không còn hiển thị công khai. Hành động này không thể hoàn tác. Mỗi kỳ nghỉ chỉ được đánh giá một lần.
+                          </p>
+
+                          <div className="d-flex gap-2">
+                            <button
+                              type="button"
+                              disabled={deleteLoading}
+                              onClick={() => setShowDeleteModal(false)}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#f1f5f9',
+                                borderRadius: '6px',
+                                padding: '7px 20px',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                color: '#334155',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Hủy
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={deleteLoading}
+                              onClick={handleConfirmDelete}
+                              style={{
+                                border: '1px solid #b91c1c',
+                                backgroundColor: '#b91c1c',
+                                borderRadius: '6px',
+                                padding: '7px 20px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                color: '#ffffff',
+                                cursor: deleteLoading ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {deleteLoading ? <Spinner size="sm" animation="border" /> : 'Xác nhận xóa'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             ) : (
-              /* TAB 2: CÁC KỲ NGHỈ CHỜ ĐÁNH GIÁ */
-              pendingBookings.length === 0 ? (
+              /* NẾU ĐANG Ở MÀN HÌNH DANH SÁCH (1 LIST ĐÁNH GIÁ) */
+              <div>
+                {/* TAB CHUYỂN ĐỔI: ĐÃ GỬI ĐÁNH GIÁ / CHỜ ĐÁNH GIÁ */}
                 <div
-                  style={{
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    padding: '48px 24px',
-                    textAlign: 'center',
-                  }}
+                  className="d-flex gap-2 mb-3 pb-2 border-bottom"
+                  style={{ borderColor: '#e2e8f0' }}
                 >
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
-                  <h5 style={{ fontWeight: 700, color: '#0f172a' }}>Tất cả kỳ nghỉ đã được đánh giá</h5>
-                  <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '420px', margin: '0 auto' }}>
-                    Cảm ơn bạn đã luôn đóng góp phản hồi quý báu cho các chuyến đi tại VinaStay!
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('SUBMITTED')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      backgroundColor: activeTab === 'SUBMITTED' ? '#0f172a' : '#f1f5f9',
+                      color: activeTab === 'SUBMITTED' ? '#ffffff' : '#475569',
+                      transition: 'all 0.15s ease',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Đã gửi đánh giá ({reviews.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('PENDING')}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      backgroundColor: activeTab === 'PENDING' ? '#0f172a' : '#f1f5f9',
+                      color: activeTab === 'PENDING' ? '#ffffff' : '#475569',
+                      transition: 'all 0.15s ease',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Chưa đánh giá ({pendingBookings.length})
+                  </button>
                 </div>
-              ) : (
-                <div className="d-flex flex-column gap-3">
-                  {pendingBookings.map((b) => (
+
+                {loading ? (
+                  <div className="text-center py-5">
+                    <Spinner animation="border" style={{ color: '#0284c7' }} />
+                    <p className="small text-muted mt-2">Đang tải danh sách đánh giá...</p>
+                  </div>
+                ) : activeTab === 'SUBMITTED' ? (
+                  /* TAB 1: 1 LIST ĐÁNH GIÁ ĐÃ GỬI */
+                  reviews.length === 0 ? (
                     <div
-                      key={b._id}
                       style={{
                         backgroundColor: '#ffffff',
                         border: '1px solid #e2e8f0',
                         borderRadius: '12px',
-                        padding: '20px 24px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '16px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                        padding: '48px 24px',
+                        textAlign: 'center',
                       }}
                     >
-                      <div>
-                        <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                          {b.hotelName}
-                        </h5>
-                        <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-                          Mã đơn: <strong>{b.bookingCode}</strong> · {b.bookingDetails?.[0]?.roomTypeName}
-                        </div>
-                        <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                          Kỳ nghỉ: {formatStayDates(b.checkInDate, b.checkOutDate)}
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="dark"
-                        size="sm"
-                        className="rounded-pill px-4 fw-semibold"
-                        onClick={() => handleOpenCreateModal(b)}
-                      >
-                        Viết đánh giá
-                      </Button>
+                      <div style={{ fontSize: '40px', marginBottom: '12px' }}>✍️</div>
+                      <h5 style={{ fontWeight: 700, color: '#0f172a' }}>Bạn chưa có đánh giá nào</h5>
+                      <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '420px', margin: '0 auto 16px' }}>
+                        Chia sẻ cảm nhận sau mỗi chuyến đi để giúp khách sạn nâng cao dịch vụ và nhận nhiều quyền lợi từ VinaStay.
+                      </p>
+                      {pendingBookings.length > 0 && (
+                        <Button
+                          variant="dark"
+                          size="sm"
+                          onClick={() => setActiveTab('PENDING')}
+                          className="rounded-pill px-4"
+                        >
+                          Xem các kỳ nghỉ chưa đánh giá ({pendingBookings.length})
+                        </Button>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )
+                  ) : (
+                    /* LIST CÁC CARD ĐÁNH GIÁ */
+                    <div className="d-flex flex-column gap-3">
+                      {reviews.map((rev) => {
+                        const booking = rev.bookingId || {};
+                        const hotel = rev.hotelId || {};
+                        const hotelName = hotel.name || booking.hotelName || 'Hanoi Heritage Hotel';
+                        const bookingCode = booking.bookingCode || 'VS141026-024';
+                        const roomTypeName =
+                          booking.bookingDetails?.[0]?.roomTypeName || 'Deluxe giường đôi';
+
+                        const stayDatesStr = formatStayDates(
+                          booking.checkInDate || '2026-10-14T14:00:00.000Z',
+                          booking.checkOutDate || '2026-10-16T12:00:00.000Z'
+                        );
+                        const postedAtStr = formatPostedAt(rev.createdAt);
+                        const canEditOrDelete = rev.canEditOrDelete !== false;
+
+                        return (
+                          <div
+                            key={rev._id}
+                            style={{
+                              backgroundColor: '#ffffff',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '12px',
+                              padding: '20px 24px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <div className="d-flex justify-content-between align-items-start mb-2">
+                              <div>
+                                <h3
+                                  style={{
+                                    fontSize: '17px',
+                                    fontWeight: 700,
+                                    color: '#0f172a',
+                                    marginBottom: '4px',
+                                  }}
+                                >
+                                  {hotelName}
+                                </h3>
+                                <div style={{ fontSize: '13px', color: '#475569' }}>
+                                  Mã đơn: <strong>{bookingCode}</strong> · {roomTypeName}
+                                </div>
+                              </div>
+
+                              <div className="d-flex align-items-center gap-2">
+                                {canEditOrDelete ? (
+                                  <span
+                                    style={{
+                                      backgroundColor: '#eff6ff',
+                                      color: '#0284c7',
+                                      border: '1px solid #bfdbfe',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      fontWeight: 600,
+                                      padding: '3px 8px',
+                                    }}
+                                  >
+                                    Có thể sửa/xóa (7 ngày)
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      backgroundColor: '#f1f5f9',
+                                      color: '#64748b',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      fontWeight: 500,
+                                      padding: '3px 8px',
+                                    }}
+                                  >
+                                    Đã khóa
+                                  </span>
+                                )}
+
+                                <span
+                                  style={{
+                                    backgroundColor: '#f8fafc',
+                                    color: '#334155',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    padding: '3px 8px',
+                                  }}
+                                >
+                                  Đã gửi đánh giá
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Dòng ngày kỳ nghỉ & ngày đăng */}
+                            <div
+                              className="d-flex flex-wrap gap-4 align-items-center my-2"
+                              style={{ fontSize: '12.5px', color: '#64748b' }}
+                            >
+                              <span>
+                                <strong>Kỳ nghỉ:</strong> {stayDatesStr}
+                              </span>
+                              <span>
+                                <strong>Đăng lúc:</strong> {postedAtStr}
+                              </span>
+                            </div>
+
+                            {/* Điểm sao */}
+                            <div className="d-flex align-items-center gap-2 mb-2">
+                              <div className="d-flex align-items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <FaStar
+                                    key={star}
+                                    size={14}
+                                    style={{ color: star <= rev.rating ? '#f59e0b' : '#cbd5e1' }}
+                                  />
+                                ))}
+                              </div>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>
+                                {rev.rating}/5
+                              </span>
+                            </div>
+
+                            {/* Trích đoạn bình luận */}
+                            <div
+                              style={{
+                                fontSize: '13.5px',
+                                color: '#334155',
+                                lineHeight: 1.6,
+                                backgroundColor: '#f8fafc',
+                                padding: '10px 14px',
+                                borderRadius: '8px',
+                                marginBottom: '12px',
+                                borderLeft: '3px solid #cbd5e1',
+                              }}
+                            >
+                              "{rev.comment}"
+                            </div>
+
+                            {/* Thumbnail ảnh (nếu có) */}
+                            {rev.images && rev.images.length > 0 && (
+                              <div className="d-flex gap-2 mb-3">
+                                {rev.images.map((img, i) => (
+                                  <img
+                                    key={i}
+                                    src={typeof img === 'string' ? img : img.url}
+                                    alt=""
+                                    style={{
+                                      width: '400px',
+                                      height: '200px',
+                                      objectFit: 'cover',
+                                      borderRadius: '6px',
+                                      border: '1px solid #e2e8f0',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Phản hồi từ khách sạn (nếu có) */}
+                            {rev.partnerReply && rev.partnerReply.content && (
+                              <div
+                                style={{
+                                  fontSize: '12px',
+                                  color: '#0369a1',
+                                  backgroundColor: '#f0f9ff',
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  marginBottom: '12px',
+                                }}
+                              >
+                                <FaReply className="me-1" /> <strong>Khách sạn đã phản hồi:</strong> "{rev.partnerReply.content}"
+                              </div>
+                            )}
+
+                            {/* NÚT "XEM CHI TIẾT & CHỈNH SỬA" */}
+                            <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetail(rev)}
+                                style={{
+                                  backgroundColor: '#0f172a',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  borderRadius: '6px',
+                                  padding: '6px 16px',
+                                  fontSize: '12.5px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                }}
+                              >
+                                <FaEdit size={11} /> Xem chi tiết / Chỉnh sửa
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : (
+                  /* TAB 2: CÁC KỲ NGHỈ CHƯA ĐÁNH GIÁ */
+                  pendingBookings.length === 0 ? (
+                    <div
+                      style={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '48px 24px',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
+                      <h5 style={{ fontWeight: 700, color: '#0f172a' }}>Tất cả kỳ nghỉ đã được đánh giá</h5>
+                      <p style={{ fontSize: '13.5px', color: '#64748b', maxWidth: '420px', margin: '0 auto' }}>
+                        Cảm ơn bạn đã luôn đóng góp phản hồi quý báu cho các chuyến đi tại VinaStay!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="d-flex flex-column gap-3">
+                      {pendingBookings.map((b) => (
+                        <div
+                          key={b._id}
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '12px',
+                            padding: '20px 24px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '16px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                          }}
+                        >
+                          <div>
+                            <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
+                              {b.hotelName}
+                            </h5>
+                            <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
+                              Mã đơn: <strong>{b.bookingCode}</strong> · {b.bookingDetails?.[0]?.roomTypeName || 'Phòng nghỉ'}
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                              Kỳ nghỉ: {formatStayDates(b.checkInDate, b.checkOutDate)}
+                            </div>
+                          </div>
+
+                          {/* BẤM "VIẾT ĐÁNH GIÁ" SẼ NHẢY QUA TRANG CHIA SẺ TRẢI NGHIỆM LƯU TRÚ */}
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="rounded-pill px-4 fw-semibold"
+                            style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
+                            onClick={() => navigate(`/write-review/${b._id}`)}
+                          >
+                            Viết đánh giá
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
             )}
           </Col>
         </Row>
       </Container>
 
-      {/* MODAL TẠO ĐÁNH GIÁ MỚI */}
-      <Modal
-        show={showCreateModal}
-        onHide={() => !createLoading && setShowCreateModal(false)}
-        centered
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>
-            Đánh giá kỳ nghỉ
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedBookingForReview && (
-            <Form onSubmit={handleSubmitNewReview}>
-              <div
-                style={{
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  marginBottom: '20px',
-                }}
-              >
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
-                  {selectedBookingForReview.hotelName}
-                </div>
-                <div style={{ fontSize: '13px', color: '#64748b' }}>
-                  {selectedBookingForReview.bookingCode} ·{' '}
-                  {selectedBookingForReview.bookingDetails?.[0]?.roomTypeName}
-                </div>
-                <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                  Kỳ nghỉ: {formatStayDates(selectedBookingForReview.checkInDate, selectedBookingForReview.checkOutDate)}
-                </div>
-              </div>
-
-              {/* Chấm điểm sao */}
-              <Form.Group className="mb-3">
-                <Form.Label style={{ fontSize: '13.5px', fontWeight: 600, color: '#334155' }}>
-                  Điểm đánh giá (1–5 sao)
-                </Form.Label>
-                <div className="d-flex align-items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <FaStar
-                      key={star}
-                      size={24}
-                      style={{
-                        cursor: 'pointer',
-                        color: star <= newReviewForm.rating ? '#eab308' : '#e2e8f0',
-                        transition: 'color 0.15s ease',
-                      }}
-                      onClick={() => setNewReviewForm({ ...newReviewForm, rating: star })}
-                    />
-                  ))}
-                  <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#0f172a', marginLeft: '6px' }}>
-                    {newReviewForm.rating}/5 sao
-                  </span>
-                </div>
-              </Form.Group>
-
-              {/* Nội dung đánh giá */}
-              <Form.Group className="mb-3">
-                <Form.Label style={{ fontSize: '13.5px', fontWeight: 600, color: '#334155' }}>
-                  Chia sẻ cảm nhận chi tiết
-                </Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={4}
-                  required
-                  placeholder="Phòng sạch sẽ, vị trí trung tâm tiện đi lại, nhân viên nhiệt tình..."
-                  value={newReviewForm.comment}
-                  onChange={(e) => setNewReviewForm({ ...newReviewForm, comment: e.target.value })}
-                  style={{ fontSize: '13.5px', borderRadius: '8px' }}
-                />
-              </Form.Group>
-
-              {/* Đính kèm ảnh */}
-              <Form.Group className="mb-4">
-                <Form.Label style={{ fontSize: '13.5px', fontWeight: 600, color: '#334155' }}>
-                  Hình ảnh thực tế đính kèm (tùy chọn)
-                </Form.Label>
-                <div className="d-flex gap-2 mb-2">
-                  <Form.Control
-                    type="url"
-                    placeholder="Dán link ảnh (https://...)"
-                    value={newImageUrl}
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    style={{ fontSize: '13px' }}
-                  />
-                  <Button
-                    variant="outline-secondary"
-                    size="sm"
-                    type="button"
-                    onClick={() => {
-                      if (!newImageUrl.trim()) return;
-                      const url = newImageUrl.trim();
-                      const publicId = url.split('/').pop()?.split('?')[0] || 'review_img';
-                      setNewReviewForm((prev) => ({
-                        ...prev,
-                        images: [...prev.images, { url, publicId }],
-                      }));
-                      setNewImageUrl('');
-                    }}
-                  >
-                    Thêm
-                  </Button>
-                </div>
-
-                {newReviewForm.images.length > 0 && (
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {newReviewForm.images.map((img, i) => (
-                      <div
-                        key={i}
-                        className="position-relative"
-                        style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden' }}
-                      >
-                        <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setNewReviewForm((prev) => ({
-                              ...prev,
-                              images: prev.images.filter((_, idx) => idx !== i),
-                            }))
-                          }
-                          style={{
-                            position: 'absolute',
-                            top: 2,
-                            right: 2,
-                            backgroundColor: 'rgba(0,0,0,0.6)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '18px',
-                            height: '18px',
-                            fontSize: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Form.Group>
-
-              <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-                <Button
-                  variant="light"
-                  size="sm"
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Hủy
-                </Button>
-                <Button
-                  variant="dark"
-                  size="sm"
-                  type="submit"
-                  disabled={createLoading}
-                  className="rounded-pill px-4"
-                >
-                  {createLoading ? <Spinner size="sm" animation="border" /> : 'Gửi đánh giá'}
-                </Button>
-              </div>
-            </Form>
-          )}
-        </Modal.Body>
-      </Modal>
     </div>
   );
 };

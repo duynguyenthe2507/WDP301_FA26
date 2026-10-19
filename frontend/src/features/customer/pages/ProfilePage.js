@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import {
   FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes
 } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
+import CustomerSidebar from '../components/CustomerSidebar';
 import { getMyProfile, updateMyProfile, changePassword } from '../CustomerApi';
 
-const ProfilePage = () => {
+const ProfilePage = ({ section = "profile" }) => {
   const { logout } = useContext(AuthContext);
 
   const [profile, setProfile] = useState(null);
@@ -117,45 +118,34 @@ const ProfilePage = () => {
   }
 
   return (
-    <div style={{ background: '#f8f9fa', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ background: '#1a202c', padding: '3rem 0' }}>
-        <Container>
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold"
-              style={{
-                width: '72px',
-                height: '72px',
-                background: '#d4af37',
-                fontSize: '1.8rem',
-                flexShrink: 0
-              }}
-            >
-              {profile?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            <div>
-              <h2
-                className="text-white fw-bold mb-1"
-                style={{ fontFamily: 'Playfair Display, serif' }}
-              >
-                {profile?.fullName}
-              </h2>
-              <Badge
-                style={{ background: '#d4af37' }}
-                className="px-3 py-1 rounded-pill"
-              >
-                Khách hàng
-              </Badge>
-            </div>
-          </div>
-        </Container>
-      </div>
+    <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
+      <Container style={{ maxWidth: '1440px' }}>
+        <h1
+          style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            color: '#0f172a',
+            marginBottom: '4px',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          {section === 'password' ? 'Đổi mật khẩu' : 'Hồ sơ cá nhân'}
+        </h1>
+        <p style={{ fontSize: '13.5px', color: '#64748b', marginBottom: '28px' }}>
+          {section === 'password'
+            ? 'Cập nhật mật khẩu để bảo vệ tài khoản của bạn.'
+            : 'Quản lý thông tin tài khoản của bạn.'}
+        </p>
 
-      <Container className="py-5">
         <Row className="g-4">
+          <Col lg={3} md={4}>
+            <CustomerSidebar activeKey={section} />
+          </Col>
+
+          <Col lg={9} md={8}>
+            <Row className="g-4">
           {/* Profile info card */}
-          <Col lg={7}>
+          <Col lg={7} className={section === "password" ? "d-none" : ""}>
             <Card className="border-0 shadow-sm rounded-4">
               <Card.Body className="p-4 p-md-5">
                 <div className="d-flex justify-content-between align-items-center mb-4">
@@ -270,7 +260,7 @@ const ProfilePage = () => {
           </Col>
 
           {/* Change password card */}
-          <Col lg={5}>
+          <Col lg={7} className={section === "profile" ? "d-none" : ""}>
             <Card className="border-0 shadow-sm rounded-4">
               <Card.Body className="p-4 p-md-5">
                 <h4
@@ -351,6 +341,8 @@ const ProfilePage = () => {
                 </Form>
               </Card.Body>
             </Card>
+          </Col>
+            </Row>
           </Col>
         </Row>
       </Container>

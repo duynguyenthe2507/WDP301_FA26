@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { Container, Row, Col, Modal, Button, Form, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Modal, Button, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaStar } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
-import { getMyBookings } from '../CustomerApi';
+import { getMyBookings, getMyReviews } from '../CustomerApi';
 
 // Định dạng tiền tệ VND
 const formatPrice = (price) =>
@@ -37,16 +36,10 @@ const BookingHistoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('ALL');
+  const [reviewedIds, setReviewedIds] = useState(new Set());
 
   // Timer đồng hồ đếm ngược thời gian thực cho đơn chờ thanh toán
   const [currentTime, setCurrentTime] = useState(Date.now());
-
-  // Modal Đánh giá kỳ nghỉ
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedReviewBooking, setSelectedReviewBooking] = useState(null);
-  const [rating, setRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   // Modal Thông tin hoàn tiền
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -88,6 +81,13 @@ const BookingHistoryPage = () => {
 
   useEffect(() => {
     fetchBookings();
+    getMyReviews()
+      .then((res) =>
+        setReviewedIds(
+          new Set((res.data?.reviews || []).map((r) => String(r.bookingId?._id || r.bookingId)))
+        )
+      )
+      .catch(() => { }); // lỗi tải đánh giá: mặc định hiện nút "Đánh giá kỳ nghỉ"
   }, [user]);
 
   // Phân loại trạng thái đặt phòng
@@ -165,24 +165,6 @@ const BookingHistoryPage = () => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Xử lý nộp đánh giá
-  const handleOpenReview = (booking) => {
-    setSelectedReviewBooking(booking);
-    setRating(5);
-    setReviewComment('');
-    setReviewSubmitted(false);
-    setShowReviewModal(true);
-  };
-
-  const handleSubmitReview = (e) => {
-    e.preventDefault();
-    setReviewSubmitted(true);
-    setTimeout(() => {
-      setShowReviewModal(false);
-      setReviewSubmitted(false);
-    }, 1200);
-  };
-
   // Xử lý mở thông tin hoàn tiền
   const handleOpenRefund = (booking) => {
     setSelectedRefundBooking(booking);
@@ -200,7 +182,7 @@ const BookingHistoryPage = () => {
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
-      <Container>
+      <Container style={{ maxWidth: '1440px' }}>
 
         {/* TIÊU ĐỀ TRANG */}
         <h1
@@ -424,7 +406,13 @@ const BookingHistoryPage = () => {
                     paymentLine = 'Thanh toán: Đã thanh toán';
                     actionBtn = (
                       <button
-                        onClick={() => handleOpenReview(booking)}
+                        onClick={() =>
+                          navigate(
+                            reviewedIds.has(String(booking._id))
+                              ? '/my-reviews'
+                              : `/write-review/${booking._id}`
+                          )
+                        }
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #d1d5db',
@@ -439,7 +427,7 @@ const BookingHistoryPage = () => {
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
                       >
-                        Đánh giá kỳ nghỉ
+                        {reviewedIds.has(String(booking._id)) ? 'Xem đánh giá' : 'Đánh giá kỳ nghỉ'}
                       </button>
                     );
                   } else if (category === 'CANCELLED') {
@@ -612,86 +600,6 @@ const BookingHistoryPage = () => {
           </Col>
         </Row>
       </Container>
-
-      {/* MODAL ĐÁNH GIÁ KỲ NGHỈ */}
-      <Modal
-        show={showReviewModal}
-        onHide={() => setShowReviewModal(false)}
-        centered
-        backdrop="static"
-      >
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
-            Đánh giá kỳ nghỉ
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="pt-2">
-          {reviewSubmitted ? (
-            <div className="text-center py-4 text-success">
-              <div style={{ fontSize: '36px', marginBottom: '8px' }}>✓</div>
-              <h6 className="fw-bold mb-1">Cảm ơn bạn đã gửi đánh giá!</h6>
-              <p className="small text-muted mb-0">Đánh giá của bạn giúp VinaStay hoàn thiện chất lượng dịch vụ mỗi ngày.</p>
-            </div>
-          ) : (
-            <Form onSubmit={handleSubmitReview}>
-              <div className="mb-3">
-                <div style={{ fontSize: '14.5px', fontWeight: 600, color: '#1e293b' }}>
-                  {selectedReviewBooking?.hotelName || 'Khách sạn'}
-                </div>
-                <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                  Mã đơn: {selectedReviewBooking?.bookingCode}
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold text-dark">Chấm điểm kỳ nghỉ của bạn:</label>
-                <div className="d-flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <FaStar
-                      key={star}
-                      size={24}
-                      style={{
-                        cursor: 'pointer',
-                        color: star <= rating ? '#eab308' : '#e2e8f0',
-                        transition: 'color 0.15s ease',
-                      }}
-                      onClick={() => setRating(star)}
-                    />
-                  ))}
-                  <span className="ms-2 small fw-semibold text-secondary align-self-center">
-                    {rating === 5 ? 'Tuyệt vời (5/5)' : rating === 4 ? 'Rất tốt (4/5)' : rating === 3 ? 'Hài lòng (3/5)' : 'Chưa tốt'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold text-dark">Chia sẻ cảm nhận chi tiết:</label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  placeholder="Không gian phòng, thái độ nhân viên, vị trí và dịch vụ tại khách sạn..."
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  style={{ fontSize: '13px', borderRadius: '8px' }}
-                />
-              </div>
-
-              <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-                <Button variant="light" size="sm" onClick={() => setShowReviewModal(false)}>
-                  Hủy
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
-                >
-                  Gửi đánh giá
-                </Button>
-              </div>
-            </Form>
-          )}
-        </Modal.Body>
-      </Modal>
 
       {/* MODAL THÔNG TIN HOÀN TIỀN */}
       <Modal

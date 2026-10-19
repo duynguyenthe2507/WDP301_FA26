@@ -12,7 +12,7 @@ export const AuthContext = createContext({
 });
 
 // Các trang yêu cầu đăng nhập (khớp với ProtectedRoute / layout theo role trong App.js)
-const PROTECTED_PREFIXES = ['/booking', '/booking-history', '/profile', '/my-reviews', '/reviews', '/admin', '/partner', '/manager'];
+const PROTECTED_PREFIXES = ['/booking', '/booking-history', '/profile', '/change-password', '/my-reviews', '/reviews', '/admin', '/partner', '/manager'];
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);

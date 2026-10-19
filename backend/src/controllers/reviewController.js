@@ -346,3 +346,44 @@ export const deleteReview = async (req, res) => {
     res.status(500).json({ message: 'Lỗi hệ thống khi xóa đánh giá', error: error.message });
   }
 };
+
+// GET /api/customer/reviews/booking-info/:bookingId
+// Lấy thông tin đơn đặt phòng và khách sạn phục vụ trang "Chia sẻ trải nghiệm lưu trú"
+export const getBookingReviewInfo = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    let booking = null;
+    if (mongoose.isValidObjectId(bookingId)) {
+      booking = await Booking.findById(bookingId).lean();
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ bookingCode: bookingId }).lean();
+    }
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin kỳ nghỉ này' });
+    }
+
+    const existingReview = await Review.findOne({ bookingId: booking._id }).lean();
+
+    let hotel = null;
+    if (booking.hotelId && mongoose.isValidObjectId(booking.hotelId)) {
+      hotel = await Hotel.findById(booking.hotelId).lean();
+    }
+    if (!hotel) {
+      hotel = await Hotel.findOne({ name: booking.hotelName }).lean() || await Hotel.findOne().lean();
+    }
+
+    res.status(200).json({
+      success: true,
+      booking,
+      hotel,
+      hasReviewed: Boolean(existingReview),
+      existingReview,
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin đơn để đánh giá:', error);
+    res.status(500).json({ message: 'Lỗi hệ thống', error: error.message });
+  }
+};
+

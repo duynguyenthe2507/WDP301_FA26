@@ -22,7 +22,7 @@ const CustomerSidebar = ({ activeKey = 'reviews' }) => {
   const menuItems = [
     { key: 'bookings', label: 'Lịch sử đặt phòng', path: '/booking-history' },
     { key: 'profile', label: 'Hồ sơ cá nhân', path: '/profile' },
-    { key: 'password', label: 'Đổi mật khẩu', path: '/profile' },
+    { key: 'password', label: 'Đổi mật khẩu', path: '/change-password' },
     { key: 'reviews', label: 'Đánh giá của tôi', path: '/my-reviews' },
     {
       key: 'complaints',
