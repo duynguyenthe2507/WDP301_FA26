@@ -30,3 +30,11 @@ export const createPendingBooking = (payload) => api.post('/api/customer/booking
 export const verifyVNPayPayment = (params) => api.get('/api/customer/bookings/vnpay-verify', { params });
 export const getBookingByCode = (bookingCode) => api.get(`/api/customer/bookings/${bookingCode}`);
 export const getMyBookings = (params = {}) => api.get('/api/customer/my-bookings', { params });
+
+// Đánh giá kỳ nghỉ (Reviews)
+export const getMyReviews = () => api.get('/api/customer/reviews');
+export const getPendingReviewBookings = () => api.get('/api/customer/reviews/pending-bookings');
+export const createReview = (payload) => api.post('/api/customer/reviews', payload);
+export const updateReview = (id, payload) => api.put(`/api/customer/reviews/${id}`, payload);
+export const deleteReview = (id) => api.delete(`/api/customer/reviews/${id}`);
+

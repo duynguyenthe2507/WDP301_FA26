@@ -81,7 +81,6 @@ export const cleanExpiredPendingBookings = async () => {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
     const deleteResult = await Booking.deleteMany({
-      bookingCode: { $ne: 'VS051226-096' },
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
       createdAt: { $lte: tenMinutesAgo },
@@ -170,6 +169,10 @@ export const createPendingBooking = async (req, res) => {
       return res.status(400).json({ message: 'Số lượng phòng đặt không hợp lệ' });
     }
 
+    if (!Number(totalAmount) || Number(totalAmount) < 10000) {
+      return res.status(400).json({ message: 'Tổng tiền đặt phòng không hợp lệ' });
+    }
+
     // Sinh mã đặt phòng duy nhất: VNS + YYYYMMDD + 4 số ngẫu nhiên
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
@@ -198,15 +201,8 @@ export const createPendingBooking = async (req, res) => {
       checkInDate: checkInDate ? new Date(checkInDate) : new Date(),
       checkOutDate: checkOutDate ? new Date(checkOutDate) : new Date(Date.now() + 86400000),
       totalNights: Math.max(1, Number(totalNights) || 1),
-      bookingDetails: bookingDetails && bookingDetails.length > 0 ? bookingDetails : [
-        {
-          roomTypeName: 'Phòng Deluxe',
-          quantity: 1,
-          pricePerNight: totalAmount || 1500000,
-          totalPrice: totalAmount || 1500000,
-        }
-      ],
-      totalAmount: Math.max(10000, Number(totalAmount) || 1500000),
+      bookingDetails,
+      totalAmount: Number(totalAmount),
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: 'UNPAID',
       paymentMethod: 'VNPAY',
@@ -350,13 +346,7 @@ export const getBookingByCode = async (req, res) => {
       return res.status(403).json({ message: 'Bạn không có quyền xem đơn đặt phòng này' });
     }
 
-    // Đảm bảo đơn mẫu VS051226-096 luôn còn hạn thanh toán cho trải nghiệm test
-    if (booking.bookingCode === 'VS051226-096') {
-      if (Date.now() - new Date(booking.createdAt).getTime() >= 10 * 60 * 1000) {
-        booking.createdAt = new Date(Date.now() - 90 * 1000);
-        await Booking.updateOne({ _id: booking._id }, { $set: { createdAt: booking.createdAt } });
-      }
-    } else if (booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID') {
+    if (booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID') {
       // Nếu đơn phòng đang ở trạng thái PENDING_PAYMENT nhưng đã quá 10 phút -> Xóa luôn
       const isExpired = new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
 
@@ -423,25 +413,6 @@ export const getMyBookings = async (req, res) => {
     }
 
     let bookings = await Booking.find(filter).sort({ createdAt: -1 });
-
-    // Đơn mẫu VS051226-096 luôn còn hạn thanh toán cho trải nghiệm test
-    bookings.forEach((b) => {
-      if (
-        b.bookingStatus === 'PENDING_PAYMENT' &&
-        b.bookingCode === 'VS051226-096' &&
-        Date.now() - new Date(b.createdAt).getTime() >= 10 * 60 * 1000
-      ) {
-        b.createdAt = new Date(Date.now() - 90 * 1000);
-        Booking.updateOne({ _id: b._id }, { $set: { createdAt: b.createdAt } }).exec();
-      }
-    });
-
-    // Nếu người dùng chưa có đơn nào, hỗ trợ hiển thị 4 đơn mẫu để xem giao diện chuẩn
-    if (bookings.length === 0) {
-      bookings = await Booking.find({
-        bookingCode: { $in: ['VS201126-081', 'VS051226-096', 'VS141026-024', 'VS011026-012'] }
-      }).sort({ createdAt: -1 });
-    }
 
     // 3. Tìm kiếm theo từ khóa nếu có
     if (search && search.trim()) {

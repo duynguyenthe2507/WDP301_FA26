@@ -3,6 +3,7 @@ import { Container, Row, Col, Modal, Button, Form, Spinner } from 'react-bootstr
 import { Link, useNavigate } from 'react-router-dom';
 import { FaStar } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
+import CustomerSidebar from '../components/CustomerSidebar';
 import { getMyBookings } from '../CustomerApi';
 
 // Định dạng tiền tệ VND
@@ -30,7 +31,7 @@ const DEFAULT_ROOM_IMAGE =
 
 const BookingHistoryPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -164,17 +165,6 @@ const BookingHistoryPage = () => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Lấy chữ cái viết tắt đại diện Avatar (ví dụ: "Nguyễn Minh Anh" -> "MA")
-  const getUserInitials = (name) => {
-    if (!name) return 'MA';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
-  const displayName = user?.fullName || 'Nguyễn Minh Anh';
-  const displayInitials = getUserInitials(displayName);
-
   // Xử lý nộp đánh giá
   const handleOpenReview = (booking) => {
     setSelectedReviewBooking(booking);
@@ -209,16 +199,8 @@ const BookingHistoryPage = () => {
   ];
 
   return (
-    <div
-      style={{
-        backgroundColor: '#f8fafc',
-        minHeight: '100vh',
-        padding: '24px 0 60px',
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      }}
-    >
-      <Container style={{ maxWidth: '1500px' }}>
+    <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
+      <Container>
 
         {/* TIÊU ĐỀ TRANG */}
         <h1
@@ -240,153 +222,7 @@ const BookingHistoryPage = () => {
         <Row className="g-4">
           {/* CỘT TRÁI: SIDEBAR THÔNG TIN TÀI KHOẢN */}
           <Col lg={3} md={4}>
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '20px 16px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              }}
-            >
-              {/* Profile Card Header */}
-              <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    backgroundColor: '#fef3c7',
-                    color: '#92400e',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '14.5px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {displayInitials}
-                </div>
-                <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      fontSize: '14.5px',
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {displayName}
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-                    Tài khoản khách hàng
-                  </div>
-                </div>
-              </div>
-
-              {/* Menu điều hướng sidebar */}
-              <div className="d-flex flex-column gap-1">
-                {/* Lịch sử đặt phòng (Active) */}
-                <div
-                  style={{
-                    backgroundColor: '#eff6ff',
-                    color: '#0284c7',
-                    fontWeight: 600,
-                    borderRadius: '8px',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Lịch sử đặt phòng
-                </div>
-
-                <div
-                  onClick={() => navigate('/profile')}
-                  style={{
-                    color: '#334155',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  Hồ sơ cá nhân
-                </div>
-
-                <div
-                  onClick={() => navigate('/profile')}
-                  style={{
-                    color: '#334155',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  Đổi mật khẩu
-                </div>
-
-                <div
-                  onClick={() => setActiveTab('COMPLETED')}
-                  style={{
-                    color: '#334155',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  Đánh giá của tôi
-                </div>
-
-                <div
-                  onClick={() => alert('Bộ phận Chăm sóc khách hàng VinaStay luôn sẵn sàng hỗ trợ qua hotline 1900 6868 hoặc email support@vinastay.vn.')}
-                  style={{
-                    color: '#334155',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  Khiếu nại của tôi
-                </div>
-
-                <div style={{ borderTop: '1px solid #f1f5f9', margin: '8px 0' }} />
-
-                <div
-                  onClick={logout}
-                  style={{
-                    color: '#64748b',
-                    padding: '9px 12px',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    borderRadius: '8px',
-                    transition: 'color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#dc2626')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#64748b')}
-                >
-                  Đăng xuất
-                </div>
-              </div>
-            </div>
+            <CustomerSidebar activeKey="bookings" />
           </Col>
 
           {/* CỘT PHẢI: BỘ LỌC TABS & DANH SÁCH ĐƠN PHÒNG */}
@@ -484,9 +320,9 @@ const BookingHistoryPage = () => {
                   const roomCount = detailsList.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0) || 1;
                   const roomName = detailsList.length > 1
                     ? `${detailsList[0].roomTypeName || 'Phòng'} (+${detailsList.length - 1} loại phòng khác)`
-                    : (detailsList[0]?.roomTypeName || 'Deluxe giường đôi');
-                  const hotelName = booking.hotelName || 'Hanoi Heritage Hotel';
-                  const totalNights = booking.totalNights || 2;
+                    : (detailsList[0]?.roomTypeName || '');
+                  const hotelName = booking.hotelName || '';
+                  const totalNights = booking.totalNights || 1;
                   const stayDateStr = formatStayDates(booking.checkInDate, booking.checkOutDate);
 
                   // 1. Phân loại cấu hình giao diện theo trạng thái

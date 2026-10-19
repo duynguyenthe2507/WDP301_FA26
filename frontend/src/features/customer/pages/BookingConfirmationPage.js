@@ -98,7 +98,7 @@ const BookingConfirmationPage = () => {
       ? booking.bookingDetails
       : [
         {
-          roomTypeName: booking.roomTypeName || 'Phòng Deluxe',
+          roomTypeName: booking.roomTypeName || '',
           quantity: booking.roomQuantity || 1,
           pricePerNight:
             booking.pricePerNight ||
@@ -274,7 +274,7 @@ const BookingConfirmationPage = () => {
                         <div>
                           <strong className="text-dark d-block">
                             <span className="badge bg-secondary me-2">#{idx + 1}</span>
-                            {room.roomTypeName || 'Phòng Deluxe'}
+                            {room.roomTypeName}
                           </strong>
                           <div className="text-secondary small mt-1 d-flex flex-wrap align-items-center gap-2">
                             <span>

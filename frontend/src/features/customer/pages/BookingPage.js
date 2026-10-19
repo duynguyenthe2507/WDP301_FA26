@@ -46,7 +46,11 @@ const BookingPage = () => {
     : rawState;
   const hotel = stateData.hotel || {};
 
-  const roomType = stateData.roomType || {};
+  // Chưa chọn phòng (vào thẳng /booking) -> quay về danh sách khách sạn
+  const hasBookingData = Array.isArray(stateData.selectedRooms) && stateData.selectedRooms.length > 0;
+  useEffect(() => {
+    if (!hasBookingData) navigate('/hotels', { replace: true });
+  }, [hasBookingData, navigate]);
 
   // Nếu người dùng nhấn vào thanh toán lại một đơn cũ nhưng đã quá 10 phút
   useEffect(() => {
@@ -59,44 +63,17 @@ const BookingPage = () => {
     }
   }, [pendingBooking, navigate]);
 
-  const checkIn =
-    stateData.checkIn ||
-    new Date(Date.now() + 86400000).toISOString().split('T')[0];
-  const checkOut =
-    stateData.checkOut ||
-    new Date(Date.now() + 172800000).toISOString().split('T')[0];
+  const checkIn = stateData.checkIn || '';
+  const checkOut = stateData.checkOut || '';
   const nights = Math.max(
     1,
     Number(stateData.nights) ||
     Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) ||
     1
   );
-  const quantity = Number(stateData.quantity) || 1;
-  const pricePerNight = Number(roomType.price_per_night || roomType.base_price || roomType.basePrice) || 1500000;
 
-  // Hỗ trợ cả 1 loại phòng và nhiều loại phòng
-  const selectedRooms = stateData.selectedRooms || [
-    {
-      ...roomType,
-      quantity,
-      base_price: pricePerNight,
-      name: roomType.name,
-    },
-  ];
-
-  const bookingDetailsList =
-    stateData.bookingDetails ||
-    selectedRooms.map((r) => {
-      const rPrice = Number(r.base_price || r.basePrice || r.price_per_night) || 1500000;
-      const rQty = Number(r.quantity) || 1;
-      return {
-        roomTypeId: r._id || r.id || 'standard',
-        roomTypeName: r.name,
-        quantity: rQty,
-        pricePerNight: rPrice,
-        totalPrice: rPrice * rQty * nights,
-      };
-    });
+  const selectedRooms = stateData.selectedRooms || [];
+  const bookingDetailsList = stateData.bookingDetails || [];
 
   const totalQuantity = selectedRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
 

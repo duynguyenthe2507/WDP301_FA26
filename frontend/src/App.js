@@ -23,6 +23,7 @@ import BookingPage from './features/customer/pages/BookingPage';
 import BookingConfirmationPage from './features/customer/pages/BookingConfirmationPage';
 import VNPayReturnPage from './features/customer/pages/VNPayReturnPage';
 import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
+import MyReviewsPage from './features/customer/pages/MyReviewsPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
@@ -52,12 +53,14 @@ function App() {
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
             <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
 
-            {/* Đặt phòng, lịch sử, profile - yêu cầu đăng nhập CUSTOMER */}
+            {/* Đặt phòng, lịch sử, profile, đánh giá - yêu cầu đăng nhập CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
               <Route path="booking" element={<BookingPage />} />
               <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
               <Route path="booking-history" element={<BookingHistoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="my-reviews" element={<MyReviewsPage />} />
+              <Route path="reviews" element={<MyReviewsPage />} />
             </Route>
           </Route>
 

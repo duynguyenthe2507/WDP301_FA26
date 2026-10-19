@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHotel, FaUserCircle, FaHistory } from 'react-icons/fa';
+import { FaHotel, FaUserCircle, FaHistory, FaStar } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 
 const NavigationBar = () => {
@@ -22,11 +22,14 @@ const NavigationBar = () => {
 
             {user ? (
               <>
-                {/* Link lịch sử đặt phòng & hồ sơ - chỉ hiện với CUSTOMER */}
+                {/* Link lịch sử đặt phòng, đánh giá & hồ sơ - chỉ hiện với CUSTOMER */}
                 {user.role === 'CUSTOMER' && (
                   <>
                     <Nav.Link as={Link} to="/booking-history" active={location.pathname === '/booking-history'} className="d-flex align-items-center">
                       <FaHistory className="me-1" /> Lịch sử đặt phòng
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/my-reviews" active={location.pathname === '/my-reviews'} className="d-flex align-items-center">
+                      <FaStar className="me-1 text-warning" /> Đánh giá của tôi
                     </Nav.Link>
                     <Nav.Link as={Link} to="/profile" active={location.pathname === '/profile'} className="d-flex align-items-center">
                       <FaUserCircle className="me-1" /> {user.fullName || 'Hồ sơ'}

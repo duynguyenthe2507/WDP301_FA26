@@ -15,6 +15,13 @@ import {
   getHotelById,
   checkRoomAvailability,
 } from '../controllers/hotelController.js';
+import {
+  getMyReviews,
+  getPendingReviewBookings,
+  createReview,
+  updateReview,
+  deleteReview,
+} from '../controllers/reviewController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 router.get('/ping', pingCustomer);
@@ -32,11 +39,19 @@ router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
 router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
 
+// Đánh giá kỳ nghỉ (Customer Reviews)
+router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
+router.get('/reviews/pending-bookings', verifyToken, authorizeRoles('CUSTOMER'), getPendingReviewBookings);
+router.post('/reviews', verifyToken, authorizeRoles('CUSTOMER'), createReview);
+router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview);
+router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
+
 // Hotel routes (Search, Filter, Detail, Availability)
 router.get('/hotels', getHotels);
 router.get('/hotels/:id', getHotelById);
 router.get('/hotels/:id/availability', checkRoomAvailability);
 
 export default router;
+
 
 
