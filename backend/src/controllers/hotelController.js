@@ -289,7 +289,9 @@ export const getHotelReviews = async (req, res) => {
     const hotelObjectId = new mongoose.Types.ObjectId(id);
 
     // Thong ke tat ca danh gia cua khach san de tinh starCounts va averageRating
-    const allReviews = await Review.find({ hotelId: hotelObjectId })
+    const allReviews = await Review.find({
+      $or: [{ hotelId: hotelObjectId }, { hotelId: id.toString() }],
+    })
       .populate('customerId', 'fullName avatarUrl email')
       .sort({ createdAt: -1 });
 
