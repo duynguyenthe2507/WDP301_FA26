@@ -75,19 +75,19 @@ export const changePassword = async (req, res) => {
 // VNPAY SANDBOX BOOKING & PAYMENT CONTROLLERS
 // ==========================================
 
-// Tự động xóa các đơn đặt phòng ở trạng thái chờ thanh toán quá 10 phút
+// Tự động xóa các đơn đặt phòng ở trạng thái chờ thanh toán quá 15 phút
 export const cleanExpiredPendingBookings = async () => {
   try {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const deleteResult = await Booking.deleteMany({
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
-      createdAt: { $lte: tenMinutesAgo },
+      createdAt: { $lte: fifteenMinutesAgo },
     });
 
     if (deleteResult.deletedCount > 0) {
-      console.log(`[Auto-Clean] Đã tự động xóa ${deleteResult.deletedCount} đơn phòng PENDING_PAYMENT quá hạn 10 phút.`);
+      console.log(`[Auto-Clean] Đã tự động xóa ${deleteResult.deletedCount} đơn phòng PENDING_PAYMENT quá hạn 15 phút.`);
     }
   } catch (error) {
     console.error('Lỗi khi tự động dọn dẹp đơn phòng quá hạn:', error.message);
@@ -297,15 +297,15 @@ export const verifyVNPayPayment = async (req, res) => {
         booking,
       });
     } else {
-      // Nếu thanh toán thất bại và đã quá 10 phút -> Xóa luôn đơn
-      const isExpired = new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
+      // Nếu thanh toán thất bại và đã quá 15 phút -> Xóa luôn đơn
+      const isExpired = new Date(Date.now() - 15 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
         await Booking.deleteOne({ _id: booking._id });
         return res.status(200).json({
           success: false,
           isExpired: true,
-          message: 'Giao dịch thanh toán thất bại và đơn phòng đã quá thời hạn 10 phút nên đã được xóa.',
+          message: 'Giao dịch thanh toán thất bại và đơn phòng đã quá thời hạn 15 phút nên đã được xóa.',
           booking: { ...booking.toObject(), bookingStatus: 'CANCELLED' },
         });
       }
@@ -347,13 +347,13 @@ export const getBookingByCode = async (req, res) => {
     }
 
     if (booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID') {
-      // Nếu đơn phòng đang ở trạng thái PENDING_PAYMENT nhưng đã quá 10 phút -> Xóa luôn
-      const isExpired = new Date(Date.now() - 10 * 60 * 1000) >= new Date(booking.createdAt);
+      // Nếu đơn phòng đang ở trạng thái PENDING_PAYMENT nhưng đã quá 15 phút -> Xóa luôn
+      const isExpired = new Date(Date.now() - 15 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
         await Booking.deleteOne({ _id: booking._id });
         return res.status(404).json({
-          message: 'Đơn đặt phòng đã hết hạn thanh toán (quá 10 phút) và đã bị xóa khỏi hệ thống.',
+          message: 'Đơn đặt phòng đã hết hạn thanh toán (quá 15 phút) và đã bị xóa khỏi hệ thống.',
           isExpired: true,
         });
       }
@@ -369,7 +369,7 @@ export const getBookingByCode = async (req, res) => {
 // Lấy danh sách lịch sử đặt phòng của khách hàng
 export const getMyBookings = async (req, res) => {
   try {
-    // Tự động dọn dẹp các đơn PENDING_PAYMENT quá hạn 10 phút trước khi truy vấn
+    // Tự động dọn dẹp các đơn PENDING_PAYMENT quá hạn 15 phút trước khi truy vấn
     await cleanExpiredPendingBookings();
 
     const customerId = req.user._id;

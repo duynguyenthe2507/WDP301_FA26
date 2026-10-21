@@ -17,7 +17,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 9999;
 
-// Định kỳ quét và tự động xóa các đơn PENDING_PAYMENT quá 10 phút (mỗi 60 giây)
+// Định kỳ quét và tự động xóa các đơn PENDING_PAYMENT quá 15 phút (mỗi 60 giây)
 setInterval(() => {
   cleanExpiredPendingBookings();
 }, 60 * 1000);

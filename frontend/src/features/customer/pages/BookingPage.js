@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
 import {
   FaUser,
   FaPhoneAlt,
@@ -27,6 +27,14 @@ const BookingPage = () => {
   const rawState = location.state || {};
   const pendingBooking = rawState.booking;
 
+  // Quay về từ VNPAY với giao dịch thất bại -> hiện modal
+  const [paymentFailedMsg, setPaymentFailedMsg] = useState(rawState.paymentFailed || '');
+  const closePaymentFailed = () => {
+    setPaymentFailedMsg('');
+    // Bỏ cờ khỏi history để F5 không hiện lại modal
+    navigate(location.pathname, { replace: true, state: { booking: pendingBooking } });
+  };
+
   // Thanh toán lại đơn cũ: dựng dữ liệu từ đơn đã lưu thay vì dùng giá mặc định
   const stateData = pendingBooking
     ? {
@@ -52,12 +60,12 @@ const BookingPage = () => {
     if (!hasBookingData) navigate('/hotels', { replace: true });
   }, [hasBookingData, navigate]);
 
-  // Nếu người dùng nhấn vào thanh toán lại một đơn cũ nhưng đã quá 10 phút
+  // Nếu người dùng nhấn vào thanh toán lại một đơn cũ nhưng đã quá 15 phút
   useEffect(() => {
     if (pendingBooking) {
-      const expiresAt = new Date(pendingBooking.createdAt).getTime() + 10 * 60 * 1000;
+      const expiresAt = new Date(pendingBooking.createdAt).getTime() + 15 * 60 * 1000;
       if (Date.now() >= expiresAt) {
-        alert('Đơn đặt phòng này đã quá thời hạn 10 phút để thanh toán và đã bị xóa trên hệ thống. Vui lòng đặt lại phòng mới.');
+        alert('Đơn đặt phòng này đã quá thời hạn 15 phút để thanh toán và đã bị xóa trên hệ thống. Vui lòng đặt lại phòng mới.');
         navigate('/hotels');
       }
     }
@@ -604,7 +612,7 @@ const BookingPage = () => {
 
                   <div className="p-2 bg-warning-subtle text-warning-emphasis border border-warning rounded-2 text-center small mt-2" style={{ fontSize: '0.8rem' }}>
                     <FaClock className="text-danger me-1" />
-                    Đơn phòng chỉ được giữ chỗ trong <strong>10 phút</strong>. Sau 10 phút chưa thanh toán, hệ thống sẽ tự động hủy và xóa đơn.
+                    Đơn phòng chỉ được giữ chỗ trong <strong>15 phút</strong>. Sau 15 phút chưa thanh toán, hệ thống sẽ tự động hủy và xóa đơn.
                   </div>
 
                   {/* CAM KẾT VÀ BẢO MẬT */}
@@ -628,6 +636,26 @@ const BookingPage = () => {
           </Col>
         </Row>
       </Container>
+
+      {/* MODAL THANH TOÁN THẤT BẠI */}
+      <Modal show={!!paymentFailedMsg} onHide={closePaymentFailed} centered>
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title style={{ fontSize: '17px', fontWeight: 700, color: '#dc3545' }}>
+            Thanh toán chưa hoàn tất
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 small">
+          <p className="mb-2">{paymentFailedMsg}</p>
+          <p className="text-muted mb-3">
+            Giao dịch chưa được trừ tiền. Bạn có thể thanh toán lại đơn <strong>{pendingBooking?.bookingCode}</strong> trong vòng 15 phút kể từ lúc đặt.
+          </p>
+          <div className="text-end border-top pt-3">
+            <Button variant="secondary" size="sm" onClick={closePaymentFailed}>
+              Đã hiểu
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
     </div>
   );
 };

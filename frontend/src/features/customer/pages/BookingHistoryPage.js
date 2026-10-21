@@ -124,7 +124,6 @@ const BookingHistoryPage = () => {
       upcoming: 0,
       pending: 0,
       completed: 0,
-      cancelled: 0,
     };
 
     bookings.forEach((b) => {
@@ -132,7 +131,6 @@ const BookingHistoryPage = () => {
       if (cat === 'UPCOMING') c.upcoming += 1;
       else if (cat === 'PENDING') c.pending += 1;
       else if (cat === 'COMPLETED') c.completed += 1;
-      else if (cat === 'CANCELLED') c.cancelled += 1;
     });
 
     return c;
@@ -147,10 +145,10 @@ const BookingHistoryPage = () => {
     return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [bookings, activeTab, currentTime]);
 
-  // Lấy mốc thời gian hết hạn thanh toán (createdAt + 10 phút)
+  // Lấy mốc thời gian hết hạn thanh toán (createdAt + 15 phút)
   const getExpiresTime = (booking) => {
     if (booking?.createdAt) {
-      return new Date(booking.createdAt).getTime() + 10 * 60 * 1000;
+      return new Date(booking.createdAt).getTime() + 15 * 60 * 1000;
     }
     return null;
   };
@@ -177,7 +175,6 @@ const BookingHistoryPage = () => {
     { id: 'UPCOMING', label: `Sắp tới (${counts.upcoming})` },
     { id: 'PENDING', label: `Chờ thanh toán (${counts.pending})` },
     { id: 'COMPLETED', label: `Đã hoàn thành (${counts.completed})` },
-    { id: 'CANCELLED', label: `Đã hủy (${counts.cancelled})` },
   ];
 
   return (

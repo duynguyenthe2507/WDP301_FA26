@@ -170,8 +170,6 @@ const WriteReviewPage = () => {
         backgroundColor: '#f8fafc',
         minHeight: '100vh',
         padding: '24px 0 64px',
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       }}
     >
       <Container style={{ maxWidth: '1440px' }}>
