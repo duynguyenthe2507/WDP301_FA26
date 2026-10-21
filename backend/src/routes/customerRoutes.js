@@ -14,6 +14,7 @@ import {
   getHotels,
   getHotelById,
   checkRoomAvailability,
+  getHotelReviews,
 } from '../controllers/hotelController.js';
 import { verifyToken, authorizeRoles, optionalAuth } from '../middlewares/authMiddleware.js';
 
@@ -31,11 +32,10 @@ router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 router.get('/my-bookings', optionalAuth, getMyBookings);
 router.get('/bookings/:bookingCode', getBookingByCode);
 
-// Hotel routes (Search, Filter, Detail, Availability)
+// Hotel routes (Search, Filter, Detail, Availability, Reviews)
 router.get('/hotels', getHotels);
 router.get('/hotels/:id', getHotelById);
 router.get('/hotels/:id/availability', checkRoomAvailability);
+router.get('/hotels/:id/reviews', getHotelReviews);
 
 export default router;
-
-

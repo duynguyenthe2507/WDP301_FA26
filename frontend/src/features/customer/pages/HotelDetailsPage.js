@@ -7,6 +7,7 @@ import ImageGallery from '../components/ImageGallery';
 import RoomTypeCard from '../components/RoomTypeCard';
 import BookingSummaryCard from '../components/BookingSummaryCard';
 import RatingStars from '../components/RatingStars';
+import HotelReviews from '../components/HotelReviews';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import ErrorMessage from '../../../components/ErrorMessage';
 
@@ -323,6 +324,12 @@ const HotelDetailsPage = () => {
                 <p className="text-muted py-3">Khách sạn này chưa có thông tin phòng.</p>
               )}
             </div>
+
+            {/* Đánh giá từ khách hàng */}
+            <HotelReviews
+              hotelId={hotelId}
+              initialRatingSummary={hotel.rating_summary}
+            />
           </Col>
 
           {/* CỘT PHẢI: CARD THÔNG TIN ĐẶT PHÒNG */}

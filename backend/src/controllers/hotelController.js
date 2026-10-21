@@ -1,4 +1,6 @@
 import Hotel from '../models/Hotel.js';
+import Review from '../models/Review.js';
+import mongoose from 'mongoose';
 
 const formatHotel = (hotel) => {
   const h = hotel.toObject ? hotel.toObject() : hotel;
@@ -179,6 +181,82 @@ export const checkRoomAvailability = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi server khi kiểm tra phòng trống',
+      error: error.message,
+    });
+  }
+};
+
+export const getHotelReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(200).json({
+        success: true,
+        reviews: [],
+        stats: {
+          totalReviews: 0,
+          averageRating: 0,
+          starCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        },
+      });
+    }
+
+    const hotelObjectId = new mongoose.Types.ObjectId(id);
+
+    // Thong ke tat ca danh gia cua khach san de tinh starCounts va averageRating
+    const allReviews = await Review.find({ hotelId: hotelObjectId })
+      .populate('customerId', 'fullName avatarUrl email')
+      .sort({ createdAt: -1 });
+
+    const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let totalScore = 0;
+
+    allReviews.forEach((r) => {
+      const star = Math.round(r.rating);
+      if (starCounts[star] !== undefined) {
+        starCounts[star] += 1;
+      }
+      totalScore += r.rating;
+    });
+
+    const totalReviews = allReviews.length;
+    const averageRating = totalReviews > 0 ? Number((totalScore / totalReviews).toFixed(1)) : 0;
+
+    // Loc theo so sao neu co yeu cau
+    let filteredReviews = allReviews;
+    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+      filteredReviews = allReviews.filter((r) => Math.round(r.rating) === Number(rating));
+    }
+
+    const formattedReviews = filteredReviews.map((r) => ({
+      _id: r._id.toString(),
+      rating: r.rating,
+      comment: r.comment,
+      images: r.images || [],
+      partnerReply: r.partnerReply,
+      createdAt: r.createdAt,
+      customer: {
+        fullName: r.customerId?.fullName || 'Khách hàng ẩn danh',
+        avatarUrl: r.customerId?.avatarUrl || '',
+      },
+    }));
+
+    res.status(200).json({
+      success: true,
+      reviews: formattedReviews,
+      stats: {
+        totalReviews,
+        averageRating,
+        starCounts,
+      },
+    });
+  } catch (error) {
+    console.error('Loi khi lay danh gia khach san:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Loi server khi tai danh gia khach san',
       error: error.message,
     });
   }
