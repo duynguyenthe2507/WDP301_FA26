@@ -14,6 +14,7 @@ import {
   getHotels,
   getHotelById,
   checkRoomAvailability,
+  getHotelReviews,
 } from '../controllers/hotelController.js';
 import {
   getMyReviews,
@@ -49,10 +50,11 @@ router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview
 router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
 
 
-// Hotel routes (Search, Filter, Detail, Availability)
+// Hotel routes (Search, Filter, Detail, Availability, Reviews)
 router.get('/hotels', getHotels);
 router.get('/hotels/:id', getHotelById);
 router.get('/hotels/:id/availability', checkRoomAvailability);
+router.get('/hotels/:id/reviews', getHotelReviews);
 
 export default router;
 

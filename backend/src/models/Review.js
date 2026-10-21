@@ -12,6 +12,7 @@ const reviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Hotel',
       required: true,
+      index: true,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -46,7 +47,4 @@ const reviewSchema = new mongoose.Schema(
   }
 );
 
-// Tránh lỗi overwrite model khi nodemon reload
-const Review = mongoose.models.Review || mongoose.model('Review', reviewSchema);
-
-export default Review;
+export default mongoose.model('Review', reviewSchema);

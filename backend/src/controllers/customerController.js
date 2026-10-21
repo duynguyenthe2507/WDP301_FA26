@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
+import Hotel from '../models/Hotel.js';
 import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
 export const pingCustomer = (req, res) => {
@@ -171,6 +172,57 @@ export const createPendingBooking = async (req, res) => {
 
     if (!Number(totalAmount) || Number(totalAmount) < 10000) {
       return res.status(400).json({ message: 'Tổng tiền đặt phòng không hợp lệ' });
+    }
+    // Kiem tra so phong con trong truoc khi tao don
+    if (hotelId) {
+      try {
+        const hotelDoc = await Hotel.findById(hotelId);
+        if (hotelDoc) {
+          const reqInStr = String(checkInDate).slice(0, 10);
+          const reqOutStr = String(checkOutDate).slice(0, 10);
+          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+          const existingBookings = await Booking.find({
+            hotelId: String(hotelId),
+            bookingStatus: { $nin: ['CANCELLED'] },
+            paymentStatus: { $ne: 'FAILED' },
+            $or: [
+              { bookingStatus: 'CONFIRMED' },
+              { paymentStatus: 'PAID' },
+              { bookingStatus: 'PENDING_PAYMENT', createdAt: { $gte: fifteenMinutesAgo } },
+            ],
+          });
+
+          const bookedCounts = {};
+          for (const b of existingBookings) {
+            const bInStr = b.checkInDate ? new Date(b.checkInDate).toISOString().slice(0, 10) : '';
+            const bOutStr = b.checkOutDate ? new Date(b.checkOutDate).toISOString().slice(0, 10) : '';
+            if (bInStr < reqOutStr && bOutStr > reqInStr && Array.isArray(b.bookingDetails)) {
+              for (const d of b.bookingDetails) {
+                const rtId = d.roomTypeId?.toString();
+                if (rtId) bookedCounts[rtId] = (bookedCounts[rtId] || 0) + (Number(d.quantity) || 1);
+              }
+            }
+          }
+
+          for (const item of bookingDetails) {
+            const rtId = item.roomTypeId?.toString();
+            const roomType = (hotelDoc.roomTypes || []).find((rt) => rt._id.toString() === rtId);
+            if (roomType) {
+              const total = Number(roomType.totalRooms) || 1;
+              const booked = bookedCounts[rtId] || 0;
+              const available = Math.max(0, total - booked);
+              if (Number(item.quantity) > available) {
+                return res.status(400).json({
+                  message: `Loại phòng "${roomType.name}" chỉ còn ${available} phòng trống trong khoảng thời gian này.`,
+                });
+              }
+            }
+          }
+        }
+      } catch (checkErr) {
+        console.warn('Bo qua kiem tra phong trong:', checkErr.message);
+      }
     }
 
     // Sinh mã đặt phòng duy nhất: VNS + YYYYMMDD + 4 số ngẫu nhiên

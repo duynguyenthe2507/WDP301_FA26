@@ -1,4 +1,7 @@
 import Hotel from '../models/Hotel.js';
+import Review from '../models/Review.js';
+import Booking from '../models/Booking.js';
+import mongoose from 'mongoose';
 
 const formatHotel = (hotel) => {
   const h = hotel.toObject ? hotel.toObject() : hotel;
@@ -158,14 +161,96 @@ export const checkRoomAvailability = async (req, res) => {
       });
     }
 
+    // Neu khong truyen ngay, tra ve so phong mac dinh
+    if (!checkIn || !checkOut) {
+      const defaultAvail = (hotel.roomTypes || [])
+        .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
+        .map((rt) => ({
+          room_type_id: rt._id.toString(),
+          room_type_name: rt.name,
+          total_rooms: rt.totalRooms || 5,
+          available_rooms: rt.totalRooms || 5,
+          is_available: (rt.totalRooms || 5) > 0,
+          price_per_night: rt.basePrice,
+        }));
+
+      return res.status(200).json({
+        success: true,
+        hotel_id: id,
+        room_availability: defaultAvail,
+      });
+    }
+
+    const reqInStr = String(checkIn).slice(0, 10);
+    const reqOutStr = String(checkOut).slice(0, 10);
+
+    // Lay danh sach don dat cua khach san
+    const hotelIdQueries = [{ hotelId: id.toString() }];
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      hotelIdQueries.push({ hotelId: new mongoose.Types.ObjectId(id) });
+    }
+
+    // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    const activeBookings = await Booking.find({
+      $or: hotelIdQueries,
+      bookingStatus: { $nin: ['CANCELLED'] },
+      paymentStatus: { $ne: 'FAILED' },
+      $and: [
+        {
+          $or: [
+            { bookingStatus: 'CONFIRMED' },
+            { paymentStatus: 'PAID' },
+            {
+              bookingStatus: 'PENDING_PAYMENT',
+              createdAt: { $gte: fifteenMinutesAgo },
+            },
+          ],
+        },
+      ],
+    });
+
+    // Tinh tong so phong da dat theo tung roomTypeId trong khoang [checkIn, checkOut]
+    const bookedCountsByRoomType = {};
+
+    for (const b of activeBookings) {
+      const bInStr = b.checkInDate ? new Date(b.checkInDate).toISOString().slice(0, 10) : '';
+      const bOutStr = b.checkOutDate ? new Date(b.checkOutDate).toISOString().slice(0, 10) : '';
+
+      // Kiem tra trung ngay: bIn < reqOut && bOut > reqIn
+      const isOverlap = bInStr < reqOutStr && bOutStr > reqInStr;
+
+      if (isOverlap && Array.isArray(b.bookingDetails)) {
+        for (const detail of b.bookingDetails) {
+          const rtId = detail.roomTypeId?.toString();
+          const qty = Number(detail.quantity) || 1;
+          if (rtId) {
+            bookedCountsByRoomType[rtId] = (bookedCountsByRoomType[rtId] || 0) + qty;
+          }
+        }
+      }
+    }
+
+    // Tinh so phong con trong thuc te
     const room_availability = (hotel.roomTypes || [])
       .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
-      .map((rt) => ({
-        room_type_id: rt._id.toString(),
-        available_rooms: rt.totalRooms || 5,
-        is_available: (rt.totalRooms || 5) > 0,
-        price_per_night: rt.basePrice,
-      }));
+      .map((rt) => {
+        const rtId = rt._id.toString();
+        const total = Number(rt.totalRooms) || 1;
+        const booked = bookedCountsByRoomType[rtId] || 0;
+        const available = Math.max(0, total - booked);
+
+        return {
+          room_type_id: rtId,
+          room_type_name: rt.name,
+          total_rooms: total,
+          booked_rooms: booked,
+          available_rooms: available,
+          is_available: available > 0,
+          price_per_night: rt.basePrice,
+        };
+      });
 
     res.status(200).json({
       success: true,
@@ -179,6 +264,82 @@ export const checkRoomAvailability = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Lỗi server khi kiểm tra phòng trống',
+      error: error.message,
+    });
+  }
+};
+
+export const getHotelReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(200).json({
+        success: true,
+        reviews: [],
+        stats: {
+          totalReviews: 0,
+          averageRating: 0,
+          starCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        },
+      });
+    }
+
+    const hotelObjectId = new mongoose.Types.ObjectId(id);
+
+    // Thong ke tat ca danh gia cua khach san de tinh starCounts va averageRating
+    const allReviews = await Review.find({ hotelId: hotelObjectId })
+      .populate('customerId', 'fullName avatarUrl email')
+      .sort({ createdAt: -1 });
+
+    const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let totalScore = 0;
+
+    allReviews.forEach((r) => {
+      const star = Math.round(r.rating);
+      if (starCounts[star] !== undefined) {
+        starCounts[star] += 1;
+      }
+      totalScore += r.rating;
+    });
+
+    const totalReviews = allReviews.length;
+    const averageRating = totalReviews > 0 ? Number((totalScore / totalReviews).toFixed(1)) : 0;
+
+    // Loc theo so sao neu co yeu cau
+    let filteredReviews = allReviews;
+    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+      filteredReviews = allReviews.filter((r) => Math.round(r.rating) === Number(rating));
+    }
+
+    const formattedReviews = filteredReviews.map((r) => ({
+      _id: r._id.toString(),
+      rating: r.rating,
+      comment: r.comment,
+      images: r.images || [],
+      partnerReply: r.partnerReply,
+      createdAt: r.createdAt,
+      customer: {
+        fullName: r.customerId?.fullName || 'Khách hàng ẩn danh',
+        avatarUrl: r.customerId?.avatarUrl || '',
+      },
+    }));
+
+    res.status(200).json({
+      success: true,
+      reviews: formattedReviews,
+      stats: {
+        totalReviews,
+        averageRating,
+        starCounts,
+      },
+    });
+  } catch (error) {
+    console.error('Loi khi lay danh gia khach san:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Loi server khi tai danh gia khach san',
       error: error.message,
     });
   }
