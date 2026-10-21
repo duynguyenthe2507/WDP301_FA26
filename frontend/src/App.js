@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PropertyDraftProvider } from './features/hotel_partner/context/PropertyDraftContext';
 
 // Auth Pages
 import Login from './features/auth/pages/Login';
@@ -28,6 +29,16 @@ import WriteReviewPage from './features/customer/pages/WriteReviewPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
+
+//Partners Pages
+import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
+import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
+import PartnerPropertyAmenities from './features/hotel_partner/pages/PartnerPropertyAmenities';
+import PartnerPropertyRooms from './features/hotel_partner/pages/PartnerPropertyRooms';
+import PartnerPropertyPhotos from './features/hotel_partner/pages/PartnerPropertyPhotos';
+import PartnerPropertyDetails from './features/hotel_partner/pages/PartnerPropertyDetails';
+import PartnerPropertyProfile from './features/hotel_partner/pages/PartnerPropertyProfile';
+import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerPropertyPublish';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -77,6 +88,18 @@ function App() {
             <Route path="users" element={<UserManagement />} />
             <Route path="system-config" element={<SystemConfiguration />} />
             <Route path="logs" element={<SystemLog />} />
+          </Route>
+          {/* Hotel Partner Routes */}
+          <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
+            <Route index element={<PartnerDashboard />} />
+            <Route path="terms" element={<PartnerTerms />} />
+            <Route path="property-location" element={<PartnerPropertyLocation />} />
+            <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
+            <Route path="property-rooms" element={<PartnerPropertyRooms />} />
+            <Route path="property-photos" element={<PartnerPropertyPhotos />} />
+            <Route path="property-details" element={<PartnerPropertyDetails />} />
+            <Route path="property-profile" element={<PartnerPropertyProfile />} />
+            <Route path="property-publish" element={<PartnerPropertyPublish />} />
           </Route>
 
           {/* Hotel Partner Routes */}
