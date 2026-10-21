@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PropertyDraftProvider } from './features/hotel_partner/context/PropertyDraftContext';
 
 // Auth Pages
 import Login from './features/auth/pages/Login';
@@ -58,7 +59,7 @@ function App() {
         </Route>
 
         {/* Hotel Partner Routes */}
-        <Route path="/partner" element={<PartnerLayout />}>
+        <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
           <Route index element={<PartnerDashboard />} />
           <Route path="terms" element={<PartnerTerms />} />
           <Route path="property-location" element={<PartnerPropertyLocation />} />

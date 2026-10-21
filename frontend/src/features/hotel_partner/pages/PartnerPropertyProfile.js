@@ -2,34 +2,87 @@ import { useState } from "react";
 import { Form } from "react-bootstrap";
 import { FaInfoCircle } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
+import { usePropertyDraft } from "../context/PropertyDraftContext";
 
-const Field = ({ label, value, onChange, select, className = "" }) => (
+const COUNTRIES = [
+  "Việt Nam",
+  "Thái Lan",
+  "Singapore",
+  "Nhật Bản",
+  "Hàn Quốc",
+  "Trung Quốc",
+  "Hoa Kỳ",
+  "Úc",
+  "Anh",
+  "Pháp",
+  "Đức",
+];
+
+const PHONE_COUNTRY_CODES = [
+  { value: "+84", label: "Việt Nam (+84)" },
+  { value: "+66", label: "Thái Lan (+66)" },
+  { value: "+65", label: "Singapore (+65)" },
+  { value: "+81", label: "Nhật Bản (+81)" },
+  { value: "+82", label: "Hàn Quốc (+82)" },
+  { value: "+86", label: "Trung Quốc (+86)" },
+  { value: "+1", label: "Hoa Kỳ (+1)" },
+  { value: "+61", label: "Úc (+61)" },
+  { value: "+44", label: "Anh (+44)" },
+  { value: "+33", label: "Pháp (+33)" },
+  { value: "+49", label: "Đức (+49)" },
+];
+
+const LANGUAGES = ["Tiếng Việt", "English", "日本語", "한국어", "中文"];
+
+const Field = ({
+  label,
+  value,
+  onChange,
+  select,
+  options = [],
+  type = "text",
+  className = "",
+}) => (
   <Form.Group className={`mb-3 ${className}`}>
     <Form.Label style={{ fontSize: 12 }}>{label}</Form.Label>
     {select ? (
       <Form.Select value={value} onChange={onChange}>
-        <option>{value}</option>
-        <option>Việt Nam</option>
+        {options.map((option) => {
+          const optionValue = typeof option === "string" ? option : option.value;
+          const optionLabel = typeof option === "string" ? option : option.label;
+
+          return (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+          );
+        })}
       </Form.Select>
     ) : (
-      <Form.Control value={value} onChange={onChange} />
+      <Form.Control type={type} value={value} onChange={onChange} />
     )}
   </Form.Group>
 );
 const PartnerPropertyProfile = () => {
-  const [form, setForm] = useState({
-    business: "",
-    address: "",
-    postcode: "",
-    firstName: "",
-    lastName: "",
-    nationality: "Việt Nam",
-    birthday: "03 Nov 2002",
-    region: "Hà Nội",
-    city: "Hà Nội",
-    language: "Tiếng Việt",
-    phone: "",
-  });
+  const { draft, updateSection } = usePropertyDraft();
+  const [form, setForm] = useState(
+    draft.profile || {
+      business: "",
+      address: "",
+      postcode: "",
+      country: "Việt Nam",
+      firstName: "",
+      lastName: "",
+      nationality: "Việt Nam",
+      birthday: "",
+      residenceCountry: "Việt Nam",
+      region: "Hà Nội",
+      city: "Hà Nội",
+      language: "Tiếng Việt",
+      phoneCountryCode: "+84",
+      phone: "",
+    },
+  );
   const update = (name) => (event) =>
     setForm((current) => ({ ...current, [name]: event.target.value }));
   return (
@@ -38,6 +91,7 @@ const PartnerPropertyProfile = () => {
       title="Hồ sơ"
       previous="/partner/property-details"
       next="/partner/property-publish"
+      beforeNext={() => updateSection("profile", form)}
     >
       <div
         className="rounded-3 p-3 mb-3"
@@ -67,8 +121,9 @@ const PartnerPropertyProfile = () => {
             <Field
               className="col-md-6"
               label="Quốc gia"
-              value={form.nationality}
-              onChange={update("nationality")}
+              value={form.country}
+              onChange={update("country")}
+              options={COUNTRIES}
               select
             />
             <Field
@@ -108,21 +163,23 @@ const PartnerPropertyProfile = () => {
             label="Quốc tịch"
             value={form.nationality}
             onChange={update("nationality")}
+            options={COUNTRIES}
             select
           />
           <Field
             label="Ngày sinh"
             value={form.birthday}
             onChange={update("birthday")}
-            select
+            type="date"
           />
           <h3 className="h6" style={{ fontSize: 13 }}>
             Thông tin cư trú <FaInfoCircle size={11} />
           </h3>
           <Field
             label="Quốc gia"
-            value={form.nationality}
-            onChange={update("nationality")}
+            value={form.residenceCountry}
+            onChange={update("residenceCountry")}
+            options={COUNTRIES}
             select
           />
           <div className="row">
@@ -154,14 +211,16 @@ const PartnerPropertyProfile = () => {
             label="Ngôn ngữ yêu thích"
             value={form.language}
             onChange={update("language")}
+            options={LANGUAGES}
             select
           />
           <div className="row">
             <Field
               className="col-md-5"
               label="Mã quốc gia"
-              value="Việt Nam +84"
-              onChange={() => {}}
+              value={form.phoneCountryCode}
+              onChange={update("phoneCountryCode")}
+              options={PHONE_COUNTRY_CODES}
               select
             />
             <Field
