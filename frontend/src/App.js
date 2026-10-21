@@ -31,8 +31,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
+import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
+import SystemConfiguration from './features/admin/pages/SystemConfiguration';
+import SystemLog from './features/admin/pages/SystemLog';
 
 
 function App() {
@@ -68,11 +71,12 @@ function App() {
             </Route>
           </Route>
 
-
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
-            {/* Add more admin routes here */}
+            <Route path="users" element={<UserManagement />} />
+            <Route path="system-config" element={<SystemConfiguration />} />
+            <Route path="logs" element={<SystemLog />} />
           </Route>
 
           {/* Hotel Partner Routes */}

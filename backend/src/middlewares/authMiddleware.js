@@ -17,8 +17,15 @@ export const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Tài khoản không tồn tại' });
     }
 
-    if (['BLOCKED', 'SUSPENDED', 'DEACTIVATED'].includes(user.status)) {
-      return res.status(403).json({ message: 'Tài khoản của bạn đã bị tạm khóa hoặc vô hiệu hóa' });
+    // Chỉ tài khoản ACTIVE mới được sử dụng token.
+    if (user.status !== 'ACTIVE') {
+      let message = 'Tài khoản của bạn đã bị khóa vĩnh viễn';
+
+      if (user.status === 'SUSPENDED') {
+        message = 'Tài khoản của bạn đang bị tạm khóa để điều tra';
+      }
+
+      return res.status(403).json({ message });
     }
 
     req.user = user; // Lưu thông tin user vào request

@@ -4,7 +4,7 @@ import User from '../models/User.js';
 
 export const register = async (req, res) => {
   try {
-    const { email, password, fullName, phoneNumber, role, status } = req.body;
+    const { email, password, fullName, phoneNumber, role } = req.body;
 
     // Kiểm tra trạng thái rỗng
     if (!email || !password || !fullName) {
@@ -24,8 +24,9 @@ export const register = async (req, res) => {
       fullName,
       phoneNumber: phoneNumber || '',
       avatarUrl: req.body.avatarUrl || '',
-      role: role || 'CUSTOMER',
-      status: status || 'ACTIVE',
+      // Chỉ được tự đăng ký khách hàng hoặc đối tác; không nhận role/status khác từ client
+      role: ['PARTNER', 'HOTEL_PARTNER'].includes(role) ? 'HOTEL_PARTNER' : 'CUSTOMER',
+      status: 'ACTIVE',
     });
 
     res.status(201).json({
@@ -70,6 +71,15 @@ export const login = async (req, res) => {
     const isMatch = await bcryptjs.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Mật khẩu không chính xác' });
+    }
+
+    // Chỉ tài khoản ACTIVE mới được đăng nhập.
+    if (user.status !== 'ACTIVE') {
+      const message = user.status === 'SUSPENDED'
+        ? 'Tài khoản đang tạm khóa để điều tra.'
+        : 'Tài khoản đã bị khóa vĩnh viễn.';
+
+      return res.status(403).json({ message });
     }
 
     // Tạo JWT
