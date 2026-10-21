@@ -1,15 +1,17 @@
 import React, { useState, useContext } from 'react';
 import { Form, Button, Card, Alert } from 'react-bootstrap';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +21,7 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:9999/api/auth/login', { email, password });
       const data = response.data;
-      login(data.user, data.token);
+      login(data.user, data.token, location.state?.from);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại');
     } finally {
@@ -74,7 +76,10 @@ const Login = () => {
             </Button>
 
             <div className="text-center small text-muted">
-              Chưa có tài khoản? <Link to="/register" className="auth-link">Đăng ký ngay</Link>
+              Chưa có tài khoản?{' '}
+              <Link to="/register/customer" className="auth-link fw-semibold">Đăng ký Người dùng</Link>
+              <span className="mx-2 text-muted">•</span>
+              <Link to="/register/partner" className="auth-link fw-semibold">Đăng ký Đối tác</Link>
             </div>
           </Form>
         </Card.Body>

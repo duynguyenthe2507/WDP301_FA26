@@ -1,6 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* Bootstrap components (modal, tooltip, form, code...) dùng các biến này */
+  --bs-body-font-family: 'Poppins', sans-serif;
+  --bs-font-sans-serif: 'Poppins', sans-serif;
+  --bs-font-monospace: 'Poppins', sans-serif;
   --premium-gold: #d4af37;
   --premium-gold-hover: #b5952f;
   --premium-dark: #1a202c;
@@ -14,8 +18,21 @@ body {
   background-color: #f8f9fa;
 }
 
-h1, h2, h3, h4, h5, h6, .navbar-brand {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand {
   font-family: 'Playfair Display', serif;
+}
+
+/* Mã đặt phòng / mã giao dịch: giữ cùng font, chỉ cho số đều cột */
+.font-monospace {
+  font-family: 'Poppins', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* Override Bootstrap Warning to Premium Gold */
@@ -49,7 +66,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 
 .hover-lift:hover {
   transform: translateY(-10px);
-  box-shadow: 0 1rem 3rem rgba(0,0,0,.175) !important;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
 }
 
 .hover-warning:hover {
@@ -69,7 +86,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 /* Auth Pages Styling */
 .auth-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(26,32,44,0.9) 100%), url('https://images.unsplash.com/photo-1542314831-c6a4d14d8379?q=80&w=2000&auto=format&fit=crop') no-repeat center center;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(26, 32, 44, 0.9) 100%), url('https://images.unsplash.com/photo-1542314831-c6a4d14d8379?q=80&w=2000&auto=format&fit=crop') no-repeat center center;
   background-size: cover;
   display: flex;
   align-items: center;
@@ -82,7 +99,7 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   backdrop-filter: blur(10px);
   border: none;
   border-radius: 15px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   width: 100%;
   max-width: 450px;
@@ -107,6 +124,11 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   transition: all 0.3s ease;
+}
+
+/* Room for the absolute-positioned icon (left: 12px) so text doesn't touch it */
+.auth-form-control.ps-4 {
+  padding-left: 2.5rem !important;
 }
 
 .auth-form-control:focus {
@@ -141,6 +163,13 @@ h1, h2, h3, h4, h5, h6, .navbar-brand {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

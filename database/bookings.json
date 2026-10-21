@@ -1,0 +1,189 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c301" },
+    "bookingCode": "VNS2026101101",
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c005" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "contactInfo": {
+      "fullName": "Phạm Minh Hoàng",
+      "phoneNumber": "+84912334455",
+      "email": "hoang.customer@gmail.com"
+    },
+    "guestCounts": {
+      "adults": 2,
+      "children": 1
+    },
+    "checkInDate": { "$date": "2026-10-05T07:00:00.000Z" },
+    "checkOutDate": { "$date": "2026-10-07T05:00:00.000Z" },
+    "totalNights": 2,
+    "bookingDetails": [
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c201" },
+        "roomTypeName": "Deluxe Double Room",
+        "quantity": 1,
+        "pricePerNight": 1200000,
+        "subtotal": 2400000
+      }
+    ],
+    "totalAmount": 2400000,
+    "cancellationPolicySnapshot": "Miễn phí hủy phòng trước 24h trước ngày nhận phòng.",
+    "holdExpiresAt": null,
+    "bookingStatus": "COMPLETED",
+    "paymentStatus": "PAID",
+    "cancellationReason": null,
+    "cancelledAt": null,
+    "createdAt": { "$date": "2026-10-01T09:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-07T05:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c302" },
+    "bookingCode": "VNS2026101202",
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c006" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c103" },
+    "contactInfo": {
+      "fullName": "Vũ Văn Cường",
+      "phoneNumber": "+84903332211",
+      "email": "cuong.vu@gmail.com"
+    },
+    "guestCounts": {
+      "adults": 2,
+      "children": 0
+    },
+    "checkInDate": { "$date": "2026-10-20T07:00:00.000Z" },
+    "checkOutDate": { "$date": "2026-10-23T05:00:00.000Z" },
+    "totalNights": 3,
+    "bookingDetails": [
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c205" },
+        "roomTypeName": "Ocean Front Deluxe Room",
+        "quantity": 1,
+        "pricePerNight": 1800000,
+        "subtotal": 5400000
+      }
+    ],
+    "totalAmount": 5400000,
+    "cancellationPolicySnapshot": "Miễn phí hủy phòng trước 72h trước ngày nhận phòng.",
+    "holdExpiresAt": null,
+    "bookingStatus": "CONFIRMED",
+    "paymentStatus": "PAID",
+    "cancellationReason": null,
+    "cancelledAt": null,
+    "createdAt": { "$date": "2026-10-12T14:15:00.000Z" },
+    "updatedAt": { "$date": "2026-10-12T14:20:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c303" },
+    "bookingCode": "VNS2026101303",
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c007" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c102" },
+    "contactInfo": {
+      "fullName": "Đặng Tuấn Anh",
+      "phoneNumber": "+84945667788",
+      "email": "anh.dang@gmail.com"
+    },
+    "guestCounts": {
+      "adults": 2,
+      "children": 1
+    },
+    "checkInDate": { "$date": "2026-10-25T07:00:00.000Z" },
+    "checkOutDate": { "$date": "2026-10-27T05:00:00.000Z" },
+    "totalNights": 2,
+    "bookingDetails": [
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c203" },
+        "roomTypeName": "Mountain Valley View Room",
+        "quantity": 1,
+        "pricePerNight": 1450000,
+        "subtotal": 2900000
+      }
+    ],
+    "totalAmount": 2900000,
+    "cancellationPolicySnapshot": "Miễn phí hủy phòng trước 48h trước ngày nhận phòng.",
+    "holdExpiresAt": { "$date": "2026-10-14T01:30:00.000Z" },
+    "bookingStatus": "PENDING_PAYMENT",
+    "paymentStatus": "UNPAID",
+    "cancellationReason": null,
+    "cancelledAt": null,
+    "createdAt": { "$date": "2026-10-14T01:15:00.000Z" },
+    "updatedAt": { "$date": "2026-10-14T01:15:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c304" },
+    "bookingCode": "VNS2026101004",
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c005" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "contactInfo": {
+      "fullName": "Phạm Minh Hoàng",
+      "phoneNumber": "+84912334455",
+      "email": "hoang.customer@gmail.com"
+    },
+    "guestCounts": {
+      "adults": 2,
+      "children": 0
+    },
+    "checkInDate": { "$date": "2026-10-15T07:00:00.000Z" },
+    "checkOutDate": { "$date": "2026-10-16T05:00:00.000Z" },
+    "totalNights": 1,
+    "bookingDetails": [
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c202" },
+        "roomTypeName": "Family Suite Room",
+        "quantity": 1,
+        "pricePerNight": 2200000,
+        "subtotal": 2200000
+      }
+    ],
+    "totalAmount": 2200000,
+    "cancellationPolicySnapshot": "Miễn phí hủy phòng trước 24h trước ngày nhận phòng.",
+    "holdExpiresAt": null,
+    "bookingStatus": "CANCELLED",
+    "paymentStatus": "REFUNDED",
+    "cancellationReason": "Có việc gia đình đột xuất không thể sắp xếp chuyến đi.",
+    "cancelledAt": { "$date": "2026-10-11T14:20:00.000Z" },
+    "createdAt": { "$date": "2026-10-10T08:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-11T14:25:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c305" },
+    "bookingCode": "VNS2026101205",
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c006" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "contactInfo": {
+      "fullName": "Vũ Thị Tuyết Mai",
+      "phoneNumber": "+84934556677",
+      "email": "mai.vu@gmail.com"
+    },
+    "guestCounts": {
+      "adults": 4,
+      "children": 2
+    },
+    "checkInDate": { "$date": "2026-10-18T07:00:00.000Z" },
+    "checkOutDate": { "$date": "2026-10-20T05:00:00.000Z" },
+    "totalNights": 2,
+    "bookingDetails": [
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c201" },
+        "roomTypeName": "Deluxe Double Room",
+        "quantity": 1,
+        "pricePerNight": 1200000,
+        "subtotal": 2400000
+      },
+      {
+        "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c202" },
+        "roomTypeName": "Family Suite Room",
+        "quantity": 1,
+        "pricePerNight": 2200000,
+        "subtotal": 4400000
+      }
+    ],
+    "totalAmount": 6800000,
+    "cancellationPolicySnapshot": "Miễn phí hủy phòng trước 24h trước ngày nhận phòng.",
+    "holdExpiresAt": null,
+    "bookingStatus": "CONFIRMED",
+    "paymentStatus": "PAID",
+    "cancellationReason": null,
+    "cancelledAt": null,
+    "createdAt": { "$date": "2026-10-12T16:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-12T16:05:00.000Z" }
+  }
+]

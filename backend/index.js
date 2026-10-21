@@ -5,6 +5,7 @@ import { connectDB } from './src/config/db.js';
 
 // Import Routes
 import customerRoutes from './src/routes/customerRoutes.js';
+import { cleanExpiredPendingBookings } from './src/controllers/customerController.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import partnerRoutes from './src/routes/partnerRoutes.js';
 import managerRoutes from './src/routes/managerRoutes.js';
@@ -15,6 +16,11 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 9999;
+
+// Định kỳ quét và tự động xóa các đơn PENDING_PAYMENT quá 15 phút (mỗi 60 giây)
+setInterval(() => {
+  cleanExpiredPendingBookings();
+}, 60 * 1000);
 
 // Middlewares
 app.use(cors());
