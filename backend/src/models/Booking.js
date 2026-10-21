@@ -89,6 +89,44 @@ const bookingSchema = new mongoose.Schema(
       vnp_ResponseCode: { type: String },
       vnp_OrderInfo: { type: String },
     },
+    // Thông tin hủy đơn & hoàn tiền
+    cancellationReason: {
+      type: String,
+      default: '',
+    },
+    cancellationNote: {
+      type: String,
+      default: '',
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    cancellationFee: {
+      type: Number,
+      default: 0,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
+    refundStatus: {
+      type: String,
+      enum: ['NOT_APPLICABLE', 'PENDING', 'PROCESSED'],
+      default: 'NOT_APPLICABLE',
+    },
+    cancellationPolicySnapshot: {
+      type: String,
+      default: '',
+    },
+    hotelImage: {
+      type: String,
+      default: '',
+    },
+    guestCounts: {
+      adults: { type: Number, default: 2 },
+      children: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,

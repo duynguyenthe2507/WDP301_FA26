@@ -2,8 +2,7 @@ import React from 'react';
 import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
 import { FaUser, FaChild, FaBed, FaCheck } from 'react-icons/fa';
 
-const PLACEHOLDER_ROOM =
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80';
+import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -43,17 +42,16 @@ const RoomTypeCard = ({
       <Row className="g-0">
         <Col md={4}>
           <img
-            src={primaryImage?.url || PLACEHOLDER_ROOM}
+            src={primaryImage?.url || BLANK_IMG}
             alt={name}
             style={{
               width: '100%',
               height: '100%',
               minHeight: '210px',
               objectFit: 'cover',
+              ...imgBg,
             }}
-            onError={(e) => {
-              e.target.src = PLACEHOLDER_ROOM;
-            }}
+            onError={onImgError}
           />
         </Col>
         <Col md={8}>

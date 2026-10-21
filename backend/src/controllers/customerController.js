@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Hotel from '../models/Hotel.js';
@@ -97,6 +98,25 @@ export const cleanExpiredPendingBookings = async () => {
 
 // POST /api/customer/bookings/pending
 // Tạo đơn đặt phòng và sinh link chuyển hướng sang VNPay Sandbox
+// Ảnh bìa khách sạn: ưu tiên ảnh isCover, không có thì lấy ảnh đầu tiên
+const getHotelCover = (hotel) =>
+  hotel?.images?.find((img) => img.isCover)?.url || hotel?.images?.[0]?.url || '';
+
+// Lấy IP client
+// VNPay chỉ nhận IPv4: bỏ danh sách proxy, tiền tố ::ffff: và đổi ::1 về 127.0.0.1
+const getClientIp = (req) => {
+  const ip = String(
+    req.headers['x-forwarded-for'] ||
+    req.socket?.remoteAddress ||
+    req.connection?.remoteAddress ||
+    '127.0.0.1'
+  )
+    .split(',')[0]
+    .trim()
+    .replace(/^::ffff:/, '');
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? ip : '127.0.0.1';
+};
+
 export const createPendingBooking = async (req, res) => {
   try {
     const {
@@ -133,6 +153,41 @@ export const createPendingBooking = async (req, res) => {
       if (!guestInfo?.phoneNumber?.trim()) {
         return res.status(400).json({ message: 'Vui lòng nhập số điện thoại khách nhận phòng' });
       }
+    }
+
+    // Thanh toán lại đơn cũ: dùng lại đơn PENDING_PAYMENT thay vì tạo đơn mới
+    if (req.body.bookingCode) {
+      const existing = await Booking.findOne({
+        bookingCode: req.body.bookingCode,
+        customerId: req.user._id,
+        bookingStatus: 'PENDING_PAYMENT',
+      });
+      if (!existing || new Date(existing.createdAt).getTime() + 15 * 60 * 1000 <= Date.now()) {
+        return res.status(400).json({ message: 'Đơn đặt phòng đã hết hạn thanh toán. Vui lòng đặt lại phòng mới.' });
+      }
+
+      existing.bookerInfo = {
+        fullName: bookerInfo.fullName.trim(),
+        phoneNumber: bookerInfo.phoneNumber.trim(),
+        email: bookerInfo.email.trim().toLowerCase(),
+      };
+      existing.isSelfGuest = Boolean(isSelfGuest);
+      existing.guestInfo = isSelfGuest
+        ? { fullName: '', phoneNumber: '' }
+        : { fullName: guestInfo.fullName.trim(), phoneNumber: guestInfo.phoneNumber.trim() };
+      existing.specialRequests = (specialRequests || '').trim();
+      existing.paymentStatus = 'UNPAID';
+      await existing.save();
+
+      const { paymentUrl } = createPaymentUrl({
+        // VNPay không nhận trùng vnp_TxnRef -> thêm hậu tố, verifyReturnData sẽ cắt bỏ
+        bookingCode: `${existing.bookingCode}R${Date.now()}`,
+        amount: existing.totalAmount,
+        ipAddr: getClientIp(req),
+        orderInfo: `Thanh toan don dat phong ${existing.bookingCode}`,
+      });
+
+      return res.status(200).json({ message: 'Tạo lại giao dịch thanh toán', booking: existing, paymentUrl });
     }
 
     // Validate ngày nhận và trả phòng
@@ -262,24 +317,11 @@ export const createPendingBooking = async (req, res) => {
 
     await newBooking.save();
 
-    // Lấy IP client
-    // VNPay chỉ nhận IPv4: bỏ danh sách proxy, tiền tố ::ffff: và đổi ::1 về 127.0.0.1
-    let ipAddr = String(
-      req.headers['x-forwarded-for'] ||
-      req.socket?.remoteAddress ||
-      req.connection?.remoteAddress ||
-      '127.0.0.1'
-    )
-      .split(',')[0]
-      .trim()
-      .replace(/^::ffff:/, '');
-    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ipAddr)) ipAddr = '127.0.0.1';
-
     // Tạo URL thanh toán VNPay Sandbox
     const { paymentUrl } = createPaymentUrl({
       bookingCode,
       amount: newBooking.totalAmount,
-      ipAddr,
+      ipAddr: getClientIp(req),
       orderInfo: `Thanh toan don dat phong ${bookingCode}`,
     });
 
@@ -476,14 +518,326 @@ export const getMyBookings = async (req, res) => {
       );
     }
 
+    // 4. Gắn ảnh bìa của khách sạn trong DB cho từng đơn
+    const hotelIds = [...new Set(bookings.map((b) => b.hotelId).filter((id) => mongoose.isValidObjectId(id)))];
+    const hotels = await Hotel.find({ _id: { $in: hotelIds } }).select('images').lean();
+    const coverById = Object.fromEntries(hotels.map((h) => [h._id.toString(), getHotelCover(h)]));
+    const result = bookings.map((b) => ({
+      ...b.toObject(),
+      hotelImage: coverById[b.hotelId] || b.hotelImage || '',
+    }));
+
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      bookings,
+      count: result.length,
+      bookings: result,
     });
   } catch (error) {
     console.error('Error fetching booking history:', error);
     res.status(500).json({ message: 'Lỗi khi lấy lịch sử đặt phòng', error: error.message });
+  }
+};
+
+
+// HỦY ĐẶT PHÒNG & TÍNH TOÁN HOÀN TIỀN
+// Hàm tính toán chi tiết chính sách hủy, hạn hủy và số tiền hoàn
+export const calculateCancellationDetails = (booking, hotel) => {
+  const policy = hotel?.cancellationPolicy || booking.cancellationPolicySnapshot || 'three';
+  const totalAmount = Number(booking.totalAmount) || 0;
+  const totalNights = Math.max(1, Number(booking.totalNights) || 1);
+  const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : new Date();
+
+  // Tính giá của đêm đầu tiên
+  let firstNightCost = 0;
+  if (Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0) {
+    firstNightCost = booking.bookingDetails.reduce(
+      (sum, d) => sum + (Number(d.pricePerNight) || 0) * (Number(d.quantity) || 1),
+      0
+    );
+  }
+  if (!firstNightCost || firstNightCost <= 0) {
+    firstNightCost = Math.round(totalAmount / totalNights);
+  }
+  firstNightCost = Math.min(firstNightCost, totalAmount);
+
+  // Xác định số ngày miễn phí hủy trước ngày nhận phòng (chuẩn mốc 14:00)
+  let daysBefore = 3;
+  let isNonRefundable = false;
+
+  const policyLower = String(policy).toLowerCase();
+  if (policyLower === 'none' || policyLower.includes('không hoàn') || policyLower.includes('non-refundable')) {
+    isNonRefundable = true;
+    daysBefore = null;
+  } else if (policyLower === 'one' || policyLower.includes('24h') || policyLower.includes('1 ngày')) {
+    daysBefore = 1;
+  } else if (policyLower === 'two' || policyLower.includes('48h') || policyLower.includes('2 ngày')) {
+    daysBefore = 2;
+  } else {
+    daysBefore = 3; // Mặc định 'three' (72h)
+  }
+
+  let deadlineDate = null;
+  let isFreeCancel = false;
+  const now = new Date();
+
+  if (!isNonRefundable && daysBefore !== null) {
+    // Thời điểm 14:00 của (checkInDate - daysBefore ngày)
+    deadlineDate = new Date(
+      checkInDate.getFullYear(),
+      checkInDate.getMonth(),
+      checkInDate.getDate() - daysBefore,
+      14,
+      0,
+      0
+    );
+    isFreeCancel = now.getTime() <= deadlineDate.getTime();
+  }
+
+  let cancellationFee = 0;
+  let refundAmount = 0;
+
+  if (booking.paymentStatus !== 'PAID') {
+    cancellationFee = 0;
+    refundAmount = 0;
+  } else if (isFreeCancel) {
+    cancellationFee = 0;
+    refundAmount = totalAmount;
+  } else {
+    if (isNonRefundable) {
+      cancellationFee = totalAmount;
+      refundAmount = 0;
+    } else {
+      cancellationFee = firstNightCost;
+      refundAmount = Math.max(0, totalAmount - cancellationFee);
+    }
+  }
+
+  const formatMoney = (amount) => new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+
+  const formatDeadline = (date) => {
+    if (!date) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const mins = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${mins} ngày ${day}/${month}/${year}`;
+  };
+
+  const formatCurrentDay = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const hotelName = hotel?.name || booking.hotelName || 'Khách sạn';
+  const todayStr = formatCurrentDay(now);
+
+  let policyDescription = '';
+  let statusBanner = '';
+
+  if (isNonRefundable) {
+    policyDescription = `Đặt phòng này không được hoàn hủy theo chính sách của ${hotelName} tại thời điểm đặt.`;
+    statusBanner = `Đơn đặt phòng này áp dụng chính sách không hoàn tiền.`;
+  } else {
+    const deadlineStr = formatDeadline(deadlineDate);
+    policyDescription = `Miễn phí hủy trước ${deadlineStr}. Từ thời điểm này, phí hủy bằng đêm đầu tiên: ${formatMoney(
+      firstNightCost
+    )}. Chính sách của ${hotelName} tại thời điểm đặt.`;
+
+    if (isFreeCancel) {
+      statusBanner = `Yêu cầu hủy ngày ${todayStr} nằm trong thời gian miễn phí hủy của đặt phòng này.`;
+    } else {
+      statusBanner = `Yêu cầu hủy ngày ${todayStr} đã quá thời gian miễn phí hủy của đặt phòng này.`;
+    }
+  }
+
+  return {
+    policy,
+    isNonRefundable,
+    daysBefore,
+    deadlineDate,
+    deadlineStr: deadlineDate ? formatDeadline(deadlineDate) : null,
+    isFreeCancel,
+    paidAmount: booking.paymentStatus === 'PAID' ? totalAmount : 0,
+    cancellationFee,
+    refundAmount,
+    firstNightCost,
+    policyDescription,
+    statusBanner,
+    todayStr,
+  };
+};
+
+// GET /api/customer/bookings/:idOrCode/cancel-info
+export const getCancelBookingInfo = async (req, res) => {
+  try {
+    const { idOrCode } = req.params;
+    let booking = null;
+
+    if (mongoose.Types.ObjectId.isValid(idOrCode)) {
+      booking = await Booking.findById(idOrCode);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ bookingCode: idOrCode });
+    }
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
+    }
+
+    // Kiểm tra quyền sở hữu đơn (chủ đơn hoặc ADMIN)
+    const isOwner =
+      req.user.role === 'ADMIN' ||
+      (booking.customerId && String(booking.customerId) === String(req.user._id)) ||
+      (booking.bookerInfo?.email &&
+        booking.bookerInfo.email.trim().toLowerCase() === req.user.email?.trim().toLowerCase());
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Bạn không có quyền thao tác với đơn đặt phòng này' });
+    }
+
+    if (booking.bookingStatus === 'CANCELLED') {
+      return res.status(400).json({
+        message: 'Đơn đặt phòng này đã được hủy trước đó',
+        isCancelled: true,
+        booking,
+      });
+    }
+    if (booking.bookingStatus === 'COMPLETED') {
+      return res.status(400).json({ message: 'Đơn đặt phòng đã hoàn thành, không thể hủy' });
+    }
+
+    // Lấy thông tin khách sạn
+    let hotel = null;
+    if (booking.hotelId) {
+      if (mongoose.Types.ObjectId.isValid(booking.hotelId)) {
+        hotel = await Hotel.findById(booking.hotelId);
+      }
+      if (!hotel) {
+        hotel = await Hotel.findOne({ name: booking.hotelName });
+      }
+    }
+
+    const calculations = calculateCancellationDetails(booking, hotel);
+
+    // Xử lý thông tin chi tiết loại phòng (tên phòng, diện tích, loại giường)
+    let roomDetailsInfo = '';
+    if (hotel && Array.isArray(hotel.roomTypes) && booking.bookingDetails?.[0]?.roomTypeId) {
+      const room = hotel.roomTypes.find(
+        (r) => String(r._id) === String(booking.bookingDetails[0].roomTypeId)
+      );
+      if (room) {
+        const parts = [room.name];
+        if (room.roomSize) parts.push(`${room.roomSize} m²`);
+        if (room.bedType) parts.push(room.bedType);
+        roomDetailsInfo = parts.join(' · ');
+      }
+    }
+    if (!roomDetailsInfo && booking.bookingDetails?.[0]?.roomTypeName) {
+      roomDetailsInfo = booking.bookingDetails[0].roomTypeName;
+    }
+
+    const hotelThumbnail = getHotelCover(hotel) || booking.hotelImage || '';
+    const hotelStars = hotel?.starRating || 4;
+    const hotelAddress = hotel?.address || booking.hotelAddress || '';
+    const hotelName = hotel?.name || booking.hotelName || '';
+
+    res.status(200).json({
+      success: true,
+      booking,
+      hotelInfo: {
+        name: hotelName,
+        address: hotelAddress,
+        starRating: hotelStars,
+        thumbnail: hotelThumbnail,
+        roomDetailsInfo,
+      },
+      calculations,
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin hủy đặt phòng:', error);
+    res.status(500).json({ message: 'Lỗi khi lấy thông tin hủy đặt phòng', error: error.message });
+  }
+};
+
+// POST /api/customer/bookings/:idOrCode/cancel
+export const cancelBooking = async (req, res) => {
+  try {
+    const { idOrCode } = req.params;
+    const { reason, note } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Vui lòng chọn lý do hủy đặt phòng' });
+    }
+
+    let booking = null;
+    if (mongoose.Types.ObjectId.isValid(idOrCode)) {
+      booking = await Booking.findById(idOrCode);
+    }
+    if (!booking) {
+      booking = await Booking.findOne({ bookingCode: idOrCode });
+    }
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
+    }
+
+    // Kiểm tra quyền sở hữu đơn (chủ đơn hoặc ADMIN)
+    const isOwner =
+      req.user.role === 'ADMIN' ||
+      (booking.customerId && String(booking.customerId) === String(req.user._id)) ||
+      (booking.bookerInfo?.email &&
+        booking.bookerInfo.email.trim().toLowerCase() === req.user.email?.trim().toLowerCase());
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Bạn không có quyền hủy đơn đặt phòng này' });
+    }
+
+    if (booking.bookingStatus === 'CANCELLED') {
+      return res.status(400).json({ message: 'Đơn đặt phòng này đã được hủy trước đó' });
+    }
+    if (booking.bookingStatus === 'COMPLETED') {
+      return res.status(400).json({ message: 'Đơn đặt phòng đã hoàn thành, không thể hủy' });
+    }
+
+    // Lấy khách sạn để tính toán phí hủy và tiền hoàn chính xác
+    let hotel = null;
+    if (booking.hotelId) {
+      if (mongoose.Types.ObjectId.isValid(booking.hotelId)) {
+        hotel = await Hotel.findById(booking.hotelId);
+      }
+      if (!hotel) {
+        hotel = await Hotel.findOne({ name: booking.hotelName });
+      }
+    }
+
+    const calculations = calculateCancellationDetails(booking, hotel);
+
+    booking.bookingStatus = 'CANCELLED';
+    booking.cancellationReason = reason.trim();
+    booking.cancellationNote = (note || '').trim();
+    booking.cancelledAt = new Date();
+    booking.cancellationFee = calculations.cancellationFee;
+    booking.refundAmount = calculations.refundAmount;
+    booking.cancellationPolicySnapshot = calculations.policyDescription;
+
+    if (booking.paymentStatus === 'PAID' && calculations.refundAmount > 0) {
+      booking.refundStatus = 'PENDING';
+    } else {
+      booking.refundStatus = 'NOT_APPLICABLE';
+    }
+
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Hủy đặt phòng thành công!',
+      booking,
+      calculations,
+    });
+  } catch (error) {
+    console.error('Lỗi khi hủy đặt phòng:', error);
+    res.status(500).json({ message: 'Lỗi khi hủy đặt phòng', error: error.message });
   }
 };
 

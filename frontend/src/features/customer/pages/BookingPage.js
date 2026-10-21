@@ -31,7 +31,6 @@ const BookingPage = () => {
   const [paymentFailedMsg, setPaymentFailedMsg] = useState(rawState.paymentFailed || '');
   const closePaymentFailed = () => {
     setPaymentFailedMsg('');
-    // Bỏ cờ khỏi history để F5 không hiện lại modal
     navigate(location.pathname, { replace: true, state: { booking: pendingBooking } });
   };
 
@@ -216,6 +215,8 @@ const BookingPage = () => {
     setIsSubmitting(true);
     try {
       const payload = {
+        // Có mã đơn cũ -> backend dùng lại đơn đó, không tạo đơn PENDING mới
+        bookingCode: pendingBooking?.bookingCode,
         hotelId: hotel._id || hotel.id,
         hotelName: hotel.name,
         hotelAddress: hotel.address,

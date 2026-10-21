@@ -9,6 +9,8 @@ import {
   verifyVNPayPayment,
   getBookingByCode,
   getMyBookings,
+  getCancelBookingInfo,
+  cancelBooking,
 } from '../controllers/customerController.js';
 import {
   getHotels,
@@ -38,8 +40,10 @@ router.put('/change-password', verifyToken, authorizeRoles('CUSTOMER'), changePa
 router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), createPendingBooking);
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
-router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
-router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
+router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), getMyBookings);
+router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), getBookingByCode);
+router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), getCancelBookingInfo);
+router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), cancelBooking);
 
 // Đánh giá kỳ nghỉ (Customer Reviews)
 router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
