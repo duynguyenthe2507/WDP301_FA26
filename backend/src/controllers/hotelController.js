@@ -1,5 +1,6 @@
 import Hotel from '../models/Hotel.js';
 import Review from '../models/Review.js';
+import Booking from '../models/Booking.js';
 import mongoose from 'mongoose';
 
 const formatHotel = (hotel) => {
@@ -160,14 +161,96 @@ export const checkRoomAvailability = async (req, res) => {
       });
     }
 
+    // Neu khong truyen ngay, tra ve so phong mac dinh
+    if (!checkIn || !checkOut) {
+      const defaultAvail = (hotel.roomTypes || [])
+        .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
+        .map((rt) => ({
+          room_type_id: rt._id.toString(),
+          room_type_name: rt.name,
+          total_rooms: rt.totalRooms || 5,
+          available_rooms: rt.totalRooms || 5,
+          is_available: (rt.totalRooms || 5) > 0,
+          price_per_night: rt.basePrice,
+        }));
+
+      return res.status(200).json({
+        success: true,
+        hotel_id: id,
+        room_availability: defaultAvail,
+      });
+    }
+
+    const reqInStr = String(checkIn).slice(0, 10);
+    const reqOutStr = String(checkOut).slice(0, 10);
+
+    // Lay danh sach don dat cua khach san
+    const hotelIdQueries = [{ hotelId: id.toString() }];
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      hotelIdQueries.push({ hotelId: new mongoose.Types.ObjectId(id) });
+    }
+
+    // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    const activeBookings = await Booking.find({
+      $or: hotelIdQueries,
+      bookingStatus: { $nin: ['CANCELLED'] },
+      paymentStatus: { $ne: 'FAILED' },
+      $and: [
+        {
+          $or: [
+            { bookingStatus: 'CONFIRMED' },
+            { paymentStatus: 'PAID' },
+            {
+              bookingStatus: 'PENDING_PAYMENT',
+              createdAt: { $gte: fifteenMinutesAgo },
+            },
+          ],
+        },
+      ],
+    });
+
+    // Tinh tong so phong da dat theo tung roomTypeId trong khoang [checkIn, checkOut]
+    const bookedCountsByRoomType = {};
+
+    for (const b of activeBookings) {
+      const bInStr = b.checkInDate ? new Date(b.checkInDate).toISOString().slice(0, 10) : '';
+      const bOutStr = b.checkOutDate ? new Date(b.checkOutDate).toISOString().slice(0, 10) : '';
+
+      // Kiem tra trung ngay: bIn < reqOut && bOut > reqIn
+      const isOverlap = bInStr < reqOutStr && bOutStr > reqInStr;
+
+      if (isOverlap && Array.isArray(b.bookingDetails)) {
+        for (const detail of b.bookingDetails) {
+          const rtId = detail.roomTypeId?.toString();
+          const qty = Number(detail.quantity) || 1;
+          if (rtId) {
+            bookedCountsByRoomType[rtId] = (bookedCountsByRoomType[rtId] || 0) + qty;
+          }
+        }
+      }
+    }
+
+    // Tinh so phong con trong thuc te
     const room_availability = (hotel.roomTypes || [])
       .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
-      .map((rt) => ({
-        room_type_id: rt._id.toString(),
-        available_rooms: rt.totalRooms || 5,
-        is_available: (rt.totalRooms || 5) > 0,
-        price_per_night: rt.basePrice,
-      }));
+      .map((rt) => {
+        const rtId = rt._id.toString();
+        const total = Number(rt.totalRooms) || 1;
+        const booked = bookedCountsByRoomType[rtId] || 0;
+        const available = Math.max(0, total - booked);
+
+        return {
+          room_type_id: rtId,
+          room_type_name: rt.name,
+          total_rooms: total,
+          booked_rooms: booked,
+          available_rooms: available,
+          is_available: available > 0,
+          price_per_night: rt.basePrice,
+        };
+      });
 
     res.status(200).json({
       success: true,
