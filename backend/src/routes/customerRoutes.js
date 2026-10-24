@@ -16,7 +16,15 @@ import {
   checkRoomAvailability,
   getHotelReviews,
 } from '../controllers/hotelController.js';
-import { verifyToken, authorizeRoles, optionalAuth } from '../middlewares/authMiddleware.js';
+import {
+  getMyReviews,
+  getPendingReviewBookings,
+  getBookingReviewInfo,
+  createReview,
+  updateReview,
+  deleteReview,
+} from '../controllers/reviewController.js';
+import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 router.get('/ping', pingCustomer);
 
@@ -26,11 +34,21 @@ router.put('/profile', verifyToken, authorizeRoles('CUSTOMER'), updateProfile);
 router.put('/change-password', verifyToken, authorizeRoles('CUSTOMER'), changePassword);
 
 // VNPay Sandbox Booking & Payment routes
-router.post('/bookings/pending', optionalAuth, createPendingBooking);
+// Đặt phòng & xem đơn yêu cầu đăng nhập CUSTOMER (khách vãng lai chỉ được xem phòng)
+router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), createPendingBooking);
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
-router.get('/my-bookings', optionalAuth, getMyBookings);
-router.get('/bookings/:bookingCode', getBookingByCode);
+router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
+router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
+
+// Đánh giá kỳ nghỉ (Customer Reviews)
+router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
+router.get('/reviews/pending-bookings', verifyToken, authorizeRoles('CUSTOMER'), getPendingReviewBookings);
+router.get('/reviews/booking-info/:bookingId', verifyToken, authorizeRoles('CUSTOMER'), getBookingReviewInfo);
+router.post('/reviews', verifyToken, authorizeRoles('CUSTOMER'), createReview);
+router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview);
+router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
+
 
 // Hotel routes (Search, Filter, Detail, Availability, Reviews)
 router.get('/hotels', getHotels);
@@ -39,3 +57,6 @@ router.get('/hotels/:id/availability', checkRoomAvailability);
 router.get('/hotels/:id/reviews', getHotelReviews);
 
 export default router;
+
+
+

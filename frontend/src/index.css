@@ -1,6 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* Bootstrap components (modal, tooltip, form, code...) dùng các biến này */
+  --bs-body-font-family: 'Poppins', sans-serif;
+  --bs-font-sans-serif: 'Poppins', sans-serif;
+  --bs-font-monospace: 'Poppins', sans-serif;
   --premium-gold: #d4af37;
   --premium-gold-hover: #b5952f;
   --premium-dark: #1a202c;
@@ -22,6 +26,13 @@ h5,
 h6,
 .navbar-brand {
   font-family: 'Playfair Display', serif;
+}
+
+/* Mã đặt phòng / mã giao dịch: giữ cùng font, chỉ cho số đều cột */
+.font-monospace {
+  font-family: 'Poppins', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* Override Bootstrap Warning to Premium Gold */
@@ -113,6 +124,11 @@ h6,
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   transition: all 0.3s ease;
+}
+
+/* Room for the absolute-positioned icon (left: 12px) so text doesn't touch it */
+.auth-form-control.ps-4 {
+  padding-left: 2.5rem !important;
 }
 
 .auth-form-control:focus {

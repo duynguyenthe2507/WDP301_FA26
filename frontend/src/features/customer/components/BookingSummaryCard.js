@@ -27,6 +27,7 @@ const BookingSummaryCard = ({
   availLoading,
   warningMessage,
   onSubmitBooking,
+  isGuest = false,
 }) => {
   const isDateInvalid = !checkIn || !checkOut || checkOut <= checkIn;
   const isNoRoomSelected = totalRooms <= 0;
@@ -190,7 +191,7 @@ const BookingSummaryCard = ({
             'Vui lòng chọn ít nhất 1 phòng'
           ) : (
             <>
-              Tiếp tục đặt phòng
+              {isGuest ? 'Đăng nhập để tiếp tục đặt phòng' : 'Tiếp tục đặt phòng'}
               <FaArrowRight />
             </>
           )}

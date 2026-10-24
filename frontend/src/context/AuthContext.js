@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -10,6 +10,9 @@ export const AuthContext = createContext({
   loading: false,
   setUser: () => { }
 });
+
+// Các trang yêu cầu đăng nhập (khớp với ProtectedRoute / layout theo role trong App.js)
+const PROTECTED_PREFIXES = ['/booking', '/booking-history', '/profile', '/change-password', '/my-reviews', '/reviews', '/admin', '/partner', '/manager'];
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
@@ -24,12 +27,21 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(Boolean(token && !user));
   const navigate = useNavigate();
 
+  // Đánh dấu vừa chủ động đăng xuất
+  const loggedOutRef = useRef(false);
+
   const logout = useCallback(() => {
+    loggedOutRef.current = true;
+    setTimeout(() => { loggedOutRef.current = false; }, 500);
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/');
+    // Ở lại trang hiện tại nếu trang đó công khai, ngược lại về trang chủ
+    const path = window.location.pathname;
+    const needsLogin = PROTECTED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
+      && !path.startsWith('/booking/vnpay-return');
+    if (needsLogin) navigate('/');
   }, [navigate]);
 
   const fetchMe = useCallback(async () => {
@@ -59,7 +71,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token, fetchMe]);
 
-  const login = (userData, jwtToken) => {
+  // redirectTo: { pathname, state } - trang cần quay lại sau đăng nhập (chỉ áp dụng cho khách hàng)
+  const login = (userData, jwtToken, redirectTo) => {
+    loggedOutRef.current = false;
     setUser(userData);
     setToken(jwtToken);
     localStorage.setItem('token', jwtToken);
@@ -69,11 +83,12 @@ export const AuthProvider = ({ children }) => {
     if (userData.role === 'ADMIN') navigate('/admin');
     else if (userData.role === 'PARTNER') navigate('/partner');
     else if (userData.role === 'STAFF') navigate('/manager');
+    else if (redirectTo?.pathname) navigate(`${redirectTo.pathname}${redirectTo.search || ''}`, { replace: true, state: redirectTo.state });
     else navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, setUser }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, setUser, loggedOutRef }}>
       {children}
     </AuthContext.Provider>
   );

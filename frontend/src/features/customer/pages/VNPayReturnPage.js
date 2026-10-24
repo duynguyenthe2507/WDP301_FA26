@@ -22,6 +22,8 @@ const VNPayReturnPage = () => {
   const bankCode = searchParams.get('vnp_BankCode');
   const amount = Number(searchParams.get('vnp_Amount')) / 100 || 0;
 
+  const [isExpired, setIsExpired] = useState(false);
+
   useEffect(() => {
     const processReturn = async () => {
       const params = Object.fromEntries([...searchParams]);
@@ -35,19 +37,34 @@ const VNPayReturnPage = () => {
 
       try {
         const res = await verifyVNPayPayment(params);
-        setLoading(false);
         if (res.data?.success && responseCode === '00') {
+          setLoading(false);
           setSuccess(true);
           setMessage('Giao dịch thanh toán thành công!');
           setBooking(res.data.booking);
-        } else {
-          setSuccess(false);
-          setMessage(
-            res.data?.message ||
-              'Giao dịch không thành công hoặc bạn đã hủy thao tác thanh toán trên VNPAY.'
-          );
-          setBooking(res.data?.booking);
+          return;
         }
+        if (res.data?.booking) {
+          // Đơn hết hạn: BookingPage tự báo và đưa về /hotels, nên không gửi paymentFailed
+          navigate('/booking', {
+            replace: true,
+            state: {
+              booking: res.data.booking,
+              paymentFailed: res.data.isExpired ? undefined : res.data.message,
+            },
+          });
+          return;
+        }
+        setLoading(false);
+        if (res.data?.isExpired) {
+          setIsExpired(true);
+        }
+        setSuccess(false);
+        setMessage(
+          res.data?.message ||
+            'Giao dịch không thành công hoặc bạn đã hủy thao tác thanh toán trên VNPAY.'
+        );
+        setBooking(res.data?.booking);
       } catch (err) {
         console.error('Lỗi kiểm tra kết quả VNPAY:', err);
         setLoading(false);
@@ -62,7 +79,20 @@ const VNPayReturnPage = () => {
     };
 
     processReturn();
-  }, [searchParams, responseCode, bookingCode]);
+  }, [searchParams, responseCode, bookingCode, navigate]);
+
+  // Thanh toán thành công -> đếm ngược rồi tự chuyển sang phiếu xác nhận
+  const [redirectIn, setRedirectIn] = useState(3);
+  useEffect(() => {
+    if (!success) return;
+    if (redirectIn <= 0) {
+      // replace: để nút Back không quay lại trang return và verify lại lần nữa
+      navigate(`/booking/confirmation/${bookingCode}`, { replace: true, state: { booking } });
+      return;
+    }
+    const t = setTimeout(() => setRedirectIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [success, redirectIn, bookingCode, booking, navigate]);
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '85vh', padding: '3rem 0' }}>
@@ -103,10 +133,15 @@ const VNPayReturnPage = () => {
                   </div>
                 </div>
 
+                <p className="text-muted small mb-3">
+                  Tự động chuyển sang phiếu xác nhận sau <strong>{redirectIn}s</strong>...
+                </p>
+
                 <div className="d-flex flex-column flex-sm-row justify-content-center gap-2">
                   <Link
                     to={`/booking/confirmation/${bookingCode}`}
                     state={{ booking }}
+                    replace
                     className="btn btn-primary px-4 py-2 fw-semibold"
                     style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
                   >
@@ -136,20 +171,30 @@ const VNPayReturnPage = () => {
                     <span className="badge bg-danger">{responseCode || 'FAILED'}</span>
                   </div>
                   <div className="text-muted mt-2 pt-2 border-top" style={{ fontSize: '0.85rem' }}>
-                    Giao dịch chưa được trừ tiền hoặc bạn đã hủy trong quá trình thanh toán trên VNPAY. Bạn có thể tiến hành thanh toán lại đơn phòng này.
+                    {isExpired ? (
+                      <span className="text-danger fw-semibold">
+                        Đơn đặt phòng này đã quá thời hạn thanh toán 15 phút và đã được hệ thống tự động xóa. Vui lòng chọn và đặt phòng mới.
+                      </span>
+                    ) : (
+                      <span>
+                        Giao dịch chưa được trừ tiền hoặc bạn đã hủy trong quá trình thanh toán trên VNPAY. Bạn có thể tiến hành thanh toán lại đơn phòng này trong vòng 15 phút.
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="d-flex flex-column flex-sm-row justify-content-center gap-2">
-                  <Button
-                    onClick={() => navigate('/booking', { state: { booking } })}
-                    className="btn btn-primary px-4 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
-                    style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
-                  >
-                    <FaRedo /> Thử thanh toán lại
-                  </Button>
-                  <Link to="/hotels" className="btn btn-outline-secondary px-4 py-2">
-                    Quay lại danh sách khách sạn
+                  {!isExpired && (
+                    <Button
+                      onClick={() => navigate('/booking', { state: { booking } })}
+                      className="btn btn-primary px-4 py-2 fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+                      style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
+                    >
+                      <FaRedo /> Thử thanh toán lại
+                    </Button>
+                  )}
+                  <Link to="/hotels" className="btn btn-outline-primary px-4 py-2 fw-semibold">
+                    {isExpired ? 'Đặt lại phòng mới' : 'Quay lại danh sách khách sạn'}
                   </Link>
                 </div>
               </div>

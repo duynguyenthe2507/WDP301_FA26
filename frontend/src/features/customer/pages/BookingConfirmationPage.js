@@ -1,11 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Badge, Button, Spinner, Alert } from 'react-bootstrap';
-import { FaCheckCircle, FaHotel, FaCalendarAlt, FaUser, FaBed, FaPrint, FaHome, FaCreditCard, FaFileAlt, FaHistory, FaTimesCircle, FaClock } from 'react-icons/fa';
+import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
+import { FaCheckCircle, FaTimesCircle, FaClock, FaCreditCard } from 'react-icons/fa';
 import { getBookingByCode } from '../CustomerApi';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
+
+const formatDate = (date) =>
+  new Date(date).toLocaleDateString('vi-VN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+// Một dòng "nhãn — giá trị" dùng chung cho các mục thông tin
+const InfoRow = ({ label, children }) => (
+  <div className="d-flex justify-content-between gap-3 py-1">
+    <span className="text-secondary">{label}</span>
+    <span className="fw-semibold text-dark text-end">{children}</span>
+  </div>
+);
+
+const Section = ({ title, children, last }) => (
+  <div className={last ? '' : 'pb-3 mb-3 border-bottom'}>
+    <div className="fw-semibold text-secondary mb-2" style={{ fontSize: '0.8rem' }}>
+      {title}
+    </div>
+    {children}
+  </div>
+);
 
 const BookingConfirmationPage = () => {
   const { bookingCode } = useParams();
@@ -15,22 +40,60 @@ const BookingConfirmationPage = () => {
   const [loading, setLoading] = useState(!location.state?.booking);
   const [error, setError] = useState('');
 
+  const isCancelled = booking?.bookingStatus === 'CANCELLED';
+  const isPaid = !isCancelled && (booking?.paymentStatus === 'PAID' || booking?.bookingStatus === 'CONFIRMED');
+  const isPending = !isCancelled && !isPaid;
+
+  const [isExpired, setIsExpired] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
   useEffect(() => {
-    if (!booking && bookingCode) {
-      setLoading(true);
+    if (bookingCode) {
+      if (!booking) setLoading(true);
       getBookingByCode(bookingCode)
         .then((res) => {
-          setBooking(res.data?.booking);
+          if (res.data?.booking) {
+            setBooking(res.data.booking);
+          }
         })
         .catch((err) => {
           console.error('Lỗi khi tải thông tin đơn đặt phòng:', err);
-          setError(err.response?.data?.message || 'Không tìm thấy thông tin đơn đặt phòng');
+          if (!booking) {
+            setError(err.response?.data?.message || 'Không tìm thấy thông tin đơn đặt phòng');
+          }
         })
         .finally(() => {
           setLoading(false);
         });
     }
-  }, [bookingCode, booking]);
+  }, [bookingCode]);
+
+  useEffect(() => {
+    if (!booking || !isPending) return;
+
+    const calculateRemaining = () => {
+      const expiresAt = new Date(booking.createdAt).getTime() + 15 * 60 * 1000;
+      return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+    };
+
+    const initialLeft = calculateRemaining();
+    setRemainingSeconds(initialLeft);
+    if (initialLeft <= 0) {
+      setIsExpired(true);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const left = calculateRemaining();
+      setRemainingSeconds(left);
+      if (left <= 0) {
+        setIsExpired(true);
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPending, booking]);
 
   if (loading) {
     return (
@@ -46,7 +109,7 @@ const BookingConfirmationPage = () => {
       <Container className="py-5" style={{ minHeight: '60vh' }}>
         <Alert variant="danger" className="text-center p-4 rounded-3 border-0 shadow-sm">
           <h5 className="fw-bold mb-2">Không tìm thấy đơn đặt phòng</h5>
-          <p className="small mb-3">{error || 'Mã đơn không tồn tại hoặc đã bị hủy.'}</p>
+          <p className="small mb-3">{error || 'Mã đơn không tồn tại hoặc đã bị hủy/xóa do hết hạn.'}</p>
           <Link to="/" className="btn btn-outline-secondary btn-sm">
             Quay về trang chủ
           </Link>
@@ -55,275 +118,139 @@ const BookingConfirmationPage = () => {
     );
   }
 
-  const roomDetail = booking.bookingDetails?.[0] || {};
-  const isCancelled = booking.bookingStatus === 'CANCELLED';
-  const isPaid = !isCancelled && (booking.paymentStatus === 'PAID' || booking.bookingStatus === 'CONFIRMED');
-  const isPending = !isCancelled && !isPaid;
+  const bookingDetails =
+    Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
+      ? booking.bookingDetails
+      : [
+        {
+          roomTypeName: booking.roomTypeName || '',
+          quantity: booking.roomQuantity || 1,
+          pricePerNight:
+            booking.pricePerNight ||
+            Math.round((booking.totalAmount || 0) / (booking.totalNights || 1)),
+          totalPrice: booking.totalAmount || 0,
+        },
+      ];
+
+  // Khách nhận phòng: chính chủ thì là người đặt, ngược lại lấy guestInfo
+  const guest = booking.isSelfGuest || !booking.guestInfo?.fullName ? booking.bookerInfo : booking.guestInfo;
+
+  const nights = Number(booking.totalNights) || 1;
+  const lineTotal = (r) =>
+    Number(r.totalPrice) || (Number(r.pricePerNight) || 0) * (Number(r.quantity) || 1) * nights;
+
+  const totalRoomCost = bookingDetails.reduce((sum, r) => sum + lineTotal(r), 0);
+  const serviceFee = Math.max(0, (booking.totalAmount || 0) - totalRoomCost);
+
+  const countdown = `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
+
+  const status = isPaid
+    ? { icon: <FaCheckCircle className="text-success" size={36} />, title: 'Đặt phòng thành công', text: 'Đơn phòng đã được xác nhận và thanh toán qua VNPAY.' }
+    : isCancelled
+      ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã bị hủy', text: booking.cancellationReason ? `Lý do: ${booking.cancellationReason}` : 'Đơn đặt phòng này đã được hủy.' }
+      : isExpired
+        ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã quá hạn thanh toán', text: 'Đơn quá 15 phút chưa thanh toán nên đã bị hủy. Vui lòng đặt lại.' }
+        : { icon: <FaClock className="text-secondary" size={36} />, title: 'Đang chờ thanh toán', text: 'Vui lòng thanh toán trước khi hết giờ để giữ phòng.' };
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2.5rem 0 4rem' }}>
-      <Container style={{ maxWidth: '850px' }}>
-        {/* THANH THÔNG BÁO TRẠNG THÁI */}
-        <div className="bg-white p-4 rounded-3 shadow-sm border mb-4 text-center">
-          {isPaid ? (
-            <>
-              <FaCheckCircle className="text-success mb-2" size={48} />
-              <h4 className="fw-bold text-dark mb-1">Xác Nhận Đặt Phòng Thành Công</h4>
-              <p className="text-muted small mb-3">
-                Đơn phòng đã được ghi nhận trên hệ thống và thanh toán hoàn tất qua <strong>VNPAY</strong>.
-              </p>
-            </>
-          ) : isCancelled ? (
-            <>
-              <FaTimesCircle className="text-danger mb-2" size={48} />
-              <h4 className="fw-bold text-danger mb-1">Đơn Đặt Phòng Đã Bị Hủy</h4>
-              <p className="text-muted small mb-3">
-                Đơn đặt phòng này đã được hủy trên hệ thống.
-                {booking.cancellationReason && ` Lý do hủy: ${booking.cancellationReason}.`}
-              </p>
-            </>
-          ) : (
-            <>
-              <FaClock className="text-warning mb-2" size={48} />
-              <h4 className="fw-bold text-warning mb-1">Đơn Đặt Phòng Đang Chờ Thanh Toán</h4>
-              <p className="text-muted small mb-3">
-                Đơn phòng của bạn đã được khởi tạo thành công nhưng <strong>chưa được thanh toán</strong>. Vui lòng hoàn tất thanh toán để khách sạn giữ phòng cho bạn.
-              </p>
-            </>
-          )}
+      <Container style={{ maxWidth: '720px' }}>
+        <Card className="border rounded-3">
+          {/* TRẠNG THÁI */}
+          <Card.Body className="p-4 text-center border-bottom">
+            <div className="mb-2">{status.icon}</div>
+            <h4 className="fw-bold text-dark mb-1">{status.title}</h4>
+            <p className="text-secondary small mb-2">{status.text}</p>
 
-          <div className="d-inline-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-pill">
-            <span className="text-secondary small">Mã đặt phòng:</span>
-            <strong className="text-primary font-monospace">{booking.bookingCode}</strong>
-          </div>
-        </div>
-
-        {/* PHIẾU XÁC NHẬN (VOUCHER) */}
-        <Card className="border-0 shadow-sm rounded-3 bg-white mb-4 overflow-hidden">
-          <Card.Header className="bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-              <FaFileAlt className="text-primary" />
-              {isPaid ? 'Phiếu xác nhận đặt phòng & Hóa đơn' : 'Thông tin chi tiết đơn đặt phòng'}
-            </h6>
-            {isPaid ? (
-              <Badge bg="success" className="px-3 py-2 fw-semibold">
-                ĐÃ THANH TOÁN & XÁC NHẬN
-              </Badge>
-            ) : isCancelled ? (
-              <Badge bg="danger" className="px-3 py-2 fw-semibold">
-                ĐÃ HỦY
-              </Badge>
-            ) : (
-              <Badge bg="warning" text="dark" className="px-3 py-2 fw-semibold">
-                CHỜ THANH TOÁN
-              </Badge>
+            {isPending && !isExpired && (
+              <div className="mb-3">
+                <div className="text-secondary small">Thời gian giữ phòng còn lại</div>
+                <div className="fs-4 fw-bold text-dark font-monospace">{countdown}</div>
+              </div>
             )}
-          </Card.Header>
 
-          <Card.Body className="p-4">
-            {/* THÔNG TIN KHÁCH SẠN */}
-            <div className="mb-4 pb-3 border-bottom">
-              <h5 className="fw-bold text-dark mb-1">{booking.hotelName}</h5>
-              <div className="text-muted small">{booking.hotelAddress || 'Địa chỉ khách sạn đối tác'}</div>
+            <div className="small text-secondary">
+              Mã đặt phòng: <strong className="font-monospace text-dark">{booking.bookingCode}</strong>
             </div>
+          </Card.Body>
 
-            {/* THÔNG TIN PHÒNG & NGÀY */}
-            <Row className="g-3 mb-4 pb-3 border-bottom">
-              <Col md={6}>
-                <div className="p-3 bg-light rounded-3">
-                  <div className="text-secondary small mb-1">
-                    <FaCalendarAlt className="me-1 text-primary" /> Nhận phòng (Check-in)
-                  </div>
-                  <strong className="text-dark d-block">
-                    {new Date(booking.checkInDate).toLocaleDateString('vi-VN', {
-                      weekday: 'long',
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
-                  </strong>
-                  <small className="text-muted">Từ 14:00</small>
-                </div>
-              </Col>
+          <Card.Body className="p-4" style={{ fontSize: '0.92rem' }}>
+            {/* KHÁCH SẠN & NGÀY */}
+            <Section title="Khách sạn">
+              <div className="fw-bold text-dark">{booking.hotelName}</div>
+              <div className="text-muted mb-2">{booking.hotelAddress || 'Địa chỉ khách sạn đối tác'}</div>
+              <InfoRow label="Nhận phòng">{formatDate(booking.checkInDate)} · từ 14:00</InfoRow>
+              <InfoRow label="Trả phòng">{formatDate(booking.checkOutDate)} · trước 12:00</InfoRow>
+              <InfoRow label="Số đêm">{nights} đêm</InfoRow>
+            </Section>
 
-              <Col md={6}>
-                <div className="p-3 bg-light rounded-3">
-                  <div className="text-secondary small mb-1">
-                    <FaCalendarAlt className="me-1 text-danger" /> Trả phòng (Check-out)
-                  </div>
-                  <strong className="text-dark d-block">
-                    {new Date(booking.checkOutDate).toLocaleDateString('vi-VN', {
-                      weekday: 'long',
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
-                  </strong>
-                  <small className="text-muted">Trước 12:00</small>
-                </div>
-              </Col>
-
-              <Col md={12}>
-                <div className="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+            {/* PHÒNG ĐÃ ĐẶT */}
+            <Section title="Phòng đã đặt">
+              {bookingDetails.map((room, idx) => (
+                <div key={idx} className="d-flex justify-content-between gap-3 py-1">
                   <div>
-                    <strong className="text-dark d-block">
-                      <FaBed className="text-primary me-2" />
-                      {roomDetail.roomTypeName || 'Phòng Deluxe'}
-                    </strong>
-                    <span className="text-secondary small">
-                      Số lượng: {roomDetail.quantity || 1} phòng • Thời gian lưu trú: {booking.totalNights} đêm
-                    </span>
+                    <div className="fw-semibold text-dark">{room.roomTypeName || 'Phòng'} × {Number(room.quantity) || 1}</div>
+                    <div className="text-muted small">{formatPrice(Number(room.pricePerNight) || 0)} / phòng / đêm</div>
                   </div>
-                  <div className="text-end">
-                    <span className="text-secondary small d-block">Đơn giá / đêm</span>
-                    <strong className="text-dark">{formatPrice(roomDetail.pricePerNight || 0)}</strong>
-                  </div>
+                  <span className="fw-semibold text-dark">{formatPrice(lineTotal(room))}</span>
                 </div>
-              </Col>
-            </Row>
+              ))}
+            </Section>
 
-            {/* THÔNG TIN NGƯỜI ĐẶT & KHÁCH NHẬN PHÒNG */}
-            <Row className="g-3 mb-4 pb-3 border-bottom">
-              <Col md={6}>
-                <h6 className="fw-bold text-dark small mb-2">Thông tin người đặt</h6>
-                <div className="small">
-                  <div><span className="text-secondary">Họ tên:</span> <strong>{booking.bookerInfo?.fullName}</strong></div>
-                  <div><span className="text-secondary">Điện thoại:</span> <strong>{booking.bookerInfo?.phoneNumber}</strong></div>
-                  <div><span className="text-secondary">Email:</span> <strong>{booking.bookerInfo?.email}</strong></div>
-                </div>
-              </Col>
+            {/* KHÁCH */}
+            <Section title="Thông tin khách nhận phòng">
+              <InfoRow label="Họ tên">{guest?.fullName}</InfoRow>
+              <InfoRow label="Điện thoại">{guest?.phoneNumber}</InfoRow>
+              {booking.isSelfGuest && <InfoRow label="Email">{booking.bookerInfo?.email}</InfoRow>}
+              {!booking.isSelfGuest && (
+                <InfoRow label="Người đặt hộ">
+                  {booking.bookerInfo?.fullName} ({booking.bookerInfo?.phoneNumber})
+                </InfoRow>
+              )}
+              {Boolean(booking.specialRequests) && (
+                <InfoRow label="Yêu cầu đặc biệt">{booking.specialRequests}</InfoRow>
+              )}
+            </Section>
 
-              <Col md={6}>
-                <h6 className="fw-bold text-dark small mb-2">
-                  Khách lưu trú nhận phòng{' '}
-                  <span className="badge bg-light text-secondary border fw-normal">
-                    {booking.isSelfGuest ? 'Chính chủ' : 'Người khác'}
-                  </span>
-                </h6>
-                <div className="small">
-                  {booking.isSelfGuest ? (
-                    <div>
-                      <span className="text-secondary">Người nhận phòng:</span>{' '}
-                      <strong>{booking.bookerInfo?.fullName}</strong> ({booking.bookerInfo?.phoneNumber})
-                    </div>
-                  ) : (
-                    <div>
-                      <div><span className="text-secondary">Họ tên:</span> <strong>{booking.guestInfo?.fullName}</strong></div>
-                      <div><span className="text-secondary">Điện thoại:</span> <strong>{booking.guestInfo?.phoneNumber}</strong></div>
-                    </div>
-                  )}
-                </div>
-              </Col>
-            </Row>
-
-            {/* YÊU CẦU ĐẶC BIỆT CHO KHÁCH SẠN (DÙNG CHUNG CẢ ĐƠN PHÒNG) */}
-            {Boolean(booking.specialRequests) && (
-              <div className="mb-4 pb-3 border-bottom">
-                <h6 className="fw-bold text-dark small mb-2 d-flex align-items-center gap-2">
-                  <FaFileAlt className="text-primary" /> Yêu cầu đặc biệt cho khách sạn (Special Requests)
-                </h6>
-                <div className="p-3 bg-light rounded-3 small text-dark border">
-                  {booking.specialRequests || booking.notes || booking.guestInfo?.notes}
-                </div>
+            {/* THANH TOÁN */}
+            <Section title="Thanh toán" last>
+              <InfoRow label="Tiền phòng">{formatPrice(totalRoomCost)}</InfoRow>
+              {serviceFee > 0 && <InfoRow label="Thuế & phí dịch vụ">{formatPrice(serviceFee)}</InfoRow>}
+              {isPaid && booking.vnpayTransaction?.vnp_TransactionNo && (
+                <InfoRow label="Mã giao dịch VNPAY">
+                  <span className="font-monospace">{booking.vnpayTransaction.vnp_TransactionNo}</span>
+                  {booking.vnpayTransaction.vnp_BankCode && ` · ${booking.vnpayTransaction.vnp_BankCode}`}
+                </InfoRow>
+              )}
+              <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
+                <span className={`fw-bold ${isPaid ? 'text-success' : 'text-dark'}`}>{isPaid ? 'Đã thanh toán' : 'Tổng cần thanh toán'}</span>
+                <span className={`fw-bold fs-5 ${isPaid ? 'text-success' : 'text-dark'}`}>
+                  {formatPrice(booking.totalAmount)}
+                </span>
               </div>
-            )}
-
-            {/* THÔNG TIN THANH TOÁN */}
-            <div>
-              <h6 className="fw-bold text-dark small mb-3">
-                {isPaid ? 'Chi tiết thanh toán VNPAY' : 'Thông tin thanh toán'}
-              </h6>
-              <div className="d-flex flex-column gap-2 small">
-                <div className="d-flex justify-content-between">
-                  <span className="text-secondary">Phương thức:</span>
-                  <strong>Cổng thanh toán VNPAY</strong>
-                </div>
-
-                <div className="d-flex justify-content-between">
-                  <span className="text-secondary">Trạng thái thanh toán:</span>
-                  {isPaid ? (
-                    <Badge bg="success">Đã thanh toán thành công</Badge>
-                  ) : isCancelled ? (
-                    <Badge bg="danger">Đơn đã hủy</Badge>
-                  ) : (
-                    <Badge bg="warning" text="dark">Chưa thanh toán</Badge>
-                  )}
-                </div>
-
-                {isPaid && booking.vnpayTransaction?.vnp_TransactionNo && (
-                  <div className="d-flex justify-content-between">
-                    <span className="text-secondary">Mã giao dịch VNPAY:</span>
-                    <strong className="text-primary font-monospace">
-                      {booking.vnpayTransaction.vnp_TransactionNo}
-                    </strong>
-                  </div>
-                )}
-
-                {isPaid && booking.vnpayTransaction?.vnp_BankCode && (
-                  <div className="d-flex justify-content-between">
-                    <span className="text-secondary">Ngân hàng thanh toán:</span>
-                    <strong>{booking.vnpayTransaction.vnp_BankCode}</strong>
-                  </div>
-                )}
-
-                {isPaid && booking.vnpayTransaction?.vnp_PayDate && (
-                  <div className="d-flex justify-content-between">
-                    <span className="text-secondary">Thời gian thanh toán:</span>
-                    <span>{booking.vnpayTransaction.vnp_PayDate}</span>
-                  </div>
-                )}
-
-                <div className="d-flex justify-content-between pt-2 border-top fs-6">
-                  <span className="fw-bold text-dark">
-                    {isPaid ? 'Tổng tiền đã thanh toán:' : 'Tổng tiền cần thanh toán:'}
-                  </span>
-                  <span className={`fw-bold fs-5 ${isPaid ? 'text-success' : isPending ? 'text-danger' : 'text-secondary'}`}>
-                    {formatPrice(booking.totalAmount)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            </Section>
           </Card.Body>
         </Card>
 
         {/* NÚT HÀNH ĐỘNG */}
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <Link to="/" className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
-            <FaHome /> Quay về trang chủ
+        <div className="d-flex flex-column flex-sm-row justify-content-center gap-2 mt-4">
+          {isPending && !isExpired && (
+            <Button
+              as={Link}
+              to="/booking"
+              state={{ booking }}
+              variant="warning"
+              className="fw-semibold d-inline-flex align-items-center justify-content-center gap-1"
+            >
+              <FaCreditCard /> Thanh toán ngay
+            </Button>
+          )}
+          <Link to="/booking-history" className="btn btn-dark px-4">
+            Lịch sử đặt phòng
           </Link>
-          <div className="d-flex flex-wrap gap-2">
-            <Link to="/booking-history" className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
-              <FaHistory /> Lịch sử đặt phòng
-            </Link>
-
-            {isPending && (
-              <Button
-                as={Link}
-                to="/booking"
-                state={{ booking }}
-                size="sm"
-                variant="warning"
-                className="fw-semibold d-inline-flex align-items-center gap-1"
-              >
-                <FaCreditCard /> Thanh toán ngay
-              </Button>
-            )}
-
-            {isPaid && (
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={() => window.print()}
-                className="d-inline-flex align-items-center gap-1"
-              >
-                <FaPrint /> In hóa đơn
-              </Button>
-            )}
-
-            <Link to="/hotels" className="btn btn-primary btn-sm px-3" style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}>
-              Đặt thêm phòng khác
-            </Link>
-          </div>
+          <Link to="/hotels" className="btn btn-outline-secondary px-4">
+            {isPending && isExpired ? 'Đặt lại phòng' : 'Đặt thêm phòng'}
+          </Link>
         </div>
       </Container>
     </div>

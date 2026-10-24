@@ -5,7 +5,8 @@ const reviewSchema = new mongoose.Schema(
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Booking',
-      required: false,
+      required: true,
+      unique: true, // 1 Booking tương ứng tối đa 1 Review
     },
     hotelId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -37,7 +38,7 @@ const reviewSchema = new mongoose.Schema(
     ],
     partnerReply: {
       content: { type: String, default: '' },
-      repliedAt: { type: Date },
+      repliedAt: { type: Date, default: null },
     },
   },
   {

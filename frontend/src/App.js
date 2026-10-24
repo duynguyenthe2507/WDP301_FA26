@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { PropertyDraftProvider } from './features/hotel_partner/context/PropertyDraftContext';
 
 // Auth Pages
 import Login from './features/auth/pages/Login';
@@ -23,14 +24,29 @@ import BookingPage from './features/customer/pages/BookingPage';
 import BookingConfirmationPage from './features/customer/pages/BookingConfirmationPage';
 import VNPayReturnPage from './features/customer/pages/VNPayReturnPage';
 import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
+import MyReviewsPage from './features/customer/pages/MyReviewsPage';
+import WriteReviewPage from './features/customer/pages/WriteReviewPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
+//Partners Pages
+import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
+import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
+import PartnerPropertyAmenities from './features/hotel_partner/pages/PartnerPropertyAmenities';
+import PartnerPropertyRooms from './features/hotel_partner/pages/PartnerPropertyRooms';
+import PartnerPropertyPhotos from './features/hotel_partner/pages/PartnerPropertyPhotos';
+import PartnerPropertyDetails from './features/hotel_partner/pages/PartnerPropertyDetails';
+import PartnerPropertyProfile from './features/hotel_partner/pages/PartnerPropertyProfile';
+import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerPropertyPublish';
+
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
+import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
+import SystemConfiguration from './features/admin/pages/SystemConfiguration';
+import SystemLog from './features/admin/pages/SystemLog';
 
 
 function App() {
@@ -50,21 +66,40 @@ function App() {
             <Route index element={<Home />} />
             <Route path="hotels" element={<HotelSearchPage />} />
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
-            <Route path="booking" element={<BookingPage />} />
-            <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
             <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
-            <Route path="booking-history" element={<BookingHistoryPage />} />
 
-            {/* Profile - yêu cầu đăng nhập CUSTOMER */}
+            {/* Đặt phòng, lịch sử, profile, đánh giá - yêu cầu đăng nhập CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="booking" element={<BookingPage />} />
+              <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
+              <Route path="booking-history" element={<BookingHistoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="change-password" element={<ProfilePage section="password" />} />
+              <Route path="my-reviews" element={<MyReviewsPage />} />
+              <Route path="reviews" element={<MyReviewsPage />} />
+              <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
+              <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
             </Route>
           </Route>
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
-            {/* Add more admin routes here */}
+            <Route path="users" element={<UserManagement />} />
+            <Route path="system-config" element={<SystemConfiguration />} />
+            <Route path="logs" element={<SystemLog />} />
+          </Route>
+          {/* Hotel Partner Routes */}
+          <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
+            <Route index element={<PartnerDashboard />} />
+            <Route path="terms" element={<PartnerTerms />} />
+            <Route path="property-location" element={<PartnerPropertyLocation />} />
+            <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
+            <Route path="property-rooms" element={<PartnerPropertyRooms />} />
+            <Route path="property-photos" element={<PartnerPropertyPhotos />} />
+            <Route path="property-details" element={<PartnerPropertyDetails />} />
+            <Route path="property-profile" element={<PartnerPropertyProfile />} />
+            <Route path="property-publish" element={<PartnerPropertyPublish />} />
           </Route>
 
           {/* Hotel Partner Routes */}

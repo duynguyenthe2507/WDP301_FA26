@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        avatarUrl: {
+            type: String,
+            trim: true,
+        },
         role: {
             type: String,
             enum: ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN'],
@@ -28,20 +32,26 @@ const userSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['ACTIVE', 'BLOCKED', 'SUSPENDED', 'DEACTIVATED'],
+            enum: ['ACTIVE', 'SUSPENDED', 'BLOCKED'],
             default: 'ACTIVE',
         },
         isEmailVerified: {
             type: Boolean,
-            default: false,
+            required: false,
         },
-        avatar: {
+        createdAt: {
+            type: Date,
+        },
+        updatedAt: {
+            type: Date
+        },
+        status_reason: {
             type: String,
-            default: '',
+            trim: true,
         },
     },
     {
-        timestamps: true,
+        timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' },
     }
 );
 
