@@ -3,7 +3,12 @@ import Dispute from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
 import Payment from '../models/Payment.js';
+import CommissionPolicy from '../models/CommissionPolicy.js';
+import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import Payout from '../models/Payout.js';
 import RefundRequest from '../models/RefundRequest.js';
+import SupportTicket from '../models/SupportTicket.js';
+import User from '../models/User.js';
 
 const getPaging = (query) => {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
@@ -133,3 +138,12 @@ export const reviewRefund = async (req, res, next) => {
     res.json({ message: 'Đã cập nhật yêu cầu hoàn tiền.', refund });
   } catch (error) { next(error); }
 };
+
+export const getCommissionPolicies = async (req, res, next) => { try { res.json({ policies: await CommissionPolicy.find().sort({ effectiveFrom: -1 }) }); } catch (error) { next(error); } };
+export const createCommissionPolicy = async (req, res, next) => { try { const { name, calculationType, value, scope = 'GLOBAL', effectiveFrom, effectiveTo, partnerId, hotelId } = req.body; if (!name?.trim() || !['PERCENTAGE', 'FIXED'].includes(calculationType) || !Number.isFinite(Number(value)) || !effectiveFrom) return res.status(400).json({ message: 'Thông tin chính sách không hợp lệ.' }); const policy = await CommissionPolicy.create({ name: name.trim(), calculationType, value: Number(value), scope, effectiveFrom, effectiveTo: effectiveTo || null, partnerId: partnerId || null, hotelId: hotelId || null, createdBy: req.user._id }); await audit(req.user._id, 'COMMISSION_POLICY_CREATED', 'COMMISSION_POLICY', policy._id); res.status(201).json({ policy }); } catch (error) { next(error); } };
+export const getHotelPartners = async (req, res, next) => { try { res.json({ partners: await User.find({ role: 'HOTEL_PARTNER', status: 'ACTIVE' }).select('fullName email phoneNumber').sort({ fullName: 1 }) }); } catch (error) { next(error); } };
+export const getPayouts = async (req, res, next) => { try { res.json({ payouts: await Payout.find().populate('partnerId', 'fullName email').sort({ createdAt: -1 }) }); } catch (error) { next(error); } };
+export const generatePayout = async (req, res, next) => { try { const { partnerId, periodStart, periodEnd } = req.body; if (!partnerId || !periodStart || !periodEnd) return res.status(400).json({ message: 'Thiếu đối tác hoặc kỳ thanh toán.' }); const payout = await Payout.create({ partnerId, periodStart, periodEnd, grossRevenue: 0, commissionAmount: 0, netAmount: 0, status: 'PENDING_APPROVAL' }); await audit(req.user._id, 'PAYOUT_GENERATED', 'PAYOUT', payout._id); res.status(201).json({ payout }); } catch (error) { next(error); } };
+export const reviewPayout = async (req, res, next) => { try { const payout = await Payout.findById(req.params.id); if (!payout) return res.status(404).json({ message: 'Không tìm thấy payout.' }); const { decision, note = '', paymentReference = '' } = req.body; if (decision === 'APPROVE') payout.status = 'APPROVED'; else if (decision === 'REJECT') payout.status = 'REJECTED'; else if (decision === 'MARK_PAID') { payout.status = 'PAID'; payout.paidAt = new Date(); payout.paymentReference = paymentReference; } else return res.status(400).json({ message: 'Quyết định không hợp lệ.' }); payout.reviewedBy = req.user._id; payout.reviewNote = note; payout.reviewedAt = new Date(); await payout.save(); res.json({ payout }); } catch (error) { next(error); } };
+export const getPartnerChangeRequests = async (req, res, next) => { try { res.json({ requests: await PartnerChangeRequest.find().populate('hotelId', 'name').populate('partnerId', 'fullName email').sort({ createdAt: -1 }) }); } catch (error) { next(error); } };
+export const getSupportTickets = async (req, res, next) => { try { res.json({ tickets: await SupportTicket.find().populate('hotelId', 'name').populate('partnerId', 'fullName email').sort({ createdAt: -1 }) }); } catch (error) { next(error); } };

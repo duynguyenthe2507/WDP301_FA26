@@ -1,8 +1,32 @@
 import Hotel from "../models/Hotel.js";
+import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import SupportTicket from '../models/SupportTicket.js';
 
 export const pingPartner = (req, res) => {
   res.status(200).json({ message: "Hotel Partner API works!" });
 };
+
+export const createPartnerChangeRequest = async (req, res, next) => {
+  try {
+    const { hotelId, changes = [], documents = [] } = req.body;
+    const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'APPROVED' });
+    if (!hotel || !Array.isArray(changes) || !changes.length) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
+    const request = await PartnerChangeRequest.create({ hotelId, partnerId: req.user._id, changes, documents: documents.slice(0, 5) });
+    res.status(201).json({ request });
+  } catch (error) { next(error); }
+};
+
+export const createSupportTicket = async (req, res, next) => {
+  try {
+    const { hotelId, bookingId, category, subject, description, attachments = [] } = req.body;
+    if (!category || !subject?.trim() || !description?.trim()) return res.status(400).json({ message: 'Thông tin ticket không hợp lệ.' });
+    if (hotelId && !(await Hotel.exists({ _id: hotelId, ownerId: req.user._id }))) return res.status(403).json({ message: 'Bạn không sở hữu khách sạn này.' });
+    const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject: subject.trim(), description: description.trim(), attachments: attachments.slice(0, 5) });
+    res.status(201).json({ ticket });
+  } catch (error) { next(error); }
+};
+
+export const getMySupportTickets = async (req, res, next) => { try { res.json({ tickets: await SupportTicket.find({ partnerId: req.user._id }).sort({ createdAt: -1 }) }); } catch (error) { next(error); } };
 const toNumber = (value) =>
   value === "" || value === null || value === undefined ? NaN : Number(value);
 const stringList = (value) =>
