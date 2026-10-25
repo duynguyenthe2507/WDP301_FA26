@@ -1,17 +1,14 @@
-import React from 'react';
-import { Card } from 'react-bootstrap';
+import { useEffect, useState } from 'react';
+import { Alert, Col, Row, Spinner } from 'react-bootstrap';
+import { getManagerDashboard } from '../managerApi';
 
 const ManagerDashboard = () => {
-  return (
-    <div>
-      <h2 className="mb-4">Bảng điều khiển Quản lý Nền tảng</h2>
-      <Card className="border-0 shadow-sm rounded-4">
-        <Card.Body>
-          <p>Chào mừng Quản lý nền tảng. Tại đây bạn có thể theo dõi toàn bộ hoạt động của hệ thống, quản lý đối tác và kiểm duyệt đánh giá.</p>
-        </Card.Body>
-      </Card>
-    </div>
-  );
+  const [data, setData] = useState(null); const [error, setError] = useState('');
+  useEffect(() => { getManagerDashboard().then((response) => setData(response.data)).catch((requestError) => setError(requestError.response?.data?.message || 'Không thể tải tổng quan.')); }, []);
+  if (error) return <Alert variant="danger">{error}</Alert>;
+  if (!data) return <div className="om-empty"><Spinner /></div>;
+  const cards = [['Chờ xác minh', data.stats.verificationPending], ['Tranh chấp mở', data.stats.disputeOpen], ['Chờ hoàn tiền', data.stats.refundPending]];
+  return <div><div className="om-page-heading"><div><h2>Tổng quan vận hành</h2><p>Theo dõi các công việc cần xử lý trên toàn nền tảng.</p></div></div><Row className="g-3">{cards.map(([label, value]) => <Col md={4} key={label}><div className="om-kpi"><span>{label}</span><strong>{value}</strong></div></Col>)}</Row></div>;
 };
 
 export default ManagerDashboard;

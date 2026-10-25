@@ -45,6 +45,7 @@ import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
+import ManagerQueuePage from './features/platform_manager/pages/ManagerQueuePage';
 import SystemConfiguration from './features/admin/pages/SystemConfiguration';
 import SystemLog from './features/admin/pages/SystemLog';
 
@@ -109,9 +110,13 @@ function App() {
           </Route>
 
           {/* Platform Manager Routes */}
-          <Route path="/manager" element={<ManagerLayout />}>
-            <Route index element={<ManagerDashboard />} />
-            {/* Add more manager routes here */}
+          <Route element={<ProtectedRoute allowedRoles={['OPERATIONS_MANAGER']} />}>
+            <Route path="/manager" element={<ManagerLayout />}>
+              <Route index element={<ManagerDashboard />} />
+              <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
+              <Route path="disputes" element={<ManagerQueuePage type="disputes" />} />
+              <Route path="refunds" element={<ManagerQueuePage type="refunds" />} />
+            </Route>
           </Route>
         </Routes>
       </AuthProvider>
