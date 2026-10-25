@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Hotel from '../models/Hotel.js';
+import Dispute from '../models/Dispute.js';
+import RefundRequest from '../models/RefundRequest.js';
 import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
 export const pingCustomer = (req, res) => {
@@ -415,6 +417,52 @@ export const getBookingByCode = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi lấy thông tin đơn đặt phòng', error: error.message });
   }
+};
+
+const findBookingHotel = async (booking) => {
+  const hotelId = String(booking.hotelId || '');
+  if (/^[a-f\d]{24}$/i.test(hotelId)) {
+    const hotel = await Hotel.findById(hotelId);
+    if (hotel) return hotel;
+  }
+  return Hotel.findOne({ name: booking.hotelName });
+};
+
+export const createDispute = async (req, res) => {
+  try {
+    const { bookingId, category, description, attachments = [] } = req.body;
+    const categories = ['INCORRECT_INFORMATION', 'SERVICE_QUALITY', 'OVERCHARGE', 'CANCELLATION', 'OTHER'];
+    if (!bookingId || !categories.includes(category) || !description?.trim()) return res.status(400).json({ message: 'Thông tin tranh chấp không hợp lệ.' });
+    const booking = await Booking.findOne({ _id: bookingId, customerId: req.user._id });
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy booking của bạn.' });
+    const deadline = new Date(booking.checkOutDate || booking.checkInDate).getTime() + 48 * 60 * 60 * 1000;
+    if (Date.now() > deadline) return res.status(400).json({ message: 'Chỉ có thể gửi tranh chấp trong 48 giờ sau khi kết thúc lưu trú.' });
+    const hotel = await findBookingHotel(booking);
+    if (!hotel?.ownerId) return res.status(400).json({ message: 'Booking chưa có đối tác để xử lý tranh chấp.' });
+    const validAttachments = Array.isArray(attachments) ? attachments.filter((file) => file?.fileName && file?.fileUrl).slice(0, 5) : [];
+    if (category === 'INCORRECT_INFORMATION' && !validAttachments.length) return res.status(400).json({ message: 'Tranh chấp sai thông tin cần có bằng chứng.' });
+    if (await Dispute.exists({ bookingId: booking._id, status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] } })) return res.status(409).json({ message: 'Booking này đã có tranh chấp đang xử lý.' });
+    const dispute = await Dispute.create({ bookingId: booking._id, bookingCode: booking.bookingCode, customerId: req.user._id, hotelId: hotel._id, partnerId: hotel.ownerId, category, description: description.trim(), attachments: validAttachments });
+    res.status(201).json({ message: 'Đã gửi tranh chấp để bộ phận vận hành xem xét.', dispute });
+  } catch (error) { res.status(500).json({ message: 'Không thể tạo tranh chấp.', error: error.message }); }
+};
+
+export const createRefundRequest = async (req, res) => {
+  try {
+    const { bookingId, disputeId, requestedAmount, reason } = req.body;
+    const amount = Number(requestedAmount);
+    if (!bookingId || !reason?.trim() || !Number.isFinite(amount) || amount < 0) return res.status(400).json({ message: 'Thông tin yêu cầu hoàn tiền không hợp lệ.' });
+    const booking = await Booking.findOne({ _id: bookingId, customerId: req.user._id });
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy booking của bạn.' });
+    if (booking.paymentStatus !== 'PAID') return res.status(400).json({ message: 'Chỉ booking đã thanh toán mới có thể yêu cầu hoàn tiền.' });
+    if (amount > Number(booking.totalAmount || 0)) return res.status(400).json({ message: 'Số tiền yêu cầu vượt quá giá trị booking.' });
+    if (await RefundRequest.exists({ bookingId: booking._id, status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'PROCESSED'] } })) return res.status(409).json({ message: 'Booking này đã có yêu cầu hoàn tiền.' });
+    const hotel = await findBookingHotel(booking);
+    if (!hotel?.ownerId) return res.status(400).json({ message: 'Booking chưa có đối tác để xử lý hoàn tiền.' });
+    if (disputeId && !(await Dispute.exists({ _id: disputeId, bookingId: booking._id, customerId: req.user._id }))) return res.status(400).json({ message: 'Tranh chấp liên kết không hợp lệ.' });
+    const refund = await RefundRequest.create({ bookingId: booking._id, disputeId: disputeId || null, customerId: req.user._id, hotelId: hotel._id, partnerId: hotel.ownerId, requestedAmount: amount, reason: reason.trim() });
+    res.status(201).json({ message: 'Đã gửi yêu cầu hoàn tiền để xem xét.', refund });
+  } catch (error) { res.status(500).json({ message: 'Không thể tạo yêu cầu hoàn tiền.', error: error.message }); }
 };
 
 // GET /api/customer/my-bookings

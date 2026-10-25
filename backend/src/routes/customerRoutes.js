@@ -9,6 +9,8 @@ import {
   verifyVNPayPayment,
   getBookingByCode,
   getMyBookings,
+  createDispute,
+  createRefundRequest,
 } from '../controllers/customerController.js';
 import {
   getHotels,
@@ -40,6 +42,8 @@ router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
 router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
+router.post('/disputes', verifyToken, authorizeRoles('CUSTOMER'), createDispute);
+router.post('/refunds', verifyToken, authorizeRoles('CUSTOMER'), createRefundRequest);
 
 // Đánh giá kỳ nghỉ (Customer Reviews)
 router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
