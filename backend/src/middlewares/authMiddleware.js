@@ -17,8 +17,15 @@ export const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Tài khoản không tồn tại' });
     }
 
-    if (user.status === 'BLOCKED') {
-      return res.status(403).json({ message: 'Tài khoản của bạn đã bị khóa' });
+    // Chỉ tài khoản ACTIVE mới được sử dụng token.
+    if (user.status !== 'ACTIVE') {
+      let message = 'Tài khoản của bạn đã bị khóa vĩnh viễn';
+
+      if (user.status === 'SUSPENDED') {
+        message = 'Tài khoản của bạn đang bị tạm khóa để điều tra';
+      }
+
+      return res.status(403).json({ message });
     }
 
     req.user = user; // Lưu thông tin user vào request
@@ -28,7 +35,7 @@ export const verifyToken = async (req, res, next) => {
   }
 };
 
-//Phân quyền theo role
+// Phân quyền theo role
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
@@ -42,3 +49,20 @@ export const authorizeRoles = (...roles) => {
     next();
   };
 };
+
+// Xác thực tùy chọn (cho phép cả khách vãng lai và người đã đăng nhập đặt phòng)
+export const optionalAuth = async (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
+    const user = await User.findById(decoded.id).select('-password');
+    if (user && !['BLOCKED', 'SUSPENDED', 'DEACTIVATED'].includes(user.status)) {
+      req.user = user;
+    }
+  } catch (err) {
+    // Không ném lỗi nếu token hết hạn
+  }
+  next();
+};
+

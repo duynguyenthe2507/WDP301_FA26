@@ -1,0 +1,59 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c501" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c301" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c005" },
+    "rating": 5,
+    "comment": "Phòng sạch sẽ, vị trí trung tâm tiện đi lại, nhân viên nhiệt tình!",
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/reviews/review1.jpg",
+        "publicId": "vinastay/reviews/review1"
+      }
+    ],
+    "partnerReply": {
+      "content": "Cảm ơn bạn đã lựa chọn trải nghiệm tại VinaStay Grand Hotel Hanoi!",
+      "repliedAt": { "$date": "2026-10-12T08:00:00.000Z" }
+    },
+    "createdAt": { "$date": "2026-10-11T12:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c502" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c399" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c103" },
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c006" },
+    "rating": 5,
+    "comment": "Khu resort quá đẹp, bãi biển riêng nước trong xanh và cát trắng. Hồ bơi vô cực ngắm hoàng hôn xuất sắc. Buffet sáng phong phú và tươi ngon!",
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/reviews/danang_review1.jpg",
+        "publicId": "vinastay/reviews/danang_review1"
+      }
+    ],
+    "partnerReply": {
+      "content": "Cảm ơn chị Mai đã dành thời gian đánh giá 5 sao cho VinaStay Ocean Beach Resort Danang! Chúc chị và gia đình luôn nhiều niềm vui và sức khỏe.",
+      "repliedAt": { "$date": "2026-09-25T10:15:00.000Z" }
+    },
+    "createdAt": { "$date": "2026-09-25T08:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c503" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c398" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c102" },
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c007" },
+    "rating": 4,
+    "comment": "View thung lũng Mường Hoa săn mây buổi sáng đỉnh chóp. Không khí se lạnh ngồi bên lò sưởi thưởng trà rất chill. Điểm trừ nhỏ là đường lên dốc hơi quanh co.",
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/reviews/sapa_review1.jpg",
+        "publicId": "vinastay/reviews/sapa_review1"
+      }
+    ],
+    "partnerReply": {
+      "content": "Cảm ơn anh Tuấn Anh đã góp ý chân thành. Khách sạn luôn có dịch vụ xe đưa đón thị xã hỗ trợ quý khách bất cứ lúc nào ạ!",
+      "repliedAt": { "$date": "2026-09-28T14:00:00.000Z" }
+    },
+    "createdAt": { "$date": "2026-09-28T11:45:00.000Z" }
+  }
+]

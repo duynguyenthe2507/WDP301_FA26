@@ -1,158 +1,138 @@
-import React, { useState } from 'react';
-import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap';
-import axios from 'axios';
+import React from 'react';
+import { Card, Row, Col, Button, Container } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaPhone, FaUserTie } from 'react-icons/fa';
+import { FaUser, FaHotel, FaCheckCircle, FaArrowRight, FaSignInAlt } from 'react-icons/fa';
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    full_name: '',
-    phone_number: '',
-    role: 'CUSTOMER'
-  });
-  
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      await axios.post('http://localhost:9999/api/auth/register', formData);
-
-      // Success
-      alert('Đăng ký thành công! Vui lòng đăng nhập.');
-      navigate('/login');
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Đăng ký thất bại');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="auth-page">
-      <Card className="auth-card" style={{ maxWidth: '600px' }}>
-        <Card.Body>
-          <h2 className="auth-title">VinaStay Premium</h2>
-          <p className="text-center text-muted mb-4">Mở tài khoản để khám phá thế giới</p>
-          
-          {error && <Alert variant="danger" className="border-0 rounded-3 shadow-sm">{error}</Alert>}
-
-          <Form onSubmit={handleSubmit}>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold text-muted small">HỌ VÀ TÊN</Form.Label>
-                  <div className="position-relative">
-                    <Form.Control 
-                      type="text" 
-                      name="full_name"
-                      className="auth-form-control ps-4"
-                      placeholder="Nguyễn Văn A" 
-                      value={formData.full_name}
-                      onChange={handleChange}
-                      required
-                    />
-                    <FaUser className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-                  </div>
-                </Form.Group>
-              </Col>
-              
-              <Col md={6}>
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold text-muted small">SỐ ĐIỆN THOẠI</Form.Label>
-                  <div className="position-relative">
-                    <Form.Control 
-                      type="text" 
-                      name="phone_number"
-                      className="auth-form-control ps-4"
-                      placeholder="0912345678" 
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                    />
-                    <FaPhone className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-                  </div>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-4">
-              <Form.Label className="fw-semibold text-muted small">EMAIL</Form.Label>
-              <div className="position-relative">
-                <Form.Control 
-                  type="email" 
-                  name="email"
-                  className="auth-form-control ps-4"
-                  placeholder="name@example.com" 
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
-                <FaEnvelope className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-              </div>
-            </Form.Group>
-
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold text-muted small">MẬT KHẨU</Form.Label>
-                  <div className="position-relative">
-                    <Form.Control 
-                      type="password" 
-                      name="password"
-                      className="auth-form-control ps-4"
-                      placeholder="Nhập mật khẩu" 
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                    />
-                    <FaLock className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-                  </div>
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group className="mb-4">
-                  <Form.Label className="fw-semibold text-muted small">VAI TRÒ</Form.Label>
-                  <div className="position-relative">
-                    <Form.Select 
-                      name="role" 
-                      className="auth-form-control ps-4"
-                      value={formData.role}
-                      onChange={handleChange}
-                    >
-                      <option value="CUSTOMER">Khách hàng</option>
-                      <option value="PARTNER">Đối tác khách sạn</option>
-                    </Form.Select>
-                    <FaUserTie className="position-absolute text-muted" style={{ top: '50%', left: '12px', transform: 'translateY(-50%)' }} />
-                  </div>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Button variant="warning" type="submit" className="w-100 auth-btn mt-2 mb-4" disabled={loading}>
-              {loading ? 'Đang xử lý...' : 'Đăng Ký Tài Khoản'}
-            </Button>
-
-            <div className="text-center small text-muted">
-              Đã có tài khoản? <Link to="/login" className="auth-link">Đăng nhập</Link>
+    <div className="auth-page py-5">
+      <Container style={{ maxWidth: '900px' }}>
+        <Card className="auth-card border-0 shadow-lg mx-auto" style={{ maxWidth: '100%' }}>
+          <Card.Body className="p-4 p-md-5">
+            <div className="text-center mb-5">
+              <Link to="/" className="text-decoration-none d-inline-flex align-items-center mb-3">
+                <FaHotel className="text-warning fs-2 me-2" />
+                <span className="fs-3 fw-bold text-dark font-serif" style={{ letterSpacing: '1px' }}>VinaStay</span>
+              </Link>
+              <h2 className="auth-title mb-2">Đăng Ký Tài Khoản</h2>
+              <p className="text-muted mx-auto" style={{ maxWidth: '540px', fontSize: '0.95rem' }}>
+                Vui lòng chọn loại tài khoản phù hợp với nhu cầu của bạn để tiếp tục quá trình đăng ký
+              </p>
             </div>
-          </Form>
-        </Card.Body>
-      </Card>
+
+            <Row className="g-4 mb-4">
+              {/* Card 1: Khách Hàng */}
+              <Col md={6}>
+                <div
+                  className="role-selection-card h-100 p-4 rounded-4 border d-flex flex-column justify-content-between position-relative"
+                  onClick={() => navigate('/register/customer')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="role-card-badge customer-badge mb-3">
+                    Dành Cho Cá Nhân
+                  </div>
+
+                  <div>
+                    <div className="role-icon-wrapper customer-icon mb-3">
+                      <FaUser className="fs-3" />
+                    </div>
+
+                    <h4 className="fw-bold mb-2 text-dark">Khách Hàng</h4>
+                    <p className="text-muted small mb-4">
+                      Dành cho du khách muốn tìm kiếm, so sánh và đặt phòng khách sạn, căn hộ, resort trên toàn quốc.
+                    </p>
+
+                    <ul className="list-unstyled mb-4 role-benefit-list">
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-warning me-2 flex-shrink-0" />
+                        <span>Đặt phòng nhanh chóng & xác nhận tức thì</span>
+                      </li>
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-warning me-2 flex-shrink-0" />
+                        <span>Tích điểm thành viên & ưu đãi độc quyền</span>
+                      </li>
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-warning me-2 flex-shrink-0" />
+                        <span>Dễ dàng quản lý lịch sử đặt phòng & hóa đơn</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <Button
+                    as={Link}
+                    to="/register/customer"
+                    variant="warning"
+                    className="w-100 fw-semibold rounded-pill py-2 d-flex align-items-center justify-content-center text-white"
+                  >
+                    <span>Đăng Ký Khách Hàng</span>
+                    <FaArrowRight className="ms-2" />
+                  </Button>
+                </div>
+              </Col>
+
+              {/* Card 2: Đối Tác Khách Sạn */}
+              <Col md={6}>
+                <div
+                  className="role-selection-card h-100 p-4 rounded-4 border d-flex flex-column justify-content-between position-relative partner-card-theme"
+                  onClick={() => navigate('/register/partner')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="role-card-badge partner-badge mb-3">
+                    Dành Cho Doanh Nghiệp
+                  </div>
+
+                  <div>
+                    <div className="role-icon-wrapper partner-icon mb-3">
+                      <FaHotel className="fs-3" />
+                    </div>
+
+                    <h4 className="fw-bold mb-2 text-dark">Đối Tác Khách Sạn</h4>
+                    <p className="text-muted small mb-4">
+                      Dành cho chủ sở hữu, quản lý khách sạn, homestay, resort muốn đăng bán phòng trên nền tảng VinaStay.
+                    </p>
+
+                    <ul className="list-unstyled mb-4 role-benefit-list">
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-success me-2 flex-shrink-0" />
+                        <span>Tiếp cận hàng triệu du khách tiềm năng</span>
+                      </li>
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-success me-2 flex-shrink-0" />
+                        <span>Hệ thống quản lý phòng & đơn đặt chuyên nghiệp</span>
+                      </li>
+                      <li className="d-flex align-items-center mb-2 text-secondary small">
+                        <FaCheckCircle className="text-success me-2 flex-shrink-0" />
+                        <span>Thống kê doanh thu minh bạch & hỗ trợ 24/7</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <Button
+                    as={Link}
+                    to="/register/partner"
+                    variant="dark"
+                    className="w-100 fw-semibold rounded-pill py-2 d-flex align-items-center justify-content-center text-white partner-action-btn"
+                  >
+                    <span>Đăng Ký Đối Tác</span>
+                    <FaArrowRight className="ms-2" />
+                  </Button>
+                </div>
+              </Col>
+            </Row>
+
+            <div className="text-center pt-3 border-top text-muted small">
+              Bạn đã có tài khoản VinaStay?{' '}
+              <Link to="/login" className="auth-link fw-semibold ms-1 d-inline-flex align-items-center">
+                <FaSignInAlt className="me-1" /> Đăng nhập ngay
+              </Link>
+            </div>
+          </Card.Body>
+        </Card>
+      </Container>
     </div>
   );
 };
