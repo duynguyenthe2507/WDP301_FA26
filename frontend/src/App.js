@@ -102,12 +102,6 @@ function App() {
             <Route path="property-publish" element={<PartnerPropertyPublish />} />
           </Route>
 
-          {/* Hotel Partner Routes */}
-          <Route path="/partner" element={<PartnerLayout />}>
-            <Route index element={<PartnerDashboard />} />
-            {/* Add more partner routes here */}
-          </Route>
-
           {/* Platform Manager Routes */}
           <Route path="/manager" element={<ManagerLayout />}>
             <Route index element={<ManagerDashboard />} />

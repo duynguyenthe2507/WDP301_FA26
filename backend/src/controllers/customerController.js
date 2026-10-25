@@ -110,6 +110,8 @@ export const createPendingBooking = async (req, res) => {
       checkInDate,
       checkOutDate,
       totalNights,
+      totalAdults,
+      totalChildren,
       bookingDetails,
       totalAmount,
     } = req.body;
@@ -253,6 +255,8 @@ export const createPendingBooking = async (req, res) => {
       checkInDate: checkInDate ? new Date(checkInDate) : new Date(),
       checkOutDate: checkOutDate ? new Date(checkOutDate) : new Date(Date.now() + 86400000),
       totalNights: Math.max(1, Number(totalNights) || 1),
+      totalAdults: Math.max(1, Number(totalAdults) || 1),
+      totalChildren: Math.max(0, Number(totalChildren) || 0),
       bookingDetails,
       totalAmount: Number(totalAmount),
       bookingStatus: 'PENDING_PAYMENT',
@@ -455,10 +459,20 @@ export const getMyBookings = async (req, res) => {
       } else if (status === 'PENDING') {
         filter.bookingStatus = 'PENDING_PAYMENT';
       } else if (status === 'COMPLETED') {
-        filter.$or = [
+        const completedCond = [
           { bookingStatus: 'COMPLETED' },
           { bookingStatus: 'CONFIRMED', checkOutDate: { $lt: now } }
         ];
+        if (filter.$or) {
+          const userOr = filter.$or;
+          delete filter.$or;
+          filter.$and = [
+            { $or: userOr },
+            { $or: completedCond }
+          ];
+        } else {
+          filter.$or = completedCond;
+        }
       } else if (status === 'CANCELLED') {
         filter.bookingStatus = 'CANCELLED';
       }

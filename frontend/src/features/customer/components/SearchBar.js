@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Button, InputGroup } from 'react-bootstrap';
 import { FaSearch, FaMapMarkerAlt } from 'react-icons/fa';
 
 const SearchBar = ({ initialLocation = '', onSearch, className = '' }) => {
   const [location, setLocation] = useState(initialLocation);
+
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
