@@ -1,32 +1,11 @@
 import Hotel from "../models/Hotel.js";
+import HotelVerification from '../models/HotelVerification.js';
 import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
 
 export const pingPartner = (req, res) => {
   res.status(200).json({ message: "Hotel Partner API works!" });
 };
-
-export const createPartnerChangeRequest = async (req, res, next) => {
-  try {
-    const { hotelId, changes = [], documents = [] } = req.body;
-    const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'APPROVED' });
-    if (!hotel || !Array.isArray(changes) || !changes.length) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
-    const request = await PartnerChangeRequest.create({ hotelId, partnerId: req.user._id, changes, documents: documents.slice(0, 5) });
-    res.status(201).json({ request });
-  } catch (error) { next(error); }
-};
-
-export const createSupportTicket = async (req, res, next) => {
-  try {
-    const { hotelId, bookingId, category, subject, description, attachments = [] } = req.body;
-    if (!category || !subject?.trim() || !description?.trim()) return res.status(400).json({ message: 'Thông tin ticket không hợp lệ.' });
-    if (hotelId && !(await Hotel.exists({ _id: hotelId, ownerId: req.user._id }))) return res.status(403).json({ message: 'Bạn không sở hữu khách sạn này.' });
-    const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject: subject.trim(), description: description.trim(), attachments: attachments.slice(0, 5) });
-    res.status(201).json({ ticket });
-  } catch (error) { next(error); }
-};
-
-export const getMySupportTickets = async (req, res, next) => { try { res.json({ tickets: await SupportTicket.find({ partnerId: req.user._id }).sort({ createdAt: -1 }) }); } catch (error) { next(error); } };
 const toNumber = (value) =>
   value === "" || value === null || value === undefined ? NaN : Number(value);
 const stringList = (value) =>
@@ -81,18 +60,18 @@ export const createHotel = async (req, res, next) => {
     ) {
       return res.status(400).json({
         message:
-          "Tên, địa chỉ, tỉnh/thành phố và hạng sao từ 1 đến 5 là bắt buộc.",
+          "TÃªn, Ä‘á»‹a chá»‰, tá»‰nh/thÃ nh phá»‘ vÃ  háº¡ng sao tá»« 1 Ä‘áº¿n 5 lÃ  báº¯t buá»™c.",
       });
     }
     if (!["one", "three", "none"].includes(details.cancellation)) {
-      return res.status(400).json({ message: "Chính sách hủy không hợp lệ." });
+      return res.status(400).json({ message: "ChÃ­nh sÃ¡ch há»§y khÃ´ng há»£p lá»‡." });
     }
 
     // const existingHotel = await Hotel.exists({ ownerId: req.user._id });
     // if (existingHotel) {
     //   return res
     //     .status(409)
-    //     .json({ message: "Tài khoản này đã có khách sạn." });
+    //     .json({ message: "TÃ i khoáº£n nÃ y Ä‘Ã£ cÃ³ khÃ¡ch sáº¡n." });
     // }
 
     const roomTypes = rooms.map((room) => ({
@@ -122,13 +101,12 @@ export const createHotel = async (req, res, next) => {
     ) {
       return res.status(400).json({
         message:
-          "Mỗi loại phòng cần có tên, diện tích, sức chứa, số lượng phòng và giá hợp lệ.",
+          "Má»—i loáº¡i phÃ²ng cáº§n cÃ³ tÃªn, diá»‡n tÃ­ch, sá»©c chá»©a, sá»‘ lÆ°á»£ng phÃ²ng vÃ  giÃ¡ há»£p lá»‡.",
       });
     }
 
     const hotel = await Hotel.create({
-      //ownerId: req.user._id,
-      ownerId: req.user?._id || req.body.ownerId,
+      ownerId: req.user._id,
       name,
       provinceCity,
       address: fullAddress,
@@ -138,6 +116,9 @@ export const createHotel = async (req, res, next) => {
       amenities: stringList(amenities),
       images: imageList(images),
       roomTypes,
+      status: 'PENDING_VERIFICATION',
+      verificationStatus: 'PENDING',
+      verificationUpdatedAt: new Date(),
       legalProfile: {
         businessName: profile.business,
         legalAddress: profile.address,
@@ -160,17 +141,51 @@ export const createHotel = async (req, res, next) => {
       },
     });
 
+    await HotelVerification.create({
+      hotelId: hotel._id,
+      partnerId: req.user._id,
+      documents: Array.isArray(req.body.documents) ? req.body.documents : [],
+      history: [{ action: 'SUBMITTED', note: 'Partner submitted hotel registration.' }],
+    });
+
     return res
       .status(201)
-      .json({ message: "Tạo khách sạn thành công.", hotel });
+      .json({ message: "Táº¡o khÃ¡ch sáº¡n thÃ nh cÃ´ng.", hotel });
   } catch (error) {
     if (error.name === "ValidationError")
       return res.status(400).json({ message: error.message });
     if (error.code === 11000)
       return res
         .status(409)
-        .json({ message: "Tài khoản này đã có khách sạn." });
+        .json({ message: "TÃ i khoáº£n nÃ y Ä‘Ã£ cÃ³ khÃ¡ch sáº¡n." });
     return next(error);
   }
 };
+
+export const createPartnerChangeRequest = async (req, res, next) => {
+  try {
+    const { hotelId, changes, documents = [] } = req.body;
+    const allowedFields = ['name', 'address', 'legalProfile'];
+    if (!hotelId || !Array.isArray(changes) || !changes.length || changes.some((change) => !allowedFields.includes(change.field))) return res.status(400).json({ message: 'YÃªu cáº§u thay Ä‘á»•i khÃ´ng há»£p lá»‡.' });
+    const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'APPROVED' });
+    if (!hotel) return res.status(404).json({ message: 'KhÃ´ng tÃ¬m tháº¥y khÃ¡ch sáº¡n Ä‘Ã£ Ä‘Æ°á»£c phÃª duyá»‡t cá»§a báº¡n.' });
+    const pending = await PartnerChangeRequest.exists({ hotelId, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } });
+    if (pending) return res.status(409).json({ message: 'KhÃ¡ch sáº¡n Ä‘ang cÃ³ yÃªu cáº§u thay Ä‘á»•i nháº¡y cáº£m chá» xá»­ lÃ½.' });
+    const request = await PartnerChangeRequest.create({ hotelId, partnerId: req.user._id, changes: changes.map((change) => ({ field: change.field, currentValue: hotel[change.field], proposedValue: change.proposedValue })), documents: Array.isArray(documents) ? documents.slice(0, 5) : [] });
+    res.status(201).json({ message: 'ÄÃ£ gá»­i yÃªu cáº§u thay Ä‘á»•i Ä‘á»ƒ quáº£n lÃ½ váº­n hÃ nh phÃª duyá»‡t.', request });
+  } catch (error) { next(error); }
+};
+
+export const createSupportTicket = async (req, res, next) => {
+  try {
+    const { hotelId, bookingId, category, subject, description, attachments = [] } = req.body;
+    if (!category || !subject?.trim() || !description?.trim()) return res.status(400).json({ message: 'Danh má»¥c, tiÃªu Ä‘á» vÃ  ná»™i dung lÃ  báº¯t buá»™c.' });
+    if (hotelId && !await Hotel.exists({ _id: hotelId, ownerId: req.user._id })) return res.status(403).json({ message: 'Báº¡n chá»‰ cÃ³ thá»ƒ táº¡o yÃªu cáº§u cho khÃ¡ch sáº¡n cá»§a mÃ¬nh.' });
+    const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject: subject.trim(), description: description.trim(), attachments: Array.isArray(attachments) ? attachments.slice(0, 5) : [] });
+    res.status(201).json({ message: 'ÄÃ£ gá»­i yÃªu cáº§u há»— trá»£.', ticket });
+  } catch (error) { next(error); }
+};
+
+export const getMySupportTickets = async (req, res, next) => { try { res.json({ tickets: await SupportTicket.find({ partnerId: req.user._id }).sort({ createdAt: -1 }) }); } catch (error) { next(error); } };
+
 

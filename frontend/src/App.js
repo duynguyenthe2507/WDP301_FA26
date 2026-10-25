@@ -46,6 +46,10 @@ import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
 import ManagerQueuePage from './features/platform_manager/pages/ManagerQueuePage';
+import PartnerOperationsPage from './features/platform_manager/pages/PartnerOperationsPage';
+import CommissionPolicyPage from './features/platform_manager/pages/CommissionPolicyPage';
+import PayoutPage from './features/platform_manager/pages/PayoutPage';
+import ManagerAuditLogPage from './features/platform_manager/pages/ManagerAuditLogPage';
 import SystemConfiguration from './features/admin/pages/SystemConfiguration';
 import SystemLog from './features/admin/pages/SystemLog';
 
@@ -69,7 +73,7 @@ function App() {
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
             <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
 
-            {/* Đặt phòng, lịch sử, profile, đánh giá - yêu cầu đăng nhập CUSTOMER */}
+            {/* Äáº·t phÃ²ng, lá»‹ch sá»­, profile, Ä‘Ã¡nh giÃ¡ - yÃªu cáº§u Ä‘Äƒng nháº­p CUSTOMER */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
               <Route path="booking" element={<BookingPage />} />
               <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
@@ -114,8 +118,12 @@ function App() {
             <Route path="/manager" element={<ManagerLayout />}>
               <Route index element={<ManagerDashboard />} />
               <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
+              <Route path="partner-operations" element={<PartnerOperationsPage />} />
               <Route path="disputes" element={<ManagerQueuePage type="disputes" />} />
               <Route path="refunds" element={<ManagerQueuePage type="refunds" />} />
+              <Route path="commissions" element={<CommissionPolicyPage />} />
+              <Route path="payouts" element={<PayoutPage />} />
+              <Route path="audit-history" element={<ManagerAuditLogPage />} />
             </Route>
           </Route>
         </Routes>
@@ -125,3 +133,4 @@ function App() {
 }
 
 export default App;
+
