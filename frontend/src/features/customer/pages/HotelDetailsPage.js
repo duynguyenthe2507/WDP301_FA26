@@ -274,14 +274,15 @@ const HotelDetailsPage = () => {
             {hotel.name}
           </h1>
           <div className="d-flex align-items-center flex-wrap gap-3">
-            <span className="text-muted d-flex align-items-center">
-              <FaMapMarkerAlt className="me-1" style={{ color: '#d4af37' }} />
+            <span className="text-white-50 d-flex align-items-center">
+              <FaMapMarkerAlt className="me-2 flex-shrink-0" style={{ color: '#d4af37' }} />
               {hotel.address}
             </span>
             {hotel.rating_summary && (
               <RatingStars
                 rating={hotel.rating_summary.average_rating}
                 count={hotel.rating_summary.total_reviews}
+                light
               />
             )}
             <Badge
