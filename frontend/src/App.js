@@ -39,6 +39,9 @@ import PartnerPropertyPhotos from './features/hotel_partner/pages/PartnerPropert
 import PartnerPropertyDetails from './features/hotel_partner/pages/PartnerPropertyDetails';
 import PartnerPropertyProfile from './features/hotel_partner/pages/PartnerPropertyProfile';
 import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerPropertyPublish';
+import PartnerHotelInformation from './features/hotel_partner/pages/PartnerHotelInformation';
+import PartnerRoomTypes from './features/hotel_partner/pages/PartnerRoomTypes';
+import { PartnerAddRoomType, PartnerEditRoomType } from './features/hotel_partner/pages/PartnerRoomTypeForm';
 
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -100,12 +103,10 @@ function App() {
             <Route path="property-details" element={<PartnerPropertyDetails />} />
             <Route path="property-profile" element={<PartnerPropertyProfile />} />
             <Route path="property-publish" element={<PartnerPropertyPublish />} />
-          </Route>
-
-          {/* Hotel Partner Routes */}
-          <Route path="/partner" element={<PartnerLayout />}>
-            <Route index element={<PartnerDashboard />} />
-            {/* Add more partner routes here */}
+            <Route path="hotel-information" element={<PartnerHotelInformation />} />
+            <Route path="room-types" element={<PartnerRoomTypes />} />
+            <Route path="room-types/new" element={<PartnerAddRoomType />} />
+            <Route path="room-types/:roomTypeId/edit" element={<PartnerEditRoomType />} />
           </Route>
 
           {/* Platform Manager Routes */}

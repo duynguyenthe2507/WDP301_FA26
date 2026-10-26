@@ -4,8 +4,20 @@ import { FaPlus } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 
+const ROOM_TYPES = [
+  "Phòng Đơn Tiêu chuẩn",
+  "Phòng Đôi Tiêu chuẩn",
+  "Phòng Twin Tiêu chuẩn",
+  "Phòng Superior",
+  "Phòng Đôi Deluxe",
+  "Phòng Executive",
+  "Phòng Gia đình",
+  "Phòng Suite Junior",
+  "Phòng Suite Tổng thống",
+  "Căn hộ Studio",
+];
 const blankRoom = () => ({
-  name: "Phòng đôi Deluxe",
+  name: "Phòng Đôi Deluxe",
   description: "",
   bedType: "",
   roomSize: "20",
@@ -62,10 +74,19 @@ const PartnerPropertyRooms = () => {
           <div className="row g-3">
             <Form.Group className="col-md-6">
               <Form.Label>Tên loại phòng</Form.Label>
-              <Form.Control
+              <Form.Select
                 value={room.name}
                 onChange={(e) => updateRoom(index, "name", e.target.value)}
-              />
+              >
+                <option value="" disabled>
+                  Chọn loại phòng
+                </option>
+                {ROOM_TYPES.map((roomType) => (
+                  <option key={roomType} value={roomType}>
+                    {roomType}
+                  </option>
+                ))}
+              </Form.Select>
             </Form.Group>
             <Form.Group className="col-md-6">
               <Form.Label>Loại giường</Form.Label>

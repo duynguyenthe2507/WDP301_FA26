@@ -64,12 +64,12 @@ export const createHotel = async (req, res, next) => {
       return res.status(400).json({ message: "Chính sách hủy không hợp lệ." });
     }
 
-    // const existingHotel = await Hotel.exists({ ownerId: req.user._id });
-    // if (existingHotel) {
-    //   return res
-    //     .status(409)
-    //     .json({ message: "Tài khoản này đã có khách sạn." });
-    // }
+    const existingHotel = await Hotel.exists({ ownerId: req.user._id });
+    if (existingHotel) {
+      return res
+        .status(409)
+        .json({ message: "Tài khoản này đã có khách sạn." });
+    }
 
     const roomTypes = rooms.map((room) => ({
       name: room.name?.trim(),
@@ -103,8 +103,7 @@ export const createHotel = async (req, res, next) => {
     }
 
     const hotel = await Hotel.create({
-      //ownerId: req.user._id,
-      ownerId: req.user?._id || req.body.ownerId,
+      ownerId: req.user._id,
       name,
       provinceCity,
       address: fullAddress,
