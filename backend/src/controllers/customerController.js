@@ -75,10 +75,7 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// ==========================================
 // VNPAY SANDBOX BOOKING & PAYMENT CONTROLLERS
-// ==========================================
-
 export const cleanExpiredPendingBookings = async () => {
   try {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
