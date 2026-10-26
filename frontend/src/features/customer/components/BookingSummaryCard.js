@@ -21,6 +21,8 @@ const BookingSummaryCard = ({
   onCheckOutChange,
   selectedRoomsList,
   totalRooms,
+  totalAdults = 1,
+  totalChildren = 0,
   roomCost,
   serviceFee,
   totalAmount,
@@ -99,11 +101,16 @@ const BookingSummaryCard = ({
           )}
         </Form.Group>
 
-        {/* THỜI GIAN LƯU TRÚ */}
+        {/* THỜI GIAN LƯU TRÚ & SỐ KHÁCH */}
         <div className="p-2 mb-3 bg-light rounded-3 d-flex justify-content-between align-items-center small">
-          <span className="text-secondary">Thời gian lưu trú:</span>
-          <strong className="text-dark">
+          <span className="text-secondary">Thời gian & Khách:</span>
+          <strong className="text-dark text-end">
             {nights} đêm ({checkIn} → {checkOut})
+            {totalRooms > 0 && (
+              <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                {totalAdults} người lớn{totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}
+              </div>
+            )}
           </strong>
         </div>
 
@@ -136,9 +143,12 @@ const BookingSummaryCard = ({
                 >
                   <div>
                     <strong className="text-dark d-block">{item.name}</strong>
-                    <span className="text-muted">
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                       {formatPrice(item.base_price)} × {item.quantity} phòng
-                    </span>
+                    </div>
+                    <div className="text-primary" style={{ fontSize: '0.75rem' }}>
+                      {item.adults || item.quantity} người lớn{item.children > 0 ? `, ${item.children} trẻ em` : ''}
+                    </div>
                   </div>
                   <div className="text-end">
                     <strong className="text-dark">
@@ -159,7 +169,7 @@ const BookingSummaryCard = ({
           <div className="border-top pt-3 mb-4">
             <h6 className="fw-bold text-dark small mb-2">Chi tiết thanh toán</h6>
             <div className="d-flex justify-content-between text-secondary small mb-1">
-              <span>Tiền phòng ({nights} đêm × {totalRooms} phòng):</span>
+              <span>Tạm tính tiền phòng:</span>
               <span className="text-dark fw-semibold">{formatPrice(roomCost)}</span>
             </div>
             <div className="d-flex justify-content-between text-secondary small mb-2">

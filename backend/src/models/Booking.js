@@ -53,11 +53,21 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    totalAdults: {
+      type: Number,
+      default: 1,
+    },
+    totalChildren: {
+      type: Number,
+      default: 0,
+    },
     bookingDetails: [
       {
         roomTypeId: { type: String, default: '' },
         roomTypeName: { type: String, default: 'Phòng Deluxe' },
         quantity: { type: Number, default: 1 },
+        adults: { type: Number, default: 1 },
+        children: { type: Number, default: 0 },
         pricePerNight: { type: Number, default: 0 },
         totalPrice: { type: Number, default: 0 },
       },

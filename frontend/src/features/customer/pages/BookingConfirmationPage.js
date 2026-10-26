@@ -197,7 +197,14 @@ const BookingConfirmationPage = () => {
               {bookingDetails.map((room, idx) => (
                 <div key={idx} className="d-flex justify-content-between gap-3 py-1">
                   <div>
-                    <div className="fw-semibold text-dark">{room.roomTypeName || 'Phòng'} × {Number(room.quantity) || 1}</div>
+                    <div className="fw-semibold text-dark">
+                      {room.roomTypeName || 'Phòng'} × {Number(room.quantity) || 1}
+                      {room.adults != null && (
+                        <span className="text-secondary small fw-normal ms-2">
+                          ({room.adults} người lớn{room.children > 0 ? `, ${room.children} trẻ em` : ''})
+                        </span>
+                      )}
+                    </div>
                     <div className="text-muted small">{formatPrice(Number(room.pricePerNight) || 0)} / phòng / đêm</div>
                   </div>
                   <span className="fw-semibold text-dark">{formatPrice(lineTotal(room))}</span>

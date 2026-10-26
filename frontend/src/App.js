@@ -109,12 +109,6 @@ function App() {
             <Route path="property-publish" element={<PartnerPropertyPublish />} />
           </Route>
 
-          {/* Hotel Partner Routes */}
-          <Route path="/partner" element={<PartnerLayout />}>
-            <Route index element={<PartnerDashboard />} />
-            {/* Add more partner routes here */}
-          </Route>
-
           {/* Platform Manager Routes */}
           <Route element={<ProtectedRoute allowedRoles={['OPERATIONS_MANAGER']} />}>
             <Route path="/manager" element={<ManagerLayout />}>

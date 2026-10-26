@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
-import { FaUser, FaChild, FaBed, FaCheck } from 'react-icons/fa';
+import { FaUser, FaChild, FaBed, FaCheck, FaUserFriends } from 'react-icons/fa';
 
 import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 
@@ -13,6 +13,8 @@ const RoomTypeCard = ({
   nights = 1,
   quantity = 0,
   onQuantityChange,
+  guests,
+  onGuestsChange,
 }) => {
   const {
     _id,
@@ -36,6 +38,15 @@ const RoomTypeCard = ({
 
   const isOutOfStock = availableRooms <= 0;
   const isMaxReached = quantity >= availableRooms;
+
+  // Giới hạn số người theo số phòng đã chọn
+  const maxAdultsPerRoom = capacity?.adults || 2;
+  const maxChildrenPerRoom = capacity?.children != null ? capacity.children : 1;
+  const maxAdults = Math.max(1, quantity * maxAdultsPerRoom);
+  const minAdults = Math.max(1, quantity * 1);
+  const maxChildren = quantity * Math.max(1, maxChildrenPerRoom);
+  const currentAdults = guests?.adults ?? minAdults;
+  const currentChildren = guests?.children ?? 0;
 
   return (
     <Card className="border-0 shadow-sm rounded-4 mb-3 overflow-hidden bg-white">
@@ -200,6 +211,129 @@ const RoomTypeCard = ({
                 </div>
               </div>
             </div>
+
+            {/* YÊU CẦU ĐIỀN SỐ NGƯỜI (NGƯỜI LỚN + TRẺ EM) KHI ĐÃ CHỌN PHÒNG */}
+            {quantity > 0 && (
+              <div className="mt-3 p-3 bg-light rounded-3 border">
+                <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                  <span className="fw-bold small text-dark d-flex align-items-center gap-1">
+                    <FaUserFriends style={{ color: '#005baa' }} />
+                    Số lượng khách cho {quantity} phòng này <span className="text-danger">*</span>
+                  </span>
+                  <span className="text-muted small" style={{ fontSize: '0.78rem' }}>
+                    Sức chứa: tối đa {maxAdults} người lớn{maxChildren > 0 ? `, ${maxChildren} trẻ em` : ''}
+                  </span>
+                </div>
+
+                <Row className="g-2">
+                  {/* Người lớn */}
+                  <Col sm={6}>
+                    <div className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded-2 border">
+                      <div>
+                        <div className="fw-semibold small text-dark">
+                          Người lớn <span className="text-danger">*</span>
+                        </div>
+                        <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          Từ 13 tuổi trở lên
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="rounded-circle d-flex align-items-center justify-content-center p-0"
+                          style={{ width: '28px', height: '28px', fontWeight: 700 }}
+                          disabled={currentAdults <= minAdults}
+                          onClick={() =>
+                            onGuestsChange &&
+                            onGuestsChange({
+                              adults: Math.max(minAdults, currentAdults - 1),
+                              children: currentChildren,
+                            })
+                          }
+                        >
+                          −
+                        </Button>
+                        <span
+                          className="fw-bold px-1"
+                          style={{ minWidth: '22px', textAlign: 'center', color: '#005baa' }}
+                        >
+                          {currentAdults}
+                        </span>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="rounded-circle d-flex align-items-center justify-content-center p-0"
+                          style={{ width: '28px', height: '28px', fontWeight: 700 }}
+                          disabled={currentAdults >= maxAdults}
+                          onClick={() =>
+                            onGuestsChange &&
+                            onGuestsChange({
+                              adults: Math.min(maxAdults, currentAdults + 1),
+                              children: currentChildren,
+                            })
+                          }
+                        >
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </Col>
+
+                  {/* Trẻ em */}
+                  <Col sm={6}>
+                    <div className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded-2 border">
+                      <div>
+                        <div className="fw-semibold small text-dark">Trẻ em</div>
+                        <div className="text-muted" style={{ fontSize: '0.72rem' }}>
+                          Dưới 13 tuổi
+                        </div>
+                      </div>
+                      <div className="d-flex align-items-center gap-2">
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          className="rounded-circle d-flex align-items-center justify-content-center p-0"
+                          style={{ width: '28px', height: '28px', fontWeight: 700 }}
+                          disabled={currentChildren <= 0}
+                          onClick={() =>
+                            onGuestsChange &&
+                            onGuestsChange({
+                              adults: currentAdults,
+                              children: Math.max(0, currentChildren - 1),
+                            })
+                          }
+                        >
+                          −
+                        </Button>
+                        <span
+                          className="fw-bold px-1"
+                          style={{ minWidth: '22px', textAlign: 'center', color: '#005baa' }}
+                        >
+                          {currentChildren}
+                        </span>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="rounded-circle d-flex align-items-center justify-content-center p-0"
+                          style={{ width: '28px', height: '28px', fontWeight: 700 }}
+                          disabled={currentChildren >= maxChildren}
+                          onClick={() =>
+                            onGuestsChange &&
+                            onGuestsChange({
+                              adults: currentAdults,
+                              children: Math.min(maxChildren, currentChildren + 1),
+                            })
+                          }
+                        >
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+            )}
           </Card.Body>
         </Col>
       </Row>

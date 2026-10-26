@@ -9,7 +9,7 @@ const formatHotel = (hotel) => {
     h.images?.find((img) => img.isCover)?.url ||
     h.images?.[0]?.url ||
     '';
-  const activeRooms = (h.roomTypes || []).filter((rt) => !rt.isDeleted);
+  const activeRooms = (h.roomTypes || []).filter((rt) => !rt.isDeleted && rt.status !== 'MAINTENANCE' && rt.status !== 'INACTIVE');
   const prices = activeRooms.map((rt) => rt.basePrice).filter(Boolean);
   const min_price = prices.length > 0 ? Math.min(...prices) : undefined;
 
@@ -23,7 +23,7 @@ const formatHotel = (hotel) => {
       average_rating: h.ratingSummary?.averageRating || 0,
       total_reviews: h.ratingSummary?.totalReviews || 0,
     },
-    room_types: (h.roomTypes || []).map((rt) => ({
+    room_types: activeRooms.map((rt) => ({
       ...rt,
       _id: rt._id.toString(),
       base_price: rt.basePrice,
@@ -44,39 +44,34 @@ export const getHotels = async (req, res) => {
   try {
     const { location, minPrice, maxPrice, minRating, page = 1, limit = 10 } = req.query;
 
-    const query = {};
+    const andConditions = [];
 
     // Tìm kiếm theo địa điểm hoặc tên khách sạn
     if (location && location.trim()) {
       const keyword = location.trim();
-      query.$or = [
-        { name: { $regex: keyword, $options: 'i' } },
-        { provinceCity: { $regex: keyword, $options: 'i' } },
-        { address: { $regex: keyword, $options: 'i' } },
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: keyword, $options: 'i' } },
+          { provinceCity: { $regex: keyword, $options: 'i' } },
+          { address: { $regex: keyword, $options: 'i' } },
+        ],
+      });
     }
 
     // Lọc theo đánh giá tối thiểu (sao)
     if (minRating) {
       const ratingVal = Number(minRating);
-      query.$or = query.$or
-        ? [
-            {
-              $and: [
-                { $or: query.$or },
-                {
-                  $or: [
-                    { starRating: { $gte: ratingVal } },
-                    { 'ratingSummary.averageRating': { $gte: ratingVal } },
-                  ],
-                },
-              ],
-            },
-          ]
-        : [
-            { starRating: { $gte: ratingVal } },
-            { 'ratingSummary.averageRating': { $gte: ratingVal } },
-          ];
+      andConditions.push({
+        $or: [
+          { starRating: { $gte: ratingVal } },
+          { 'ratingSummary.averageRating': { $gte: ratingVal } },
+        ],
+      });
+    }
+
+    const query = {};
+    if (andConditions.length > 0) {
+      query.$and = andConditions;
     }
 
     // Lọc theo giá phòng
@@ -164,13 +159,13 @@ export const checkRoomAvailability = async (req, res) => {
     // Neu khong truyen ngay, tra ve so phong mac dinh
     if (!checkIn || !checkOut) {
       const defaultAvail = (hotel.roomTypes || [])
-        .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
+        .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE' && rt.status !== 'MAINTENANCE')
         .map((rt) => ({
           room_type_id: rt._id.toString(),
           room_type_name: rt.name,
-          total_rooms: rt.totalRooms || 5,
-          available_rooms: rt.totalRooms || 5,
-          is_available: (rt.totalRooms || 5) > 0,
+          total_rooms: rt.totalRooms || 0,
+          available_rooms: rt.totalRooms || 0,
+          is_available: (rt.totalRooms || 0) > 0,
           price_per_night: rt.basePrice,
         }));
 
@@ -185,28 +180,20 @@ export const checkRoomAvailability = async (req, res) => {
     const reqOutStr = String(checkOut).slice(0, 10);
 
     // Lay danh sach don dat cua khach san
-    const hotelIdQueries = [{ hotelId: id.toString() }];
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      hotelIdQueries.push({ hotelId: new mongoose.Types.ObjectId(id) });
-    }
-
     // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
+    // hotelId trong Booking luon luu duoi dang String
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const activeBookings = await Booking.find({
-      $or: hotelIdQueries,
+      hotelId: id.toString(),
       bookingStatus: { $nin: ['CANCELLED'] },
       paymentStatus: { $ne: 'FAILED' },
-      $and: [
+      $or: [
+        { bookingStatus: 'CONFIRMED' },
+        { paymentStatus: 'PAID' },
         {
-          $or: [
-            { bookingStatus: 'CONFIRMED' },
-            { paymentStatus: 'PAID' },
-            {
-              bookingStatus: 'PENDING_PAYMENT',
-              createdAt: { $gte: fifteenMinutesAgo },
-            },
-          ],
+          bookingStatus: 'PENDING_PAYMENT',
+          createdAt: { $gte: fifteenMinutesAgo },
         },
       ],
     });
@@ -234,10 +221,10 @@ export const checkRoomAvailability = async (req, res) => {
 
     // Tinh so phong con trong thuc te
     const room_availability = (hotel.roomTypes || [])
-      .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE')
+      .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE' && rt.status !== 'MAINTENANCE')
       .map((rt) => {
         const rtId = rt._id.toString();
-        const total = Number(rt.totalRooms) || 1;
+        const total = Number(rt.totalRooms) || 0;
         const booked = bookedCountsByRoomType[rtId] || 0;
         const available = Math.max(0, total - booked);
 
@@ -289,7 +276,9 @@ export const getHotelReviews = async (req, res) => {
     const hotelObjectId = new mongoose.Types.ObjectId(id);
 
     // Thong ke tat ca danh gia cua khach san de tinh starCounts va averageRating
-    const allReviews = await Review.find({ hotelId: hotelObjectId })
+    const allReviews = await Review.find({
+      $or: [{ hotelId: hotelObjectId }, { hotelId: id.toString() }],
+    })
       .populate('customerId', 'fullName avatarUrl email')
       .sort({ createdAt: -1 });
 

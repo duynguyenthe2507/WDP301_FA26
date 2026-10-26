@@ -306,7 +306,11 @@ const BookingHistoryPage = () => {
                     },
                   };
 
-                  let detailLine = `${totalNights} đêm · ${roomCount} phòng · 2 người lớn`;
+                  const totalAdults = booking.totalAdults || detailsList.reduce((sum, r) => sum + (Number(r.adults) || 1), 0) || 2;
+                  const totalChildren = booking.totalChildren || detailsList.reduce((sum, r) => sum + (Number(r.children) || 0), 0) || 0;
+                  const guestsText = `${totalAdults} người lớn${totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}`;
+
+                  let detailLine = `${totalNights} đêm · ${roomCount} phòng · ${guestsText}`;
                   let paymentLine = 'Thanh toán: Đã thanh toán';
                   let actionBtn = (
                     <div className="d-flex flex-wrap gap-2 justify-content-end">
