@@ -13,7 +13,7 @@ import PartnerRegister from './features/auth/pages/PartnerRegister';
 import CustomerLayout from './features/customer/components/CustomerLayout';
 import AdminLayout from './features/admin/components/AdminLayout';
 import PartnerLayout from './features/hotel_partner/components/PartnerLayout';
-import ManagerLayout from './features/platform_manager/components/ManagerLayout';
+import ManagerLayout from './features/operation_manager/components/ManagerLayout';
 
 // Customer Pages
 import Home from './features/customer/pages/Home';
@@ -45,7 +45,12 @@ import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerProper
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
-import ManagerDashboard from './features/platform_manager/pages/ManagerDashboard';
+import ManagerDashboard from './features/operation_manager/pages/ManagerDashboard';
+import ManagerQueuePage from './features/operation_manager/pages/ManagerQueuePage';
+import PartnerOperationsPage from './features/operation_manager/pages/PartnerOperationsPage';
+import CommissionPolicyPage from './features/operation_manager/pages/CommissionPolicyPage';
+import PayoutPage from './features/operation_manager/pages/PayoutPage';
+import ManagerAuditLogPage from './features/operation_manager/pages/ManagerAuditLogPage';
 import SystemConfiguration from './features/admin/pages/SystemConfiguration';
 import SystemLog from './features/admin/pages/SystemLog';
 
@@ -69,8 +74,7 @@ function App() {
             <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
             <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
 
-            {/* Đặt phòng, lịch sử, profile, đánh giá - yêu cầu đăng nhập CUSTOMER hoặc ADMIN */}
-            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER', 'ADMIN']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
               <Route path="booking" element={<BookingPage />} />
               <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
               <Route path="booking/cancel/:bookingId" element={<CancelBookingPage />} />
@@ -112,9 +116,17 @@ function App() {
           </Route>
 
           {/* Platform Manager Routes */}
-          <Route path="/manager" element={<ManagerLayout />}>
-            <Route index element={<ManagerDashboard />} />
-            {/* Add more manager routes here */}
+          <Route element={<ProtectedRoute allowedRoles={['OPERATIONS_MANAGER']} />}>
+            <Route path="/manager" element={<ManagerLayout />}>
+              <Route index element={<ManagerDashboard />} />
+              <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
+              <Route path="partner-operations" element={<PartnerOperationsPage />} />
+              <Route path="disputes" element={<ManagerQueuePage type="disputes" />} />
+              <Route path="refunds" element={<ManagerQueuePage type="refunds" />} />
+              <Route path="commissions" element={<CommissionPolicyPage />} />
+              <Route path="payouts" element={<PayoutPage />} />
+              <Route path="audit-history" element={<ManagerAuditLogPage />} />
+            </Route>
           </Route>
         </Routes>
       </AuthProvider>
@@ -123,3 +135,4 @@ function App() {
 }
 
 export default App;
+

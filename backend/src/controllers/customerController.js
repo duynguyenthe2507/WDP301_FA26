@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Hotel from '../models/Hotel.js';
+import Dispute from '../models/Dispute.js';
+import RefundRequest from '../models/RefundRequest.js';
 import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
 export const pingCustomer = (req, res) => {
@@ -77,7 +79,6 @@ export const changePassword = async (req, res) => {
 // VNPAY SANDBOX BOOKING & PAYMENT CONTROLLERS
 // ==========================================
 
-// Tự động xóa các đơn đặt phòng ở trạng thái chờ thanh toán quá 15 phút
 export const cleanExpiredPendingBookings = async () => {
   try {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
@@ -134,7 +135,6 @@ export const createPendingBooking = async (req, res) => {
       totalAmount,
     } = req.body;
 
-    // Kiểm tra thông tin người đặt
     if (!bookerInfo?.fullName?.trim()) {
       return res.status(400).json({ message: 'Vui lòng nhập họ và tên người đặt phòng' });
     }
@@ -145,7 +145,6 @@ export const createPendingBooking = async (req, res) => {
       return res.status(400).json({ message: 'Vui lòng nhập địa chỉ email hợp lệ' });
     }
 
-    // Nếu đặt cho người khác: kiểm tra thông tin khách nhận phòng
     if (!isSelfGuest) {
       if (!guestInfo?.fullName?.trim()) {
         return res.status(400).json({ message: 'Vui lòng nhập họ và tên khách nhận phòng' });
@@ -215,7 +214,6 @@ export const createPendingBooking = async (req, res) => {
       return res.status(400).json({ message: 'Ngày trả phòng phải sau ngày nhận phòng ít nhất 1 ngày' });
     }
 
-    // Validate số lượng phòng đặt
     if (!bookingDetails || !Array.isArray(bookingDetails) || bookingDetails.length === 0) {
       return res.status(400).json({ message: 'Vui lòng chọn ít nhất 1 loại phòng để đặt' });
     }
@@ -280,7 +278,6 @@ export const createPendingBooking = async (req, res) => {
       }
     }
 
-    // Sinh mã đặt phòng duy nhất: VNS + YYYYMMDD + 4 số ngẫu nhiên
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -317,7 +314,17 @@ export const createPendingBooking = async (req, res) => {
 
     await newBooking.save();
 
-    // Tạo URL thanh toán VNPay Sandbox
+    let ipAddr = String(
+      req.headers['x-forwarded-for'] ||
+      req.socket?.remoteAddress ||
+      req.connection?.remoteAddress ||
+      '127.0.0.1'
+    )
+      .split(',')[0]
+      .trim()
+      .replace(/^::ffff:/, '');
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ipAddr)) ipAddr = '127.0.0.1';
+
     const { paymentUrl } = createPaymentUrl({
       bookingCode,
       amount: newBooking.totalAmount,
@@ -337,7 +344,6 @@ export const createPendingBooking = async (req, res) => {
 };
 
 // GET & POST /api/customer/bookings/vnpay-verify
-// Xác thực kết quả giao dịch thanh toán từ VNPay Sandbox
 export const verifyVNPayPayment = async (req, res) => {
   try {
     const vnpParams = { ...req.query, ...req.body };
@@ -391,7 +397,6 @@ export const verifyVNPayPayment = async (req, res) => {
         booking,
       });
     } else {
-      // Nếu thanh toán thất bại và đã quá 15 phút -> Xóa luôn đơn
       const isExpired = new Date(Date.now() - 15 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
@@ -432,7 +437,6 @@ export const getBookingByCode = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
     }
 
-    // Chỉ chủ đơn mới được xem
     const isOwner =
       String(booking.customerId) === String(req.user._id) ||
       booking.bookerInfo?.email === req.user.email?.trim().toLowerCase();
@@ -441,7 +445,6 @@ export const getBookingByCode = async (req, res) => {
     }
 
     if (booking.bookingStatus === 'PENDING_PAYMENT' && booking.paymentStatus !== 'PAID') {
-      // Nếu đơn phòng đang ở trạng thái PENDING_PAYMENT nhưng đã quá 15 phút -> Xóa luôn
       const isExpired = new Date(Date.now() - 15 * 60 * 1000) >= new Date(booking.createdAt);
 
       if (isExpired) {
@@ -460,16 +463,13 @@ export const getBookingByCode = async (req, res) => {
 };
 
 // GET /api/customer/my-bookings
-// Lấy danh sách lịch sử đặt phòng của khách hàng
 export const getMyBookings = async (req, res) => {
   try {
-    // Tự động dọn dẹp các đơn PENDING_PAYMENT quá hạn 15 phút trước khi truy vấn
     await cleanExpiredPendingBookings();
 
     const customerId = req.user._id;
     const email = req.user.email?.trim().toLowerCase();
 
-    // 1. Lọc theo tài khoản đăng nhập hoặc email người đặt
     let filter = {};
     if (customerId && email) {
       filter = {
@@ -483,11 +483,9 @@ export const getMyBookings = async (req, res) => {
     } else if (email) {
       filter = { 'bookerInfo.email': email };
     } else {
-      // Nếu chưa đăng nhập và không có email -> trả về rỗng
       return res.status(200).json({ success: true, count: 0, bookings: [] });
     }
 
-    // 2. Lọc theo trạng thái tab nếu có yêu cầu từ client
     const { status, search } = req.query;
     if (status && status !== 'ALL') {
       const now = new Date();
@@ -508,7 +506,6 @@ export const getMyBookings = async (req, res) => {
 
     let bookings = await Booking.find(filter).sort({ createdAt: -1 });
 
-    // 3. Tìm kiếm theo từ khóa nếu có
     if (search && search.trim()) {
       const keyword = search.trim().toLowerCase();
       bookings = bookings.filter(
@@ -535,6 +532,92 @@ export const getMyBookings = async (req, res) => {
   } catch (error) {
     console.error('Error fetching booking history:', error);
     res.status(500).json({ message: 'Lỗi khi lấy lịch sử đặt phòng', error: error.message });
+  }
+};
+
+const findBookingHotel = async (booking) => {
+  const hotelId = String(booking.hotelId || '');
+  if (/^[a-f\d]{24}$/i.test(hotelId)) {
+    const hotel = await Hotel.findById(hotelId);
+    if (hotel) return hotel;
+  }
+  return Hotel.findOne({ name: booking.hotelName });
+};
+
+export const createDispute = async (req, res) => {
+  try {
+    const { bookingId, category, description, attachments = [] } = req.body;
+    const categories = ['INCORRECT_INFORMATION', 'SERVICE_QUALITY', 'OVERCHARGE', 'CANCELLATION', 'OTHER'];
+    if (!bookingId || !categories.includes(category) || !description?.trim()) {
+      return res.status(400).json({ message: 'Thông tin tranh chấp không hợp lệ.' });
+    }
+    const booking = await Booking.findOne({ _id: bookingId, customerId: req.user._id });
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy booking của bạn.' });
+    const disputeDeadline = new Date(booking.checkOutDate || booking.checkInDate).getTime() + 48 * 60 * 60 * 1000;
+    if (Date.now() > disputeDeadline) return res.status(400).json({ message: 'Chỉ có thể gửi tranh chấp trong 48 giờ sau khi kết thúc lưu trú.' });
+    const hotel = await findBookingHotel(booking);
+    if (!hotel?.ownerId) return res.status(400).json({ message: 'Booking chưa có thông tin đối tác để xử lý tranh chấp.' });
+    const validAttachments = Array.isArray(attachments)
+      ? attachments.filter((file) => file?.fileName && file?.fileUrl).slice(0, 5)
+      : [];
+    if (category === 'INCORRECT_INFORMATION' && validAttachments.length === 0) {
+      return res.status(400).json({ message: 'Tranh chấp sai thông tin khách sạn cần có tối thiểu một bằng chứng.' });
+    }
+    const existingDispute = await Dispute.exists({
+      bookingId: booking._id,
+      status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
+    });
+    if (existingDispute) return res.status(409).json({ message: 'Booking này đã có tranh chấp đang được xử lý.' });
+    const dispute = await Dispute.create({
+      bookingId: booking._id,
+      bookingCode: booking.bookingCode,
+      customerId: req.user._id,
+      hotelId: hotel._id,
+      partnerId: hotel.ownerId,
+      category,
+      description: description.trim(),
+      attachments: validAttachments,
+    });
+    res.status(201).json({ message: 'Đã gửi tranh chấp để bộ phận vận hành xem xét.', dispute });
+  } catch (error) {
+    res.status(500).json({ message: 'Không thể tạo tranh chấp.', error: error.message });
+  }
+};
+
+export const createRefundRequest = async (req, res) => {
+  try {
+    const { bookingId, disputeId, requestedAmount, reason } = req.body;
+    const amount = Number(requestedAmount);
+    if (!bookingId || !reason?.trim() || !Number.isFinite(amount) || amount < 0) {
+      return res.status(400).json({ message: 'Thông tin yêu cầu hoàn tiền không hợp lệ.' });
+    }
+    const booking = await Booking.findOne({ _id: bookingId, customerId: req.user._id });
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy booking của bạn.' });
+    if (booking.paymentStatus !== 'PAID') return res.status(400).json({ message: 'Chỉ booking đã thanh toán mới có thể yêu cầu hoàn tiền.' });
+    const existingRefund = await RefundRequest.exists({
+      bookingId: booking._id,
+      status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'PROCESSED'] },
+    });
+    if (existingRefund) return res.status(409).json({ message: 'Booking này đã có yêu cầu hoàn tiền đang được xử lý hoặc đã hoàn.' });
+    if (amount > Number(booking.totalAmount || 0)) return res.status(400).json({ message: 'Số tiền yêu cầu không được vượt quá giá trị booking.' });
+    const hotel = await findBookingHotel(booking);
+    if (!hotel?.ownerId) return res.status(400).json({ message: 'Booking chưa có thông tin đối tác để xử lý hoàn tiền.' });
+    if (disputeId) {
+      const dispute = await Dispute.findOne({ _id: disputeId, bookingId: booking._id, customerId: req.user._id });
+      if (!dispute) return res.status(400).json({ message: 'Tranh chấp liên kết không hợp lệ.' });
+    }
+    const refund = await RefundRequest.create({
+      bookingId: booking._id,
+      disputeId: disputeId || null,
+      customerId: req.user._id,
+      hotelId: hotel._id,
+      partnerId: hotel.ownerId,
+      requestedAmount: amount,
+      reason: reason.trim(),
+    });
+    res.status(201).json({ message: 'Đã gửi yêu cầu hoàn tiền để xem xét.', refund });
+  } catch (error) {
+    res.status(500).json({ message: 'Không thể tạo yêu cầu hoàn tiền.', error: error.message });
   }
 };
 
