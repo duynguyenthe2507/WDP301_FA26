@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { FaMapMarkerAlt } from 'react-icons/fa';
 import RatingStars from './RatingStars';
 
-const PLACEHOLDER = 'https://images.unsplash.com/photo-1542314831-c53cd453a5ce?w=800&q=80';
+import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -17,10 +17,10 @@ const HotelCard = ({ hotel }) => {
       <div className="position-relative">
         <Card.Img
           variant="top"
-          src={primary_image || PLACEHOLDER}
+          src={primary_image || BLANK_IMG}
           alt={name}
-          style={{ height: '220px', objectFit: 'cover' }}
-          onError={(e) => { e.target.src = PLACEHOLDER; }}
+          style={{ height: '220px', objectFit: 'cover', ...imgBg }}
+          onError={onImgError}
         />
         {min_price && (
           <Badge

@@ -5,12 +5,12 @@ const auditLogSchema = new mongoose.Schema(
     admin_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
     target_user_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
     action: {
       type: String,
@@ -20,6 +20,9 @@ const auditLogSchema = new mongoose.Schema(
     new_status: String,
     old_reason: String,
     new_reason: String,
+    entityType: { type: String, trim: true },
+    entityId: { type: mongoose.Schema.Types.ObjectId },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: false },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { Container, Row, Col, Modal, Button, Spinner } from 'react-bootstrap';
+import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
+import { Container, Row, Col, Button, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
@@ -24,9 +25,6 @@ const formatStayDates = (checkInDate, checkOutDate) => {
 };
 
 
-// Ảnh phòng mặc định ấm cúng tương tự như trên thiết kế mẫu
-const DEFAULT_ROOM_IMAGE =
-  'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80';
 
 const BookingHistoryPage = () => {
   const navigate = useNavigate();
@@ -41,9 +39,6 @@ const BookingHistoryPage = () => {
   // Timer đồng hồ đếm ngược thời gian thực cho đơn chờ thanh toán
   const [currentTime, setCurrentTime] = useState(Date.now());
 
-  // Modal Thông tin hoàn tiền
-  const [showRefundModal, setShowRefundModal] = useState(false);
-  const [selectedRefundBooking, setSelectedRefundBooking] = useState(null);
 
   // Cập nhật currentTime mỗi giây để đếm ngược chính xác
   useEffect(() => {
@@ -124,6 +119,7 @@ const BookingHistoryPage = () => {
       upcoming: 0,
       pending: 0,
       completed: 0,
+      cancelled: 0,
     };
 
     bookings.forEach((b) => {
@@ -131,6 +127,7 @@ const BookingHistoryPage = () => {
       if (cat === 'UPCOMING') c.upcoming += 1;
       else if (cat === 'PENDING') c.pending += 1;
       else if (cat === 'COMPLETED') c.completed += 1;
+      else if (cat === 'CANCELLED') c.cancelled += 1;
     });
 
     return c;
@@ -163,18 +160,13 @@ const BookingHistoryPage = () => {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Xử lý mở thông tin hoàn tiền
-  const handleOpenRefund = (booking) => {
-    setSelectedRefundBooking(booking);
-    setShowRefundModal(true);
-  };
-
   // Tabs cấu hình
   const tabList = [
     { id: 'ALL', label: `Tất cả (${counts.all})` },
     { id: 'UPCOMING', label: `Sắp tới (${counts.upcoming})` },
     { id: 'PENDING', label: `Chờ thanh toán (${counts.pending})` },
     { id: 'COMPLETED', label: `Đã hoàn thành (${counts.completed})` },
+    { id: 'CANCELLED', label: `Đã hủy (${counts.cancelled})` },
   ];
 
   return (
@@ -314,31 +306,57 @@ const BookingHistoryPage = () => {
                     },
                   };
 
-                  let detailLine = `${totalNights} đêm · ${roomCount} phòng · 2 người lớn`;
+                  const totalAdults = booking.totalAdults || detailsList.reduce((sum, r) => sum + (Number(r.adults) || 1), 0) || 2;
+                  const totalChildren = booking.totalChildren || detailsList.reduce((sum, r) => sum + (Number(r.children) || 0), 0) || 0;
+                  const guestsText = `${totalAdults} người lớn${totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}`;
+
+                  let detailLine = `${totalNights} đêm · ${roomCount} phòng · ${guestsText}`;
                   let paymentLine = 'Thanh toán: Đã thanh toán';
                   let actionBtn = (
-                    <button
-                      onClick={() =>
-                        navigate(`/booking/confirmation/${booking.bookingCode}`, {
-                          state: { booking },
-                        })
-                      }
-                      style={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #d1d5db',
-                        color: '#1f2937',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        padding: '7px 18px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
-                    >
-                      Xem chi tiết
-                    </button>
+                    <div className="d-flex flex-wrap gap-2 justify-content-end">
+                      <button
+                        onClick={() =>
+                          navigate(`/booking/cancel/${booking.bookingCode || booking._id}`)
+                        }
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #fecaca',
+                          color: '#dc2626',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '7px 14px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fef2f2')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      >
+                        Hủy đặt phòng
+                      </button>
+                      <button
+                        onClick={() =>
+                          navigate(`/booking/confirmation/${booking.bookingCode}`, {
+                            state: { booking },
+                          })
+                        }
+                        style={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #d1d5db',
+                          color: '#1f2937',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '7px 18px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      >
+                        Xem chi tiết
+                      </button>
+                    </div>
                   );
 
                   if (category === 'PENDING') {
@@ -431,9 +449,9 @@ const BookingHistoryPage = () => {
                     badgeConfig = {
                       text: 'Đã hủy',
                       style: {
-                        backgroundColor: '#f1f5f9',
-                        color: '#64748b',
-                        border: '1px solid #e2e8f0',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
                       },
                     };
                     detailLine = 'Lịch sử đặt phòng được giữ lại sau khi hủy';
@@ -443,7 +461,7 @@ const BookingHistoryPage = () => {
                         : 'Thanh toán: Đã hủy';
                     actionBtn = (
                       <button
-                        onClick={() => handleOpenRefund(booking)}
+                        onClick={() => navigate(`/booking/confirmation/${booking.bookingCode}`, { state: { booking } })}
                         style={{
                           backgroundColor: '#ffffff',
                           border: '1px solid #d1d5db',
@@ -505,9 +523,11 @@ const BookingHistoryPage = () => {
                         {/* ẢNH & THÔNG TIN CHI TIẾT */}
                         <div className="d-flex gap-3 align-items-start" style={{ flex: 1, minWidth: 0 }}>
                           <img
-                            src={booking.hotelImage || DEFAULT_ROOM_IMAGE}
+                            src={booking.hotelImage || BLANK_IMG}
                             alt={hotelName}
+                            onError={onImgError}
                             style={{
+                              ...imgBg,
                               width: '135px',
                               height: '92px',
                               borderRadius: '8px',
@@ -597,58 +617,6 @@ const BookingHistoryPage = () => {
           </Col>
         </Row>
       </Container>
-
-      {/* MODAL THÔNG TIN HOÀN TIỀN */}
-      <Modal
-        show={showRefundModal}
-        onHide={() => setShowRefundModal(false)}
-        centered
-      >
-        <Modal.Header closeButton className="border-0 pb-0">
-          <Modal.Title style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
-            Thông tin hoàn tiền
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="pt-2">
-          {selectedRefundBooking && (
-            <div className="small">
-              <div className="p-3 rounded-2 mb-3" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div className="d-flex justify-content-between mb-1">
-                  <span className="text-muted">Mã đơn phòng:</span>
-                  <strong>{selectedRefundBooking.bookingCode}</strong>
-                </div>
-                <div className="d-flex justify-content-between mb-1">
-                  <span className="text-muted">Khách sạn:</span>
-                  <strong>{selectedRefundBooking.hotelName}</strong>
-                </div>
-                <div className="d-flex justify-content-between mb-1">
-                  <span className="text-muted">Số tiền hoàn trả:</span>
-                  <strong className="text-success">{formatPrice(selectedRefundBooking.totalAmount)}</strong>
-                </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted">Phương thức hoàn:</span>
-                  <span>Cổng thanh toán VNPAY / Tài khoản nguồn</span>
-                </div>
-              </div>
-
-              <div className="text-secondary mb-3">
-                <div className="fw-semibold text-dark mb-1">Tiến độ xử lý hoàn tiền:</div>
-                <ul className="ps-3 mb-0">
-                  <li>Yêu cầu hủy phòng đã được hệ thống tiếp nhận thành công.</li>
-                  <li>Lệnh hoàn tiền đang được đối soát tự động cùng ngân hàng liên kết.</li>
-                  <li>Thời gian tiền về tài khoản: từ <strong>3 đến 5 ngày làm việc</strong> (không tính Thứ 7, Chủ nhật).</li>
-                </ul>
-              </div>
-
-              <div className="text-end border-top pt-3">
-                <Button variant="secondary" size="sm" onClick={() => setShowRefundModal(false)}>
-                  Đã hiểu
-                </Button>
-              </div>
-            </div>
-          )}
-        </Modal.Body>
-      </Modal>
     </div>
   );
 };

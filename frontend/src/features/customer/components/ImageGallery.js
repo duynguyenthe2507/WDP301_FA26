@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Row, Col } from 'react-bootstrap';
 
-const PLACEHOLDER = 'https://images.unsplash.com/photo-1542314831-c53cd453a5ce?w=1200&q=80';
+import { BLANK_IMG, onImgError } from '../imageFallback';
 
 const ImageGallery = ({ images = [] }) => {
   const [activeIdx, setActiveIdx] = useState(0);
-  const displayImages = images.length > 0 ? images : [{ url: PLACEHOLDER, is_primary: true }];
+  const displayImages = images.length > 0 ? images : [{ url: BLANK_IMG, is_primary: true }];
   const mainImage = displayImages[activeIdx];
 
   return (
@@ -19,10 +19,10 @@ const ImageGallery = ({ images = [] }) => {
         }}
       >
         <img
-          src={mainImage?.url || PLACEHOLDER}
+          src={mainImage?.url || BLANK_IMG}
           alt="Hotel"
           style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.3s ease' }}
-          onError={(e) => { e.target.src = PLACEHOLDER; }}
+          onError={onImgError}
         />
       </div>
 
@@ -34,7 +34,7 @@ const ImageGallery = ({ images = [] }) => {
                 src={img.url}
                 alt={`view-${idx}`}
                 onClick={() => setActiveIdx(idx)}
-                onError={(e) => { e.target.src = PLACEHOLDER; }}
+                onError={onImgError}
                 style={{
                   width: '100%',
                   height: '80px',

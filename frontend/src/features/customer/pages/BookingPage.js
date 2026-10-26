@@ -31,7 +31,6 @@ const BookingPage = () => {
   const [paymentFailedMsg, setPaymentFailedMsg] = useState(rawState.paymentFailed || '');
   const closePaymentFailed = () => {
     setPaymentFailedMsg('');
-    // Bỏ cờ khỏi history để F5 không hiện lại modal
     navigate(location.pathname, { replace: true, state: { booking: pendingBooking } });
   };
 
@@ -84,6 +83,8 @@ const BookingPage = () => {
   const bookingDetailsList = stateData.bookingDetails || [];
 
   const totalQuantity = selectedRooms.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0);
+  const totalAdults = stateData.totalAdults ?? bookingDetailsList.reduce((sum, b) => sum + (Number(b.adults) || 1), 0);
+  const totalChildren = stateData.totalChildren ?? bookingDetailsList.reduce((sum, b) => sum + (Number(b.children) || 0), 0);
 
   const roomCost =
     stateData.roomCost ??
@@ -216,6 +217,8 @@ const BookingPage = () => {
     setIsSubmitting(true);
     try {
       const payload = {
+        // Có mã đơn cũ -> backend dùng lại đơn đó, không tạo đơn PENDING mới
+        bookingCode: pendingBooking?.bookingCode,
         hotelId: hotel._id || hotel.id,
         hotelName: hotel.name,
         hotelAddress: hotel.address,
@@ -235,6 +238,8 @@ const BookingPage = () => {
         checkInDate: checkIn,
         checkOutDate: checkOut,
         totalNights: nights,
+        totalAdults,
+        totalChildren,
         bookingDetails: bookingDetailsList,
         totalAmount,
       };
@@ -536,8 +541,13 @@ const BookingPage = () => {
                       <strong className="text-dark">{checkOut} (12:00)</strong>
                     </div>
                     <div className="d-flex justify-content-between text-secondary small pt-1 border-top">
-                      <span>Thời gian:</span>
-                      <strong className="text-dark">{nights} đêm, {totalQuantity} phòng</strong>
+                      <span>Thời gian & khách:</span>
+                      <strong className="text-dark text-end">
+                        {nights} đêm, {totalQuantity} phòng
+                        <div className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>
+                          {totalAdults} người lớn{totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}
+                        </div>
+                      </strong>
                     </div>
                   </div>
 
@@ -552,6 +562,8 @@ const BookingPage = () => {
                         const qty = Number(r.quantity) || 1;
                         const price = Number(r.base_price || r.basePrice || r.price_per_night) || 0;
                         const itemTotal = price * qty * nights;
+                        const roomAdults = r.adults ?? bookingDetailsList[idx]?.adults;
+                        const roomChildren = r.children ?? bookingDetailsList[idx]?.children;
                         return (
                           <div key={r._id || r.id || idx} className="d-flex justify-content-between align-items-start small">
                             <div className="pe-2 text-truncate" style={{ maxWidth: '68%' }}>
@@ -560,6 +572,9 @@ const BookingPage = () => {
                               </div>
                               <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                                 {formatPrice(price)} × {qty} phòng × {nights} đêm
+                                {roomAdults != null && (
+                                  <span> · {roomAdults} NL{roomChildren > 0 ? `, ${roomChildren} TE` : ''}</span>
+                                )}
                               </div>
                             </div>
                             <span className="fw-semibold text-dark text-nowrap">

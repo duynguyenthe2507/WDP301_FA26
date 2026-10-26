@@ -66,6 +66,7 @@ const HotelDetailsPage = () => {
   const [availError, setAvailError] = useState('');
   const [warningMessage, setWarningMessage] = useState('');
   const [roomQuantities, setRoomQuantities] = useState(restored?.roomQuantities || {});
+  const [roomGuests, setRoomGuests] = useState(restored?.roomGuests || {});
 
   // 1. Tải thông tin khách sạn
   useEffect(() => {
@@ -163,7 +164,35 @@ const HotelDetailsPage = () => {
       }
       return next;
     });
+
+    setRoomGuests((prev) => {
+      const next = { ...prev };
+      if (newQty <= 0) {
+        delete next[roomTypeId];
+      } else {
+        const rt = (hotel?.room_types || []).find((r) => r._id?.toString() === roomTypeId?.toString());
+        const maxAdults = Math.max(1, newQty * (rt?.capacity?.adults || 2));
+        const maxChildren = newQty * Math.max(1, rt?.capacity?.children != null ? rt.capacity.children : 1);
+        const prevAdults = prev[roomTypeId]?.adults ?? Math.max(1, newQty * 1);
+        const prevChildren = prev[roomTypeId]?.children ?? 0;
+
+        next[roomTypeId] = {
+          adults: Math.min(maxAdults, Math.max(newQty * 1, prevAdults)),
+          children: Math.min(maxChildren, Math.max(0, prevChildren)),
+        };
+      }
+      return next;
+    });
+
     setWarningMessage('');
+  }, [hotel]);
+
+  // Thay đổi số lượng khách (người lớn + trẻ em) cho loại phòng
+  const handleGuestsChange = useCallback((roomTypeId, newGuests) => {
+    setRoomGuests((prev) => ({
+      ...prev,
+      [roomTypeId]: newGuests,
+    }));
   }, []);
 
   // Tìm thông tin phòng trống theo ID loại phòng
@@ -176,12 +205,24 @@ const HotelDetailsPage = () => {
   // 3. TÍNH TOÁN TẬP TRUNG (Single Source of Truth)
   const selectedRoomsList = (hotel?.room_types || [])
     .filter((rt) => (roomQuantities[rt._id] || 0) > 0)
-    .map((rt) => ({
-      ...rt,
-      quantity: roomQuantities[rt._id],
-    }));
+    .map((rt) => {
+      const qty = roomQuantities[rt._id];
+      const g = roomGuests[rt._id] || {
+        adults: Math.max(1, qty * 1),
+        children: 0,
+      };
+      return {
+        ...rt,
+        quantity: qty,
+        adults: g.adults,
+        children: g.children,
+      };
+    });
 
   const totalRooms = selectedRoomsList.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAdults = selectedRoomsList.reduce((sum, item) => sum + (item.adults || item.quantity), 0);
+  const totalChildren = selectedRoomsList.reduce((sum, item) => sum + (item.children || 0), 0);
+
   const roomCost = selectedRoomsList.reduce(
     (sum, item) => sum + item.base_price * item.quantity * nights,
     0
@@ -200,13 +241,18 @@ const HotelDetailsPage = () => {
       return;
     }
 
+    if (totalAdults < totalRooms) {
+      alert('Vui lòng chọn ít nhất 1 người lớn cho mỗi phòng đã chọn.');
+      return;
+    }
+
     // Khách chưa đăng nhập: sang trang đăng nhập, xong sẽ quay lại đúng trang chọn phòng này
     if (!user) {
       navigate('/login', {
         state: {
           from: {
             pathname: `/hotels/${hotelId}`,
-            state: { restoreSelection: { checkIn, checkOut, roomQuantities } },
+            state: { restoreSelection: { checkIn, checkOut, roomQuantities, roomGuests } },
           },
         },
       });
@@ -217,6 +263,8 @@ const HotelDetailsPage = () => {
       roomTypeId: item._id,
       roomTypeName: item.name,
       quantity: item.quantity,
+      adults: item.adults,
+      children: item.children,
       pricePerNight: item.base_price,
       totalPrice: item.base_price * item.quantity * nights,
     }));
@@ -226,6 +274,8 @@ const HotelDetailsPage = () => {
         hotel,
         roomType: selectedRoomsList[0], // Giữ tương thích ngược
         quantity: totalRooms,
+        totalAdults,
+        totalChildren,
         selectedRooms: selectedRoomsList,
         bookingDetails,
         checkIn,
@@ -274,14 +324,15 @@ const HotelDetailsPage = () => {
             {hotel.name}
           </h1>
           <div className="d-flex align-items-center flex-wrap gap-3">
-            <span className="text-muted d-flex align-items-center">
-              <FaMapMarkerAlt className="me-1" style={{ color: '#d4af37' }} />
+            <span className="text-white-50 d-flex align-items-center">
+              <FaMapMarkerAlt className="me-2 flex-shrink-0" style={{ color: '#d4af37' }} />
               {hotel.address}
             </span>
             {hotel.rating_summary && (
               <RatingStars
                 rating={hotel.rating_summary.average_rating}
                 count={hotel.rating_summary.total_reviews}
+                light
               />
             )}
             <Badge
@@ -336,6 +387,8 @@ const HotelDetailsPage = () => {
                       nights={nights}
                       quantity={roomQuantities[roomType._id] || 0}
                       onQuantityChange={handleQuantityChange}
+                      guests={roomGuests[roomType._id]}
+                      onGuestsChange={(newGuests) => handleGuestsChange(roomType._id, newGuests)}
                     />
                   ))
               ) : (
@@ -363,6 +416,8 @@ const HotelDetailsPage = () => {
               onCheckOutChange={handleCheckOutChange}
               selectedRoomsList={selectedRoomsList}
               totalRooms={totalRooms}
+              totalAdults={totalAdults}
+              totalChildren={totalChildren}
               roomCost={roomCost}
               serviceFee={serviceFee}
               totalAmount={totalAmount}

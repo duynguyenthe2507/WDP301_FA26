@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 import {
   Container,
   Row,
@@ -159,9 +160,7 @@ const Home = () => {
           ) : (
             <Row className="g-4">
               {featuredHotels.map((hotel) => {
-                const coverImage =
-                  hotel.primary_image ||
-                  "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80";
+                const coverImage = hotel.primary_image || BLANK_IMG;
                 const formattedPrice = hotel.min_price
                   ? `${hotel.min_price.toLocaleString("vi-VN")}đ / đêm`
                   : "Liên hệ";
@@ -174,7 +173,8 @@ const Home = () => {
                           variant="top"
                           src={coverImage}
                           alt={hotel.name}
-                          style={{ height: "240px", objectFit: "cover" }}
+                          style={{ height: "240px", objectFit: "cover", ...imgBg }}
+                          onError={onImgError}
                         />
                         <div className="position-absolute top-0 end-0 m-3 bg-warning text-dark px-3 py-1 fw-bold rounded-pill shadow-sm">
                           {formattedPrice}

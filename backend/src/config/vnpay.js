@@ -152,7 +152,8 @@ export const verifyReturnData = (vnpParams) => {
     isSuccess,
     isHashValid,
     responseCode,
-    bookingCode: vnpParams['vnp_TxnRef'],
+    // Lần thanh toán lại có dạng <bookingCode>R<timestamp>; mã đơn không chứa chữ R
+    bookingCode: String(vnpParams['vnp_TxnRef'] || '').split('R')[0],
     transactionNo: vnpParams['vnp_TransactionNo'],
     bankCode: vnpParams['vnp_BankCode'],
     cardType: vnpParams['vnp_CardType'],

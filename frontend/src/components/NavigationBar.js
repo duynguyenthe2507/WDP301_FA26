@@ -36,7 +36,7 @@ const NavigationBar = () => {
 
                 {/* Link dashboard cho các role khác */}
                 {user.role !== 'CUSTOMER' && (
-                  <Nav.Link as={Link} to={user.role === 'ADMIN' ? '/admin' : (user.role === 'HOTEL_PARTNER' || user.role === 'PARTNER') ? '/partner' : (user.role === 'OPERATIONS_MANAGER' || user.role === 'STAFF') ? '/manager' : '/'} className="d-flex align-items-center">
+                  <Nav.Link as={Link} to={user.role === 'ADMIN' ? '/admin' : user.role === 'HOTEL_PARTNER' ? '/partner' : user.role === 'OPERATIONS_MANAGER' ? '/manager' : '/'} className="d-flex align-items-center">
                     <FaUserCircle className="me-1" /> {user.fullName || 'Tài khoản'}
                   </Nav.Link>
                 )}

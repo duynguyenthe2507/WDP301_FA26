@@ -53,11 +53,21 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    totalAdults: {
+      type: Number,
+      default: 1,
+    },
+    totalChildren: {
+      type: Number,
+      default: 0,
+    },
     bookingDetails: [
       {
         roomTypeId: { type: String, default: '' },
         roomTypeName: { type: String, default: 'Phòng Deluxe' },
         quantity: { type: Number, default: 1 },
+        adults: { type: Number, default: 1 },
+        children: { type: Number, default: 0 },
         pricePerNight: { type: Number, default: 0 },
         totalPrice: { type: Number, default: 0 },
       },
@@ -88,6 +98,44 @@ const bookingSchema = new mongoose.Schema(
       vnp_PayDate: { type: String },
       vnp_ResponseCode: { type: String },
       vnp_OrderInfo: { type: String },
+    },
+    // Thông tin hủy đơn & hoàn tiền
+    cancellationReason: {
+      type: String,
+      default: '',
+    },
+    cancellationNote: {
+      type: String,
+      default: '',
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    cancellationFee: {
+      type: Number,
+      default: 0,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+    },
+    refundStatus: {
+      type: String,
+      enum: ['NOT_APPLICABLE', 'PENDING', 'PROCESSED'],
+      default: 'NOT_APPLICABLE',
+    },
+    cancellationPolicySnapshot: {
+      type: String,
+      default: '',
+    },
+    hotelImage: {
+      type: String,
+      default: '',
+    },
+    guestCounts: {
+      adults: { type: Number, default: 2 },
+      children: { type: Number, default: 0 },
     },
   },
   {

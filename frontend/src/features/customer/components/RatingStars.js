@@ -1,7 +1,8 @@
 import React from 'react';
 import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 
-const RatingStars = ({ rating = 0, count, size = '1rem' }) => {
+// light: dùng trên nền tối (chữ sáng thay cho text-muted)
+const RatingStars = ({ rating = 0, count, size = '1rem', light = false }) => {
   const stars = [];
   const fullStars = Math.floor(rating);
   const hasHalf = rating - fullStars >= 0.5;
@@ -19,7 +20,7 @@ const RatingStars = ({ rating = 0, count, size = '1rem' }) => {
   return (
     <span className="d-inline-flex align-items-center gap-1">
       {stars}
-      <span className="ms-1 text-muted small fw-semibold">
+      <span className={`ms-1 small fw-semibold ${light ? 'text-white-50' : 'text-muted'}`}>
         {rating > 0 ? rating.toFixed(1) : '0.0'}
         {count !== undefined && (
           <span className="fw-normal ms-1">({count} đánh giá)</span>

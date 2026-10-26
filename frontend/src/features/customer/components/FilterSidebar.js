@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Form, Button } from 'react-bootstrap';
+import { Card, Form, Button, Alert } from 'react-bootstrap';
 import { FaStar, FaRegStar, FaFilter, FaTimes } from 'react-icons/fa';
 
 const FilterSidebar = ({ onFilterChange }) => {
@@ -7,11 +7,21 @@ const FilterSidebar = ({ onFilterChange }) => {
   const [maxPrice, setMaxPrice] = useState('');
   const [minRating, setMinRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [priceError, setPriceError] = useState('');
 
   const handleApply = () => {
+    const cleanMin = minPrice.trim();
+    const cleanMax = maxPrice.trim();
+
+    if (cleanMin && cleanMax && Number(cleanMin) > Number(cleanMax)) {
+      setPriceError('Giá tối thiểu không được lớn hơn giá tối đa');
+      return;
+    }
+    setPriceError('');
+
     onFilterChange({
-      ...(minPrice ? { minPrice } : {}),
-      ...(maxPrice ? { maxPrice } : {}),
+      ...(cleanMin ? { minPrice: Number(cleanMin) } : {}),
+      ...(cleanMax ? { maxPrice: Number(cleanMax) } : {}),
       ...(minRating ? { minRating } : {})
     });
   };
@@ -21,6 +31,7 @@ const FilterSidebar = ({ onFilterChange }) => {
     setMaxPrice('');
     setMinRating(0);
     setHoverRating(0);
+    setPriceError('');
     onFilterChange({});
   };
 
@@ -34,6 +45,12 @@ const FilterSidebar = ({ onFilterChange }) => {
           Bộ lọc
         </h5>
 
+        {priceError && (
+          <Alert variant="danger" className="py-2 px-3 small rounded-3 mb-3">
+            {priceError}
+          </Alert>
+        )}
+
         {/* Price range */}
         <div className="mb-4">
           <p className="fw-semibold text-muted small mb-2 text-uppercase ls-1">Khoảng giá (đ/đêm)</p>
@@ -41,7 +58,10 @@ const FilterSidebar = ({ onFilterChange }) => {
             type="number"
             placeholder="Từ"
             value={minPrice}
-            onChange={(e) => setMinPrice(e.target.value)}
+            onChange={(e) => {
+              setMinPrice(e.target.value);
+              if (priceError) setPriceError('');
+            }}
             className="mb-2 rounded-3"
             min={0}
             style={{ borderColor: '#e2e8f0' }}
@@ -50,7 +70,10 @@ const FilterSidebar = ({ onFilterChange }) => {
             type="number"
             placeholder="Đến"
             value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
+            onChange={(e) => {
+              setMaxPrice(e.target.value);
+              if (priceError) setPriceError('');
+            }}
             className="rounded-3"
             min={0}
             style={{ borderColor: '#e2e8f0' }}
