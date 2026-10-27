@@ -48,10 +48,16 @@ const HotelSearchPage = () => {
   }, [fetchHotels]);
 
   const handleSearch = ({ location }) => {
-    navigate(`/hotels?location=${encodeURIComponent(location)}`);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    if (location) {
+      navigate(`/hotels?location=${encodeURIComponent(location)}`);
+    } else {
+      navigate('/hotels');
+    }
   };
 
   const handleFilterChange = (newFilters) => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
     setFilters(newFilters);
   };
 
@@ -71,13 +77,22 @@ const HotelSearchPage = () => {
           >
             Tìm kiếm Khách sạn
           </h1>
-          {locationParam && (
-            <p className="text-secondary mb-4">
-              Kết quả cho:{' '}
-              <span style={{ color: '#d4af37', fontWeight: 600 }}>"{locationParam}"</span>
+          {locationParam ? (
+            <p className="text-secondary mb-4 d-flex align-items-center flex-wrap gap-2">
+              <span>
+                Kết quả cho:{' '}
+                <span style={{ color: '#d4af37', fontWeight: 600 }}>"{locationParam}"</span>
+              </span>
+              <button
+                type="button"
+                className="btn btn-outline-light btn-sm rounded-pill px-2 py-0"
+                style={{ fontSize: '0.78rem' }}
+                onClick={() => navigate('/hotels')}
+              >
+                ✕ Xóa tìm kiếm
+              </button>
             </p>
-          )}
-          {!locationParam && (
+          ) : (
             <p className="text-secondary mb-4">Khám phá những khách sạn tốt nhất</p>
           )}
           <SearchBar initialLocation={locationParam} onSearch={handleSearch} />

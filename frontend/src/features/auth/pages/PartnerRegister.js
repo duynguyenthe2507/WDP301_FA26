@@ -12,7 +12,7 @@ const PartnerRegister = () => {
     fullName: '',
     phoneNumber: '',
     agreedToTerms: true,
-    role: 'PARTNER'
+    role: 'HOTEL_PARTNER'
   });
 
   const [error, setError] = useState(null);
@@ -56,7 +56,7 @@ const PartnerRegister = () => {
         password: formData.password,
         fullName: formData.fullName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
-        role: 'PARTNER'
+        role: 'HOTEL_PARTNER'
       };
       
       const response = await axios.post(

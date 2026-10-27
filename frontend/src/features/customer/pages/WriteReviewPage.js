@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 import { Container, Row, Col, Form, Button, Spinner, Alert } from 'react-bootstrap';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaStar, FaCloudUploadAlt, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
@@ -40,8 +41,6 @@ const RATING_LABELS = {
   5: '5/5 · Rất hài lòng',
 };
 
-const DEFAULT_HOTEL_IMAGE =
-  'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80';
 
 const WriteReviewPage = () => {
   const { bookingId } = useParams();
@@ -154,7 +153,7 @@ const WriteReviewPage = () => {
   const hotelCoverImage =
     hotel?.images?.find((img) => img.isCover)?.url ||
     hotel?.images?.[0]?.url ||
-    DEFAULT_HOTEL_IMAGE;
+    BLANK_IMG;
 
   const roomDetail = booking?.bookingDetails?.[0] || {};
   const hotelName = hotel?.name || booking?.hotelName || 'Hanoi Heritage Hotel';
@@ -302,7 +301,9 @@ const WriteReviewPage = () => {
                     <img
                       src={hotelCoverImage}
                       alt={hotelName}
+                      onError={onImgError}
                       style={{
+                        ...imgBg,
                         width: '130px',
                         height: '92px',
                         objectFit: 'cover',

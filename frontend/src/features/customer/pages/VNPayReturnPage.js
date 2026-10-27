@@ -17,7 +17,8 @@ const VNPayReturnPage = () => {
   const [booking, setBooking] = useState(null);
 
   const responseCode = searchParams.get('vnp_ResponseCode');
-  const bookingCode = searchParams.get('vnp_TxnRef');
+  // Lần thanh toán lại có dạng <bookingCode>R<timestamp>
+  const bookingCode = searchParams.get('vnp_TxnRef')?.split('R')[0];
   const transactionNo = searchParams.get('vnp_TransactionNo');
   const bankCode = searchParams.get('vnp_BankCode');
   const amount = Number(searchParams.get('vnp_Amount')) / 100 || 0;

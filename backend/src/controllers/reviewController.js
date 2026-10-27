@@ -230,6 +230,11 @@ export const updateReview = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy đánh giá này' });
     }
 
+    // Kiểm tra quyền sở hữu đánh giá
+    if (String(review.customerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa đánh giá này' });
+    }
+
     // Kiểm tra quy tắc 7 ngày (7 days from createdAt)
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const createdAtMs = new Date(review.createdAt).getTime();
@@ -303,6 +308,11 @@ export const deleteReview = async (req, res) => {
     const review = await Review.findById(id);
     if (!review) {
       return res.status(404).json({ message: 'Không tìm thấy đánh giá này' });
+    }
+
+    // Kiểm tra quyền sở hữu đánh giá
+    if (String(review.customerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Bạn không có quyền xóa đánh giá này' });
     }
 
     // Kiểm tra quy tắc 7 ngày (7 days from createdAt)

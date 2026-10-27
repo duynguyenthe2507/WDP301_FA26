@@ -4,8 +4,8 @@ import { getUsers, updateUser } from "../adminApi";
 // Tên vai trò để hiển thị cho admin.
 const roleNames = {
   CUSTOMER: "Khách hàng",
-  PARTNER: "Đối tác",
-  STAFF: "Nhân viên",
+  HOTEL_PARTNER: "Đối tác khách sạn",
+  OPERATIONS_MANAGER: "Quản lý vận hành",
   ADMIN: "Quản trị viên",
 };
 

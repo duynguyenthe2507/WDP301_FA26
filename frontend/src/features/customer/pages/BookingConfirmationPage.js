@@ -142,12 +142,20 @@ const BookingConfirmationPage = () => {
   const totalRoomCost = bookingDetails.reduce((sum, r) => sum + lineTotal(r), 0);
   const serviceFee = Math.max(0, (booking.totalAmount || 0) - totalRoomCost);
 
-  const countdown = `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
+  // Đơn đã hủy nhưng từng thanh toán -> hiện phần hoàn tiền
+  const wasPaid = booking.paymentStatus === 'PAID';
+  const refundAmount = booking.refundAmount !== undefined ? booking.refundAmount : booking.totalAmount;
+  const refundStatusText = {
+    PENDING: 'Đang xử lý',
+    PROCESSED: 'Đã hoàn tiền',
+  }[booking.refundStatus] || (wasPaid ? 'Đang xử lý' : 'Không áp dụng');
+
+  const countdown =`${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
 
   const status = isPaid
     ? { icon: <FaCheckCircle className="text-success" size={36} />, title: 'Đặt phòng thành công', text: 'Đơn phòng đã được xác nhận và thanh toán qua VNPAY.' }
     : isCancelled
-      ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã bị hủy', text: booking.cancellationReason ? `Lý do: ${booking.cancellationReason}` : 'Đơn đặt phòng này đã được hủy.' }
+      ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã bị hủy', text: wasPaid ? 'Yêu cầu hủy đã được tiếp nhận, tiền hoàn đang được xử lý.' : 'Đơn đặt phòng này đã được hủy.' }
       : isExpired
         ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã quá hạn thanh toán', text: 'Đơn quá 15 phút chưa thanh toán nên đã bị hủy. Vui lòng đặt lại.' }
         : { icon: <FaClock className="text-secondary" size={36} />, title: 'Đang chờ thanh toán', text: 'Vui lòng thanh toán trước khi hết giờ để giữ phòng.' };
@@ -189,7 +197,14 @@ const BookingConfirmationPage = () => {
               {bookingDetails.map((room, idx) => (
                 <div key={idx} className="d-flex justify-content-between gap-3 py-1">
                   <div>
-                    <div className="fw-semibold text-dark">{room.roomTypeName || 'Phòng'} × {Number(room.quantity) || 1}</div>
+                    <div className="fw-semibold text-dark">
+                      {room.roomTypeName || 'Phòng'} × {Number(room.quantity) || 1}
+                      {room.adults != null && (
+                        <span className="text-secondary small fw-normal ms-2">
+                          ({room.adults} người lớn{room.children > 0 ? `, ${room.children} trẻ em` : ''})
+                        </span>
+                      )}
+                    </div>
                     <div className="text-muted small">{formatPrice(Number(room.pricePerNight) || 0)} / phòng / đêm</div>
                   </div>
                   <span className="fw-semibold text-dark">{formatPrice(lineTotal(room))}</span>
@@ -213,22 +228,50 @@ const BookingConfirmationPage = () => {
             </Section>
 
             {/* THANH TOÁN */}
-            <Section title="Thanh toán" last>
+            <Section title="Thanh toán" last={!isCancelled}>
               <InfoRow label="Tiền phòng">{formatPrice(totalRoomCost)}</InfoRow>
               {serviceFee > 0 && <InfoRow label="Thuế & phí dịch vụ">{formatPrice(serviceFee)}</InfoRow>}
-              {isPaid && booking.vnpayTransaction?.vnp_TransactionNo && (
+              {(isPaid || wasPaid) && booking.vnpayTransaction?.vnp_TransactionNo && (
                 <InfoRow label="Mã giao dịch VNPAY">
                   <span className="font-monospace">{booking.vnpayTransaction.vnp_TransactionNo}</span>
                   {booking.vnpayTransaction.vnp_BankCode && ` · ${booking.vnpayTransaction.vnp_BankCode}`}
                 </InfoRow>
               )}
               <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
-                <span className={`fw-bold ${isPaid ? 'text-success' : 'text-dark'}`}>{isPaid ? 'Đã thanh toán' : 'Tổng cần thanh toán'}</span>
+                <span className={`fw-bold ${isPaid ? 'text-success' : 'text-dark'}`}>{isPaid || wasPaid ? 'Đã thanh toán' : 'Tổng cần thanh toán'}</span>
                 <span className={`fw-bold fs-5 ${isPaid ? 'text-success' : 'text-dark'}`}>
                   {formatPrice(booking.totalAmount)}
                 </span>
               </div>
             </Section>
+
+            {/* HOÀN TIỀN (chỉ đơn đã hủy) */}
+            {isCancelled && (
+              <Section title="Thông tin hoàn tiền" last>
+                {booking.cancelledAt && (
+                  <InfoRow label="Thời gian hủy">
+                    {new Date(booking.cancelledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </InfoRow>
+                )}
+                {booking.cancellationReason && <InfoRow label="Lý do hủy">{booking.cancellationReason}</InfoRow>}
+                <InfoRow label="Phí hủy">
+                  {booking.cancellationFee > 0 ? formatPrice(booking.cancellationFee) : 'Miễn phí'}
+                </InfoRow>
+                {wasPaid && <InfoRow label="Phương thức hoàn">VNPAY / tài khoản nguồn</InfoRow>}
+                <InfoRow label="Trạng thái">{refundStatusText}</InfoRow>
+                {wasPaid && (
+                  <>
+                    <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
+                      <span className="fw-bold text-success">Tiền được hoàn</span>
+                      <span className="fw-bold fs-5 text-success">{formatPrice(refundAmount)}</span>
+                    </div>
+                    <div className="text-muted small mt-2">
+                      Tiền về tài khoản trong 3–5 ngày làm việc (không tính Thứ 7, Chủ nhật).
+                    </div>
+                  </>
+                )}
+              </Section>
+            )}
           </Card.Body>
         </Card>
 
@@ -248,6 +291,14 @@ const BookingConfirmationPage = () => {
           <Link to="/booking-history" className="btn btn-dark px-4">
             Lịch sử đặt phòng
           </Link>
+          {isPaid && (
+            <Link
+              to={`/booking/cancel/${booking.bookingCode || booking._id}`}
+              className="btn btn-outline-danger px-4"
+            >
+              Hủy đặt phòng
+            </Link>
+          )}
           <Link to="/hotels" className="btn btn-outline-secondary px-4">
             {isPending && isExpired ? 'Đặt lại phòng' : 'Đặt thêm phòng'}
           </Link>

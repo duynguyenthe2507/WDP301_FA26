@@ -90,11 +90,7 @@ export const AuthProvider = ({ children }) => {
       navigate(partnerDestination, { replace: true });
     } 
     else if (userData.role === "STAFF") navigate("/manager");
-    else if (redirectTo?.pathname)
-      navigate(`${redirectTo.pathname}${redirectTo.search || ""}`, {
-        replace: true,
-        state: redirectTo.state,
-      });
+    else if (redirectTo?.pathname) navigate(`${redirectTo.pathname}${redirectTo.search || ""}`, {replace: true, state: redirectTo.state,});
     else navigate("/");
   };
 

@@ -3,7 +3,7 @@ import AuditLog from '../models/AuditLog.js';
 import SystemConfig from "../models/SystemConfig.js";
 
 
-const roles = ['CUSTOMER', 'PARTNER', 'STAFF', 'ADMIN'];
+const roles = ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN'];
 const statuses = ['ACTIVE', 'SUSPENDED', 'BLOCKED'];
 
 export const pingAdmin = (req, res) => {
