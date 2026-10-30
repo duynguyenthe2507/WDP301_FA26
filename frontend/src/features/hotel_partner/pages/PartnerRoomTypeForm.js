@@ -3,10 +3,10 @@ import { Alert, Button, Card, Form, Spinner } from "react-bootstrap";
 import { FaArrowLeft, FaImage, FaSave, FaUpload } from "react-icons/fa";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
+import { BED_TYPES } from "../data/hotelOptions";
 import { getRoomType } from "../partnerApi";
 
 const amenities = ["Wi-Fi miễn phí", "Điều hòa", "TV màn hình phẳng", "Minibar", "Ban công", "Bồn tắm", "Két an toàn", "Bàn làm việc"];
-const BED_TYPES = ["Giường đôi King", "Giường đôi Queen", "2 giường đơn"];
 const emptyRoom = { name: "", description: "", bedType: "", beds: "", size: "", adults: "", children: "", total: "", price: "", amenities: [], images: [], status: "ACTIVE" };
 
 // Đổi loại phòng từ model (RoomType) sang các ô của form
@@ -47,7 +47,7 @@ const RoomTypeForm = ({ edit }) => {
   const toggleAmenity = (item) => setRoom((current) => ({ ...current, amenities: current.amenities.includes(item) ? current.amenities.filter((value) => value !== item) : [...current.amenities, item] }));
   const submit = (event) => { event.preventDefault(); setSaved(true); setTimeout(() => navigate("/partner/room-types"), 600); };
   const field = (label, props, className = "col-12") => <Form.Group className={className}><Form.Label>{label} <span className="text-danger">*</span></Form.Label><Form.Control required {...props} /></Form.Group>;
-  // Giữ loại giường nhập tự do từ wizard đăng ký để ô chọn không bị trống
+  // Giữ loại giường ngoài danh sách (dữ liệu cũ / seed) để ô chọn không bị trống
   const bedTypes = room.bedType && !BED_TYPES.includes(room.bedType) ? [...BED_TYPES, room.bedType] : BED_TYPES;
 
   if (loading) return <div className="text-center p-5"><Spinner /></div>;

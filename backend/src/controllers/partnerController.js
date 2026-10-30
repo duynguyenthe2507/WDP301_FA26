@@ -87,7 +87,7 @@ export const createHotel = async (req, res, next) => {
     const roomTypes = rooms.map((room) => ({
       name: room.name?.trim(),
       description: room.description,
-      bedType: room.bedType,
+      bedType: room.bedType?.trim(),
       roomSize: toNumber(room.roomSize),
       adultCapacity: toNumber(room.adultCapacity),
       childrenCapacity: toNumber(room.childrenCapacity),
@@ -102,6 +102,7 @@ export const createHotel = async (req, res, next) => {
       roomTypes.some(
         (room) =>
           !room.name ||
+          !room.bedType ||
           !Number.isFinite(room.roomSize) ||
           !Number.isInteger(room.adultCapacity) ||
           !Number.isInteger(room.childrenCapacity) ||
@@ -111,7 +112,13 @@ export const createHotel = async (req, res, next) => {
     ) {
       return res.status(400).json({
         message:
-          "Mỗi loại phòng cần có tên, diện tích, sức chứa, số lượng phòng và giá hợp lệ.",
+          "Mỗi loại phòng cần có tên, loại giường, diện tích, sức chứa, số lượng phòng và giá hợp lệ.",
+      });
+    }
+    // RoomType yêu cầu tối thiểu 1 người lớn và 1 phòng
+    if (roomTypes.some((room) => room.adultCapacity < 1 || room.totalRooms < 1)) {
+      return res.status(400).json({
+        message: "Số người lớn tối đa và tổng số phòng phải từ 1 trở lên.",
       });
     }
 

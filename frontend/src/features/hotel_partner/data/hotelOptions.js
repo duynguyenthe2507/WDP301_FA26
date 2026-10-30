@@ -25,6 +25,20 @@ export const HOTEL_AMENITIES = [
   ["Nhà hàng", FaUtensils],
 ];
 
+// Dùng chung cho wizard đăng ký và màn sửa loại phòng để RoomType.bedType luôn khớp
+export const BED_TYPES = [
+  "1 giường đơn",
+  "2 giường đơn",
+  "1 giường đôi",
+  "1 giường Queen",
+  "1 giường King",
+  "1 giường đôi + 1 giường đơn",
+  "2 giường đôi",
+  "2 giường Queen",
+  "2 giường King",
+  "Giường tầng",
+];
+
 // Giá trị khớp enum Hotel.cancellationPolicy
 export const CANCELLATION_POLICIES = [
   ["one", "Có thể hoàn tiền tối đa 1 ngày trước ngày nhận phòng"],

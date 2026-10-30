@@ -6,7 +6,7 @@ const blankRoom = () => ({
   description: "",
   bedType: "",
   roomSize: "0",
-  adultCapacity: 0,
+  adultCapacity: 1,
   childrenCapacity: 0,
   totalRooms: 1,
   basePrice: "2000000",

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { FaPlus } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
+import { BED_TYPES } from "../data/hotelOptions";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 
 const ROOM_TYPES = [
@@ -35,6 +36,14 @@ const PartnerPropertyRooms = () => {
     draft.rooms?.length ? draft.rooms : [blankRoom()],
   );
   const [imageUrlInputs, setImageUrlInputs] = useState({});
+  // Khớp ràng buộc của RoomType: bedType bắt buộc, sức chứa và số phòng tối thiểu 1
+  const isBelowOne = (value) => !(Number(value) >= 1);
+  const hasInvalidRoom = rooms.some(
+    (room) =>
+      !room.bedType ||
+      isBelowOne(room.adultCapacity) ||
+      isBelowOne(room.totalRooms),
+  );
   const updateRoom = (index, field, value) =>
     setRooms((current) =>
       current.map((room, roomIndex) =>
@@ -62,6 +71,7 @@ const PartnerPropertyRooms = () => {
       title="Thiết lập phòng và giá"
       previous="/partner/property-amenities"
       next="/partner/property-photos"
+      disableNext={hasInvalidRoom}
       beforeNext={() => setDraft((current) => ({ ...current, rooms }))}
     >
       {rooms.map((room, index) => (
@@ -90,11 +100,23 @@ const PartnerPropertyRooms = () => {
             </Form.Group>
             <Form.Group className="col-md-6">
               <Form.Label>Loại giường</Form.Label>
-              <Form.Control
+              <Form.Select
                 value={room.bedType}
-                placeholder="Ví dụ: 1 giường đôi"
+                isInvalid={!room.bedType}
                 onChange={(e) => updateRoom(index, "bedType", e.target.value)}
-              />
+              >
+                <option value="" disabled>
+                  Chọn loại giường
+                </option>
+                {BED_TYPES.map((bedType) => (
+                  <option key={bedType} value={bedType}>
+                    {bedType}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                Vui lòng chọn loại giường.
+              </Form.Control.Feedback>
             </Form.Group>
             <Form.Group className="col-12">
               <Form.Label>Mô tả phòng</Form.Label>
@@ -122,10 +144,14 @@ const PartnerPropertyRooms = () => {
                 type="number"
                 min="1"
                 value={room.adultCapacity}
+                isInvalid={isBelowOne(room.adultCapacity)}
                 onChange={(e) =>
                   updateRoom(index, "adultCapacity", e.target.value)
                 }
               />
+              <Form.Control.Feedback type="invalid">
+                Tối thiểu 1 người lớn.
+              </Form.Control.Feedback>
             </Form.Group>
             <Form.Group className="col-md-4">
               <Form.Label>Số trẻ em tối đa</Form.Label>
@@ -144,10 +170,14 @@ const PartnerPropertyRooms = () => {
                 type="number"
                 min="1"
                 value={room.totalRooms}
+                isInvalid={isBelowOne(room.totalRooms)}
                 onChange={(e) =>
                   updateRoom(index, "totalRooms", e.target.value)
                 }
               />
+              <Form.Control.Feedback type="invalid">
+                Tối thiểu 1 phòng.
+              </Form.Control.Feedback>
             </Form.Group>
             <Form.Group className="col-md-6">
               <Form.Label>Giá cơ bản (VND / đêm)</Form.Label>
