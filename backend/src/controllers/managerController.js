@@ -73,8 +73,9 @@ export const getVerificationById = async (req, res, next) => {
 export const reviewVerification = async (req, res, next) => {
   try {
     const { decision, note = '' } = req.body;
+    // [trạng thái hồ sơ, trạng thái khách sạn (Hotel chỉ có PENDING/ACTIVE/REJECTED), hành động audit]
     const outcomes = {
-      APPROVE: ['APPROVED', 'APPROVED', 'HOTEL_VERIFICATION_APPROVED'],
+      APPROVE: ['APPROVED', 'ACTIVE', 'HOTEL_VERIFICATION_APPROVED'],
       REJECT: ['REJECTED', 'REJECTED', 'HOTEL_VERIFICATION_REJECTED'],
       REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', null, 'HOTEL_VERIFICATION_INFO_REQUESTED'],
     };
@@ -241,7 +242,7 @@ export const reviewRefund = async (req, res, next) => {
     if (decision === 'REJECT') refund.status = 'REJECTED';
     if (decision === 'MARK_PROCESSED') {
       if (refund.status !== 'APPROVED') return res.status(409).json({ message: 'Chỉ yêu cầu đã duyệt mới có thể hoàn tiền.' });
-      const payment = await Payment.create({ bookingId: refund.bookingId, transactionId: paymentReference.trim() || `REF-${refund._id}-${Date.now()}`, type: 'REFUND', amount: refund.approvedAmount, status: 'SUCCESS' });
+      const payment = await Payment.create({ bookingId: refund.bookingId, txnRef: paymentReference.trim() || `REF-${refund._id}-${Date.now()}`, gateway: 'MANUAL', type: 'REFUND', amount: refund.approvedAmount, status: 'SUCCESS', payDate: new Date() });
       refund.status = 'PROCESSED'; refund.processedAt = new Date(); refund.paymentId = payment._id;
     }
     refund.reviewedBy = req.user._id; refund.reviewNote = note.trim(); refund.reviewedAt = new Date();

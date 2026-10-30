@@ -9,7 +9,7 @@ const amenities = ["Wi-Fi miễn phí", "Điều hòa", "TV màn hình phẳng",
 const BED_TYPES = ["Giường đôi King", "Giường đôi Queen", "2 giường đơn"];
 const emptyRoom = { name: "", description: "", bedType: "", beds: "", size: "", adults: "", children: "", total: "", price: "", amenities: [], images: [], status: "ACTIVE" };
 
-// Đổi loại phòng từ model (Hotel.roomTypes) sang các ô của form
+// Đổi loại phòng từ model (RoomType) sang các ô của form
 const toForm = (roomType) => ({
   ...emptyRoom,
   name: roomType.name || "",

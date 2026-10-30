@@ -7,7 +7,7 @@ import { getMyHotel } from "../partnerApi";
 // Trang "nhà" của partner theo trạng thái khách sạn
 const homeFor = (hotel) => {
   if (!hotel) return "/partner/terms";                 // chưa có khách sạn → wizard
-  if (hotel.status === "APPROVED") return "/partner";  // đã duyệt → dashboard
+  if (hotel.status === "ACTIVE") return "/partner";  // đã duyệt → dashboard
   return "/partner/registration-status";               // chờ duyệt / bị từ chối / tạm khóa
 };
 
@@ -28,7 +28,7 @@ const PartnerHotelGate = ({ allow }) => {
   const allowed =
     (allow === "wizard" && !hotel) ||
     (allow === "status" && !!hotel) ||
-    (allow === "approved" && hotel?.status === "APPROVED");
+    (allow === "approved" && hotel?.status === "ACTIVE");
 
   if (!allowed) return <Navigate to={homeFor(hotel)} replace />;
   // Truyền dữ liệu xuống trang con để trang trạng thái khỏi gọi API lần nữa

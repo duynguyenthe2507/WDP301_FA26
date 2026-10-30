@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import Hotel, { TIME_PATTERN } from "../models/Hotel.js";
+import RoomType from '../models/RoomType.js';
 import HotelVerification from '../models/HotelVerification.js';
 import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
@@ -125,8 +127,7 @@ export const createHotel = async (req, res, next) => {
       checkOutTime: details.checkOutTime,
       amenities: stringList(amenities),
       images: imageList(images),
-      roomTypes,
-      status: 'PENDING_VERIFICATION',
+      status: 'PENDING',
       legalProfile: {
         businessName: profile.business,
         legalAddress: profile.address,
@@ -148,6 +149,14 @@ export const createHotel = async (req, res, next) => {
         },
       },
     });
+
+    // Loại phòng nằm ở collection riêng; nếu lưu lỗi thì xoá khách sạn vừa tạo để không bị mồ côi
+    try {
+      await RoomType.insertMany(roomTypes.map((room) => ({ ...room, hotelId: hotel._id })));
+    } catch (error) {
+      await Hotel.deleteOne({ _id: hotel._id });
+      throw error;
+    }
 
     await HotelVerification.create({
       hotelId: hotel._id,
@@ -175,7 +184,7 @@ export const createPartnerChangeRequest = async (req, res, next) => {
     const { hotelId, changes, documents = [] } = req.body;
     const allowedFields = ['name', 'address', 'legalProfile'];
     if (!hotelId || !Array.isArray(changes) || !changes.length || changes.some((change) => !allowedFields.includes(change.field))) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
-    const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'APPROVED' });
+    const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'ACTIVE' });
     if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn đã được phê duyệt của bạn.' });
     const pending = await PartnerChangeRequest.exists({ hotelId, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } });
     if (pending) return res.status(409).json({ message: 'Khách sạn đang có yêu cầu thay đổi nhạy cảm chờ xử lý.' });
@@ -211,13 +220,13 @@ export const getMyHotel = async (req, res, next) => {
 // Dữ liệu đầy đủ cho màn quản lý thông tin khách sạn; chỉ khách sạn đã duyệt của chính partner
 export const getMyHotelDetail = async (req, res, next) => {
   try {
-    const hotel = await findApprovedHotel(req.user._id).select('-roomTypes');
+    const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
     res.json({ hotel });
   } catch (error) { next(error); }
 };
 
-const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'APPROVED' });
+const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'ACTIVE' });
 const notApproved = (res) =>
   res.status(403).json({ message: 'Khách sạn chưa được duyệt hoặc không thuộc tài khoản này.' });
 
@@ -226,7 +235,7 @@ export const getRoomTypes = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const roomTypes = hotel.roomTypes.filter((room) => !room.isDeleted);
+    const roomTypes = await RoomType.find({ hotelId: hotel._id, isDeleted: false }).sort({ createdAt: 1 });
     res.json({
       hotel: { _id: hotel._id, name: hotel.name, provinceCity: hotel.provinceCity, address: hotel.address, status: hotel.status },
       roomTypes,
@@ -238,9 +247,9 @@ export const getRoomType = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    // roomTypes là mảng con nhúng trong Hotel; id() trả null nếu id không hợp lệ hoặc không có
-    const roomType = hotel.roomTypes.id(req.params.id);
-    if (!roomType || roomType.isDeleted) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
+    const roomType = await RoomType.findOne({ _id: req.params.id, hotelId: hotel._id, isDeleted: false });
+    if (!roomType) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
     res.json({ roomType });
   } catch (error) { next(error); }
 };

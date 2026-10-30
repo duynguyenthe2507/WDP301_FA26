@@ -5,9 +5,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import { getRoomTypes } from "../partnerApi";
 
-// Trạng thái theo Hotel.roomTypes[].status
+// Trạng thái theo RoomType.status
 const STATUS_LABEL = { ACTIVE: "Mở bán", INACTIVE: "Ngừng bán" };
-const HOTEL_STATUS_LABEL = { APPROVED: "Đã phê duyệt", SUSPENDED: "Tạm khóa" };
+const HOTEL_STATUS_LABEL = { ACTIVE: "Đã phê duyệt" };
 
 const PartnerRoomTypes = () => {
   const { token } = useContext(AuthContext);

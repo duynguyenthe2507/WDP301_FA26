@@ -7,8 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon index.js",
-    "seed:om": "node scripts/seedOperationsData.js",
-    "migrate:om": "node scripts/migrateOperationsSchema.js"
+    "seed": "node src/scripts/seed.js",
+    "seed:om": "node scripts/seedOperationsData.js"
   },
   "keywords": [
     "nodejs",

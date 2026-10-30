@@ -1,0 +1,16 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c801" },
+    "complaintCode": "CMP2026100101",
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c301" },
+    "customerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c005" },
+    "assignedTo": { "$oid": "64f1a2b3c4d5e6f7a8b9c002" },
+    "category": "Dịch vụ phòng",
+    "description": "Máy lạnh phòng 302 hơi ồn vào ban đêm khi ngủ",
+    "attachments": [],
+    "status": "RESOLVED",
+    "resolutionNote": "Khách sạn đã kiểm tra bảo trì điều hòa và tặng khách voucher giảm giá cho lần đặt kế tiếp.",
+    "createdAt": { "$date": "2026-10-06T08:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-06T15:30:00.000Z" }
+  }
+]

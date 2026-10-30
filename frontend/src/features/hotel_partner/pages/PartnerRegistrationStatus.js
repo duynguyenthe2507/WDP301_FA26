@@ -2,10 +2,9 @@ import { Alert, Button, Card } from "react-bootstrap";
 import { Link, useOutletContext } from "react-router-dom";
 
 const MESSAGES = {
-  PENDING_VERIFICATION: { variant: "warning", text: "Hồ sơ đang chờ Operations Manager xét duyệt." },
+  PENDING: { variant: "warning", text: "Hồ sơ đang chờ Operations Manager xét duyệt." },
   REJECTED: { variant: "danger", text: "Hồ sơ đã bị từ chối." },
-  SUSPENDED: { variant: "secondary", text: "Khách sạn đang bị tạm khóa. Vui lòng liên hệ hỗ trợ." },
-  APPROVED: { variant: "success", text: "Khách sạn đã được duyệt." },
+  ACTIVE: { variant: "success", text: "Khách sạn đã được duyệt." },
 };
 
 const PartnerRegistrationStatus = () => {
@@ -24,7 +23,7 @@ const PartnerRegistrationStatus = () => {
       </p>
       <Alert variant={message.variant}>{message.text}</Alert>
       {verification?.reviewNote && <p><strong>Ghi chú của quản lý:</strong> {verification.reviewNote}</p>}
-      {hotel.status === "APPROVED" && <Button as={Link} to="/partner">Vào trang quản lý</Button>}
+      {hotel.status === "ACTIVE" && <Button as={Link} to="/partner">Vào trang quản lý</Button>}
     </Card.Body></Card>
   );
 };
