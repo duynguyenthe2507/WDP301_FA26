@@ -1,109 +1,47 @@
 import mongoose from 'mongoose';
 
-const bookingSchema = new mongoose.Schema(
-  {
-    bookingCode: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    customerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
-    hotelId: {
-      type: String,
-      default: '',
-    },
-    hotelName: {
-      type: String,
-      default: '',
-    },
-    hotelAddress: {
-      type: String,
-      default: '',
-    },
-    bookerInfo: {
-      fullName: { type: String, required: true },
-      phoneNumber: { type: String, required: true },
-      email: { type: String, required: true },
-    },
-    isSelfGuest: {
-      type: Boolean,
-      default: true,
-    },
-    guestInfo: {
-      fullName: { type: String, default: '' },
-      phoneNumber: { type: String, default: '' },
-    },
-    specialRequests: {
-      type: String,
-      default: '',
-    },
-    checkInDate: {
-      type: Date,
-      default: Date.now,
-    },
-    checkOutDate: {
-      type: Date,
-      default: () => new Date(Date.now() + 86400000),
-    },
-    totalNights: {
-      type: Number,
-      default: 1,
-    },
-    totalAdults: {
-      type: Number,
-      default: 1,
-    },
-    totalChildren: {
-      type: Number,
-      default: 0,
-    },
-    bookingDetails: [
-      {
-        roomTypeId: { type: String, default: '' },
-        roomTypeName: { type: String, default: 'Phòng Deluxe' },
-        quantity: { type: Number, default: 1 },
-        adults: { type: Number, default: 1 },
-        children: { type: Number, default: 0 },
-        pricePerNight: { type: Number, default: 0 },
-        totalPrice: { type: Number, default: 0 },
-      },
-    ],
-    totalAmount: {
-      type: Number,
-      required: true,
-    },
-    bookingStatus: {
-      type: String,
-      enum: ['PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'COMPLETED'],
-      default: 'PENDING_PAYMENT',
-    },
-    paymentStatus: {
-      type: String,
-      enum: ['UNPAID', 'PAID', 'FAILED'],
-      default: 'UNPAID',
-    },
-    paymentMethod: {
-      type: String,
-      default: 'VNPAY',
-    },
-    vnpayTransaction: {
-      vnp_TxnRef: { type: String },
-      vnp_TransactionNo: { type: String },
-      vnp_BankCode: { type: String },
-      vnp_CardType: { type: String },
-      vnp_PayDate: { type: String },
-      vnp_ResponseCode: { type: String },
-      vnp_OrderInfo: { type: String },
-    },
+const bookingSchema = new mongoose.Schema({
+  bookingCode: { type: String, required: true, unique: true },
+  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  hotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true, index: true },
+  hotelName: { type: String, required: true, trim: true },
+  hotelAddress: { type: String, default: '', trim: true },
+  bookerFullName: { type: String, required: true, trim: true },
+  bookerPhone: { type: String, required: true, trim: true },
+  bookerEmail: { type: String, required: true, trim: true },
+  isSelfGuest: { type: Boolean, default: true },
+  guestFullName: { type: String, default: '' },
+  guestPhone: { type: String, default: '' },
+  adultsCount: { type: Number, required: true, min: 1, default: 1 },
+  childrenCount: { type: Number, default: 0 },
+  specialRequests: { type: String, default: '' },
+  checkInDate: { type: Date, required: true },
+  checkOutDate: { type: Date, required: true },
+  totalNights: { type: Number, required: true, min: 1 },
+  totalAmount: { type: Number, required: true, min: 0 },
+  bookingStatus: { 
+    type: String, 
+    required: true, 
+    enum: ['PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'COMPLETED'],
+    default: 'PENDING_PAYMENT' 
   },
-  {
-    timestamps: true,
+  paymentStatus: { 
+    type: String, 
+    required: true, 
+    enum: ['UNPAID', 'PAID', 'FAILED', 'REFUNDED'],
+    default: 'UNPAID' 
   }
-);
+}, { timestamps: true });
 
-const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
+// Virtual Populate để lấy danh sách chi tiết các phòng trong đơn hàng
+bookingSchema.virtual('details', {
+  ref: 'BookingDetail',
+  localField: '_id',
+  foreignField: 'bookingId'
+});
+
+bookingSchema.set('toObject', { virtuals: true });
+bookingSchema.set('toJSON', { virtuals: true });
+
+const Booking = mongoose.model('Booking', bookingSchema);
 export default Booking;

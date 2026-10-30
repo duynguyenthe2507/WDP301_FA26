@@ -53,8 +53,8 @@ export const changePassword = async (req, res) => {
 
     if (!current_password || !new_password || !confirm_password)
       return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
-    if (new_password.length < 8)
-      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự' });
+    if (new_password.length < 6)
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
     if (new_password !== confirm_password)
       return res.status(400).json({ message: 'Xác nhận mật khẩu không khớp' });
 
@@ -62,6 +62,7 @@ export const changePassword = async (req, res) => {
     const isMatch = await user.comparePassword(current_password);
     if (!isMatch)
       return res.status(401).json({ message: 'Mật khẩu hiện tại không đúng' });
+
 
     user.password = new_password;
     await user.save(); // trigger pre-save hook để hash password mới

@@ -1,50 +1,37 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const reviewSchema = new mongoose.Schema(
   {
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Booking',
+      ref: "Booking",
       required: true,
-      unique: true, // 1 Booking tương ứng tối đa 1 Review
+      unique: true,
     },
     hotelId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Hotel',
+      ref: "Hotel",
       required: true,
       index: true,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5,
-    },
-    comment: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true, trim: true },
     images: [
       {
         url: { type: String, required: true },
-        publicId: { type: String, default: '' },
+        publicId: { type: String },
       },
     ],
-    partnerReply: {
-      content: { type: String, default: '' },
-      repliedAt: { type: Date, default: null },
-    },
+    partnerReplyContent: { type: String, default: "" },
+    partnerRepliedAt: { type: Date, default: null },
   },
-  {
-    timestamps: true,
-    collection: 'reviews',
-  }
+  { timestamps: true }
 );
 
-export default mongoose.model('Review', reviewSchema);
+const Review = mongoose.model("Review", reviewSchema);
+export default Review;

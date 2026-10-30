@@ -3,7 +3,7 @@ import AuditLog from '../models/AuditLog.js';
 import SystemConfig from "../models/SystemConfig.js";
 
 
-const roles = ['CUSTOMER', 'PARTNER', 'STAFF', 'ADMIN'];
+const roles = ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN'];
 const statuses = ['ACTIVE', 'SUSPENDED', 'BLOCKED'];
 
 export const pingAdmin = (req, res) => {
@@ -53,10 +53,14 @@ export const getUsers = async (req, res) => {
     const filter = {};
 
     if (role) {
-      if (!roles.includes(role)) {
+      let targetRole = role;
+      if (role === 'PARTNER') targetRole = 'HOTEL_PARTNER';
+      if (role === 'STAFF') targetRole = 'OPERATIONS_MANAGER';
+
+      if (!roles.includes(targetRole)) {
         return res.status(400).json({ message: 'Vai trò không hợp lệ' });
       }
-      filter.role = role;
+      filter.role = targetRole;
     }
 
     if (status) {
@@ -154,12 +158,12 @@ export const updateUser = async (req, res) => {
     }
 
     const oldStatus = user.status;
-    const oldReason = user.status_reason || null;
+    const oldReason = user.status_reason || user.statusReason || '';
     let newReason = reason;
 
     // Khi mở lại tài khoản thì xóa lý do khóa cũ.
     if (status === 'ACTIVE') {
-      newReason = null;
+      newReason = '';
     }
 
     if (oldStatus === status && oldReason === newReason) {

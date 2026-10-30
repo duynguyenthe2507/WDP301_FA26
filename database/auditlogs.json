@@ -1,0 +1,24 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c901" },
+    "admin_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c001" },
+    "target_user_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c003" },
+    "action": "ACCOUNT_ACTIVATED",
+    "old_status": "PENDING",
+    "new_status": "ACTIVE",
+    "old_reason": "",
+    "new_reason": "Hồ sơ đối tác khách sạn đã xác minh đầy đủ giấy phép kinh doanh",
+    "createdAt": { "$date": "2026-09-10T09:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c902" },
+    "admin_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c001" },
+    "target_user_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c001" },
+    "action": "SYSTEM_CONFIG_UPDATED",
+    "old_status": "",
+    "new_status": "",
+    "old_reason": "",
+    "new_reason": "Khởi tạo hệ thống VinaStay thành công",
+    "createdAt": { "$date": "2026-09-01T08:00:00.000Z" }
+  }
+]
