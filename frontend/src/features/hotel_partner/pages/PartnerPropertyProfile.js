@@ -3,6 +3,7 @@ import { Form } from "react-bootstrap";
 import { FaInfoCircle } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { getCities, getRegions } from "../data/locations";
 
 const COUNTRIES = [
   "Việt Nam",
@@ -42,11 +43,14 @@ const Field = ({
   options = [],
   type = "text",
   className = "",
+  placeholder,
+  disabled,
 }) => (
   <Form.Group className={`mb-3 ${className}`}>
     <Form.Label style={{ fontSize: 12 }}>{label}</Form.Label>
     {select ? (
-      <Form.Select value={value} onChange={onChange}>
+      <Form.Select value={value} onChange={onChange} disabled={disabled}>
+        {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => {
           const optionValue = typeof option === "string" ? option : option.value;
           const optionLabel = typeof option === "string" ? option : option.label;
@@ -85,6 +89,18 @@ const PartnerPropertyProfile = () => {
   );
   const update = (name) => (event) =>
     setForm((current) => ({ ...current, [name]: event.target.value }));
+  // Đổi cấp trên thì xoá lựa chọn cấp dưới để không giữ giá trị của quốc gia/tỉnh cũ
+  const changeResidenceCountry = (event) =>
+    setForm((current) => ({
+      ...current,
+      residenceCountry: event.target.value,
+      region: "",
+      city: "",
+    }));
+  const changeRegion = (event) =>
+    setForm((current) => ({ ...current, region: event.target.value, city: "" }));
+  const regions = getRegions(form.residenceCountry);
+  const cities = getCities(form.residenceCountry, form.region);
   return (
     <PropertySetupLayout
       step={5}
@@ -178,7 +194,7 @@ const PartnerPropertyProfile = () => {
           <Field
             label="Quốc gia"
             value={form.residenceCountry}
-            onChange={update("residenceCountry")}
+            onChange={changeResidenceCountry}
             options={COUNTRIES}
             select
           />
@@ -187,7 +203,9 @@ const PartnerPropertyProfile = () => {
               className="col-md-6"
               label="Bang hoặc Tỉnh"
               value={form.region}
-              onChange={update("region")}
+              onChange={changeRegion}
+              options={regions}
+              placeholder="Chọn bang/tỉnh"
               select
             />
             <Field
@@ -195,6 +213,9 @@ const PartnerPropertyProfile = () => {
               label="Thành phố"
               value={form.city}
               onChange={update("city")}
+              options={cities}
+              placeholder="Chọn thành phố"
+              disabled={!form.region}
               select
             />
           </div>

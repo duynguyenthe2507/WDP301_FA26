@@ -43,7 +43,8 @@ import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerProper
 import PartnerHotelInformation from './features/hotel_partner/pages/PartnerHotelInformation';
 import PartnerRoomTypes from './features/hotel_partner/pages/PartnerRoomTypes';
 import { PartnerAddRoomType, PartnerEditRoomType } from './features/hotel_partner/pages/PartnerRoomTypeForm';
-
+import PartnerRegistrationStatus from './features/hotel_partner/pages/PartnerRegistrationStatus';
+import PartnerHotelGate from './features/hotel_partner/components/PartnerHotelGate';
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
@@ -99,21 +100,36 @@ function App() {
             <Route path="system-config" element={<SystemConfiguration />} />
             <Route path="logs" element={<SystemLog />} />
           </Route>
-          {/* Hotel Partner Routes */}
-          <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
-            <Route index element={<PartnerDashboard />} />
-            <Route path="terms" element={<PartnerTerms />} />
-            <Route path="property-location" element={<PartnerPropertyLocation />} />
-            <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
-            <Route path="property-rooms" element={<PartnerPropertyRooms />} />
-            <Route path="property-photos" element={<PartnerPropertyPhotos />} />
-            <Route path="property-details" element={<PartnerPropertyDetails />} />
-            <Route path="property-profile" element={<PartnerPropertyProfile />} />
-            <Route path="property-publish" element={<PartnerPropertyPublish />} />
-            <Route path="hotel-information" element={<PartnerHotelInformation />} />
-            <Route path="room-types" element={<PartnerRoomTypes />} />
-            <Route path="room-types/new" element={<PartnerAddRoomType />} />
-            <Route path="room-types/:roomTypeId/edit" element={<PartnerEditRoomType />} />
+          
+          {/* Hotel Partner Routes */}        
+          <Route element={<ProtectedRoute allowedRoles={['HOTEL_PARTNER']} />}>
+            <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
+              {/* Chưa có khách sạn: chỉ vào được wizard */}
+              <Route element={<PartnerHotelGate allow="wizard" />}>
+                <Route path="terms" element={<PartnerTerms />} />
+                <Route path="property-location" element={<PartnerPropertyLocation />} />
+                <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
+                <Route path="property-rooms" element={<PartnerPropertyRooms />} />
+                <Route path="property-photos" element={<PartnerPropertyPhotos />} />
+                <Route path="property-details" element={<PartnerPropertyDetails />} />
+                <Route path="property-profile" element={<PartnerPropertyProfile />} />
+                <Route path="property-publish" element={<PartnerPropertyPublish />} />
+              </Route>
+
+              {/* Đã gửi hồ sơ (mọi trạng thái): xem trạng thái */}
+              <Route element={<PartnerHotelGate allow="status" />}>
+                <Route path="registration-status" element={<PartnerRegistrationStatus />} />
+              </Route>
+
+              {/* Đã duyệt: dashboard và các trang quản lý */}
+              <Route element={<PartnerHotelGate allow="approved" />}>
+                <Route index element={<PartnerDashboard />} />
+                <Route path="hotel-information" element={<PartnerHotelInformation />} />
+                <Route path="room-types" element={<PartnerRoomTypes />} />
+                <Route path="room-types/new" element={<PartnerAddRoomType />} />
+                <Route path="room-types/:roomTypeId/edit" element={<PartnerEditRoomType />} />
+              </Route>
+            </Route>
           </Route>
 
           {/* Platform Manager Routes */}

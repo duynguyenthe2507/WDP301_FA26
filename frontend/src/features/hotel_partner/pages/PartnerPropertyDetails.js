@@ -3,6 +3,7 @@ import { Form } from "react-bootstrap";
 import { FaStar } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { CANCELLATION_POLICIES } from "../data/hotelOptions";
 
 const PartnerPropertyDetails = () => {
   const { draft, updateSection } = usePropertyDraft();
@@ -54,13 +55,32 @@ const PartnerPropertyDetails = () => {
           </button>
         ))}
       </section>
+      <section className="mb-4">
+        <h2 className="h6 fw-semibold">Giờ nhận và trả phòng</h2>
+        <div className="row g-3">
+          <Form.Group className="col-md-6">
+            <Form.Label>Giờ nhận phòng</Form.Label>
+            <Form.Control
+              type="time"
+              value={form.checkInTime}
+              onChange={(e) => update("checkInTime", e.target.value)}
+              required
+            />
+          </Form.Group>
+          <Form.Group className="col-md-6">
+            <Form.Label>Giờ trả phòng</Form.Label>
+            <Form.Control
+              type="time"
+              value={form.checkOutTime}
+              onChange={(e) => update("checkOutTime", e.target.value)}
+              required
+            />
+          </Form.Group>
+        </div>
+      </section>
       <section>
         <h2 className="h6 fw-semibold">Chính sách hủy</h2>
-        {[
-          ["one", "Có thể hoàn tiền tối đa 1 ngày trước ngày nhận phòng"],
-          ["three", "Có thể hoàn tiền tối đa 3 ngày trước ngày nhận phòng"],
-          ["none", "Không hoàn tiền"],
-        ].map(([value, label]) => (
+        {CANCELLATION_POLICIES.map(([value, label]) => (
           <Form.Check
             key={value}
             type="radio"

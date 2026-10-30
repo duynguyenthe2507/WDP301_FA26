@@ -24,7 +24,14 @@ const initialDraft = {
   amenities: [],
   rooms: [blankRoom()],
   photos: [],
-  details: { name: "", description: "", stars: 4, cancellation: "" },
+  details: {
+    name: "",
+    description: "",
+    stars: 4,
+    cancellation: "",
+    checkInTime: "14:00",
+    checkOutTime: "12:00",
+  },
   profile: {
     business: "",
     address: "",
@@ -37,8 +44,8 @@ const initialDraft = {
     residenceCountry: "",
     region: "",
     city: "",
-    language: "",
-    phoneCountryCode: "",
+    language: "Tiếng Việt",
+    phoneCountryCode: "+84",
     phone: "",
   },
 };

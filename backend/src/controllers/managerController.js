@@ -76,7 +76,7 @@ export const reviewVerification = async (req, res, next) => {
     const outcomes = {
       APPROVE: ['APPROVED', 'APPROVED', 'HOTEL_VERIFICATION_APPROVED'],
       REJECT: ['REJECTED', 'REJECTED', 'HOTEL_VERIFICATION_REJECTED'],
-      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', 'ADDITIONAL_INFO_REQUIRED', 'HOTEL_VERIFICATION_INFO_REQUESTED'],
+      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', null, 'HOTEL_VERIFICATION_INFO_REQUESTED'],
     };
     const outcome = outcomes[decision];
     if (!outcome) return res.status(400).json({ message: 'Quyết định xác minh không hợp lệ.' });
@@ -92,9 +92,7 @@ export const reviewVerification = async (req, res, next) => {
     verification.reviewedBy = req.user._id;
     verification.reviewedAt = now;
     verification.history.push({ action: outcome[2], note: note.trim(), performedBy: req.user._id });
-    hotel.status = outcome[1];
-    hotel.verificationStatus = outcome[0];
-    hotel.verificationUpdatedAt = now;
+    if (outcome[1]) hotel.status = outcome[1];
     await Promise.all([verification.save(), hotel.save()]);
     await audit(req.user._id, outcome[2], 'HOTEL_VERIFICATION', verification._id, { note: note.trim() });
     res.json({ message: 'Đã cập nhật kết quả xác minh.', verification });

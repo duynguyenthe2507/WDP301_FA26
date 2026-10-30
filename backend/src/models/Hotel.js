@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Giờ dạng HH:mm (00:00 - 23:59)
+export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const imageSchema = new mongoose.Schema(
   {
     url: { type: String, required: true, trim: true },
@@ -66,6 +69,8 @@ const hotelSchema = new mongoose.Schema(
       enum: ["one", "three", "none"],
       required: true,
     },
+    checkInTime: { type: String, match: TIME_PATTERN, default: "14:00" },
+    checkOutTime: { type: String, match: TIME_PATTERN, default: "12:00" },
     ratingSummary: {
       averageRating: { type: Number, default: 0 },
       totalReviews: { type: Number, default: 0 },
@@ -75,19 +80,13 @@ const hotelSchema = new mongoose.Schema(
       enum: [
         "DRAFT",
         "PENDING_VERIFICATION",
-        "ADDITIONAL_INFO_REQUIRED",
         "APPROVED",
         "REJECTED",
         "SUSPENDED",
       ],
       default: "DRAFT",
+      index: true,
     },
-    verificationStatus: {
-      type: String,
-      enum: ["NOT_SUBMITTED", "PENDING", "ADDITIONAL_INFO_REQUIRED", "APPROVED", "REJECTED"],
-      default: "NOT_SUBMITTED",
-    },
-    verificationUpdatedAt: { type: Date, default: null },
     images: { type: [imageSchema], default: [] },
     amenities: { type: [String], default: [] },
     roomTypes: { type: [roomTypeSchema], default: [] },

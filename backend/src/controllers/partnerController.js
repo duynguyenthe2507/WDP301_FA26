@@ -1,4 +1,4 @@
-import Hotel from "../models/Hotel.js";
+import Hotel, { TIME_PATTERN } from "../models/Hotel.js";
 import HotelVerification from '../models/HotelVerification.js';
 import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
@@ -66,6 +66,14 @@ export const createHotel = async (req, res, next) => {
     if (!["one", "three", "none"].includes(details.cancellation)) {
       return res.status(400).json({ message: "Chính sách hủy không hợp lệ." });
     }
+    if (
+      !TIME_PATTERN.test(details.checkInTime) ||
+      !TIME_PATTERN.test(details.checkOutTime)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Giờ nhận phòng và trả phòng không hợp lệ." });
+    }
 
     const existingHotel = await Hotel.exists({ ownerId: req.user._id });
     if (existingHotel) {
@@ -113,12 +121,12 @@ export const createHotel = async (req, res, next) => {
       description: details.description?.trim() || "",
       starRating,
       cancellationPolicy: details.cancellation,
+      checkInTime: details.checkInTime,
+      checkOutTime: details.checkOutTime,
       amenities: stringList(amenities),
       images: imageList(images),
       roomTypes,
       status: 'PENDING_VERIFICATION',
-      verificationStatus: 'PENDING',
-      verificationUpdatedAt: new Date(),
       legalProfile: {
         businessName: profile.business,
         legalAddress: profile.address,
@@ -183,6 +191,57 @@ export const createSupportTicket = async (req, res, next) => {
     if (hotelId && !await Hotel.exists({ _id: hotelId, ownerId: req.user._id })) return res.status(403).json({ message: 'Bạn chỉ có thể tạo yêu cầu cho khách sạn của mình.' });
     const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject: subject.trim(), description: description.trim(), attachments: Array.isArray(attachments) ? attachments.slice(0, 5) : [] });
     res.status(201).json({ message: 'Đã gửi yêu cầu hỗ trợ.', ticket });
+  } catch (error) { next(error); }
+};
+
+export const getMyHotel = async (req, res, next) => {
+  try {
+    const hotel = await Hotel.findOne({ ownerId: req.user._id })
+      .select('name address provinceCity status createdAt');
+    if (!hotel) return res.json({ hotel: null, verification: null });
+
+    // Hồ sơ mới nhất (khi gửi lại sẽ có nhiều bản ghi)
+    const verification = await HotelVerification.findOne({ hotelId: hotel._id })
+      .sort({ createdAt: -1 })
+      .select('status reviewNote reviewedAt createdAt');
+    res.json({ hotel, verification });
+  } catch (error) { next(error); }
+};
+
+// Dữ liệu đầy đủ cho màn quản lý thông tin khách sạn; chỉ khách sạn đã duyệt của chính partner
+export const getMyHotelDetail = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id).select('-roomTypes');
+    if (!hotel) return notApproved(res);
+    res.json({ hotel });
+  } catch (error) { next(error); }
+};
+
+const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'APPROVED' });
+const notApproved = (res) =>
+  res.status(403).json({ message: 'Khách sạn chưa được duyệt hoặc không thuộc tài khoản này.' });
+
+// Danh sách loại phòng (bỏ các loại đã xoá mềm) kèm thông tin ngắn của khách sạn
+export const getRoomTypes = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    const roomTypes = hotel.roomTypes.filter((room) => !room.isDeleted);
+    res.json({
+      hotel: { _id: hotel._id, name: hotel.name, provinceCity: hotel.provinceCity, address: hotel.address, status: hotel.status },
+      roomTypes,
+    });
+  } catch (error) { next(error); }
+};
+
+export const getRoomType = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    // roomTypes là mảng con nhúng trong Hotel; id() trả null nếu id không hợp lệ hoặc không có
+    const roomType = hotel.roomTypes.id(req.params.id);
+    if (!roomType || roomType.isDeleted) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
+    res.json({ roomType });
   } catch (error) { next(error); }
 };
 
