@@ -1,141 +1,168 @@
 import mongoose from 'mongoose';
 
+const bookingDetailSchema = new mongoose.Schema({
+  roomTypeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hotel.roomTypes',
+    required: true,
+  },
+  roomTypeName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1,
+  },
+  pricePerNight: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+  totalPrice: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+});
+
 const bookingSchema = new mongoose.Schema(
   {
     bookingCode: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
+      required: true,
+      index: true,
     },
     hotelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hotel',
+      required: true,
+      index: true,
+    },
+
+    bookerFullName: {
       type: String,
-      default: '',
+      required: true,
+      trim: true,
     },
-    hotelName: {
+    bookerPhone: {
       type: String,
-      default: '',
+      required: true,
+      trim: true,
     },
-    hotelAddress: {
+    bookerEmail: {
       type: String,
-      default: '',
+      required: true,
+      trim: true,
+      lowercase: true,
     },
-    bookerInfo: {
-      fullName: { type: String, required: true },
-      phoneNumber: { type: String, required: true },
-      email: { type: String, required: true },
-    },
+
     isSelfGuest: {
       type: Boolean,
       default: true,
     },
-    guestInfo: {
-      fullName: { type: String, default: '' },
-      phoneNumber: { type: String, default: '' },
+    guestFullName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    guestPhone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    adultsCount: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 1,
+    },
+    childrenCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     specialRequests: {
       type: String,
       default: '',
+      trim: true,
     },
+
+    // Ngày nhận & trả phòng
     checkInDate: {
       type: Date,
-      default: Date.now,
+      required: true,
     },
     checkOutDate: {
       type: Date,
-      default: () => new Date(Date.now() + 86400000),
+      required: true,
     },
     totalNights: {
       type: Number,
-      default: 1,
+      required: true,
+      min: 1,
     },
-    totalAdults: {
-      type: Number,
-      default: 1,
-    },
-    totalChildren: {
-      type: Number,
-      default: 0,
-    },
-    bookingDetails: [
-      {
-        roomTypeId: { type: String, default: '' },
-        roomTypeName: { type: String, default: 'Phòng Deluxe' },
-        quantity: { type: Number, default: 1 },
-        adults: { type: Number, default: 1 },
-        children: { type: Number, default: 0 },
-        pricePerNight: { type: Number, default: 0 },
-        totalPrice: { type: Number, default: 0 },
-      },
-    ],
+
+    // Mảng chi tiết đặt phòng (bảng booking_details nhúng)
+    bookingDetails: [bookingDetailSchema],
+
     totalAmount: {
       type: Number,
       required: true,
+      min: 0,
     },
     bookingStatus: {
       type: String,
       enum: ['PENDING_PAYMENT', 'CONFIRMED', 'CANCELLED', 'COMPLETED'],
       default: 'PENDING_PAYMENT',
+      index: true,
     },
     paymentStatus: {
       type: String,
-      enum: ['UNPAID', 'PAID', 'FAILED'],
+      enum: ['UNPAID', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'UNPAID',
+      index: true,
     },
-    paymentMethod: {
-      type: String,
-      default: 'VNPAY',
-    },
-    vnpayTransaction: {
-      vnp_TxnRef: { type: String },
-      vnp_TransactionNo: { type: String },
-      vnp_BankCode: { type: String },
-      vnp_CardType: { type: String },
-      vnp_PayDate: { type: String },
-      vnp_ResponseCode: { type: String },
-      vnp_OrderInfo: { type: String },
-    },
+
     // Thông tin hủy đơn & hoàn tiền
     cancellationReason: {
       type: String,
       default: '',
+      trim: true,
     },
-    cancellationNote: {
-      type: String,
-      default: '',
+    cancellationFee: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     cancelledAt: {
       type: Date,
       default: null,
     },
-    cancellationFee: {
-      type: Number,
-      default: 0,
+    cancellationNote: {
+      type: String,
+      default: '',
     },
     refundAmount: {
       type: Number,
       default: 0,
+      min: 0,
     },
     refundStatus: {
       type: String,
       enum: ['NOT_APPLICABLE', 'PENDING', 'PROCESSED'],
       default: 'NOT_APPLICABLE',
-    },
-    cancellationPolicySnapshot: {
-      type: String,
-      default: '',
-    },
-    hotelImage: {
-      type: String,
-      default: '',
-    },
-    guestCounts: {
-      adults: { type: Number, default: 2 },
-      children: { type: Number, default: 0 },
     },
   },
   {

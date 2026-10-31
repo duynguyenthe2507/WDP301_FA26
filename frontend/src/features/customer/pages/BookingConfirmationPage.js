@@ -150,7 +150,7 @@ const BookingConfirmationPage = () => {
     PROCESSED: 'Đã hoàn tiền',
   }[booking.refundStatus] || (wasPaid ? 'Đang xử lý' : 'Không áp dụng');
 
-  const countdown =`${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
+  const countdown = `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
 
   const status = isPaid
     ? { icon: <FaCheckCircle className="text-success" size={36} />, title: 'Đặt phòng thành công', text: 'Đơn phòng đã được xác nhận và thanh toán qua VNPAY.' }

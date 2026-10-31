@@ -181,11 +181,11 @@ export const checkRoomAvailability = async (req, res) => {
 
     // Lay danh sach don dat cua khach san
     // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
-    // hotelId trong Booking luon luu duoi dang String
+    // hotelId trong Booking la ObjectId (mongoose tu ep kieu)
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const activeBookings = await Booking.find({
-      hotelId: id.toString(),
+      hotelId: id,
       bookingStatus: { $nin: ['CANCELLED'] },
       paymentStatus: { $ne: 'FAILED' },
       $or: [

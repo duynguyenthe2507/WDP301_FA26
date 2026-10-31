@@ -37,7 +37,7 @@ const BookingPage = () => {
   // Thanh toán lại đơn cũ: dựng dữ liệu từ đơn đã lưu thay vì dùng giá mặc định
   const stateData = pendingBooking
     ? {
-      hotel: { _id: pendingBooking.hotelId, name: pendingBooking.hotelName, address: pendingBooking.hotelAddress },
+      hotel: { _id: pendingBooking.hotelId, name: pendingBooking.hotelName, address: pendingBooking.hotelAddress, cancellationPolicy: pendingBooking.hotelCancellationPolicy },
       checkIn: new Date(pendingBooking.checkInDate).toISOString().split('T')[0],
       checkOut: new Date(pendingBooking.checkOutDate).toISOString().split('T')[0],
       nights: pendingBooking.totalNights,
@@ -52,6 +52,17 @@ const BookingPage = () => {
     }
     : rawState;
   const hotel = stateData.hotel || {};
+
+  // Cùng quy tắc với backend (calculateCancellationDetails): miễn phí hủy trước 14:00 của N ngày trước nhận phòng
+  const freeCancelDays = { one: 1, three: 3 }[hotel.cancellationPolicy];
+  let cancelTerms = null;
+  if (hotel.cancellationPolicy === 'none') {
+    cancelTerms = 'Đặt phòng này không được hoàn hủy: hủy phòng sẽ không được hoàn tiền.';
+  } else if (freeCancelDays && stateData.checkIn) {
+    const d = new Date(`${stateData.checkIn}T14:00:00`);
+    d.setDate(d.getDate() - freeCancelDays);
+    cancelTerms = `Miễn phí hủy trước 14:00 ngày ${d.toLocaleDateString('vi-VN')}. Sau thời điểm này, phí hủy bằng giá đêm đầu tiên.`;
+  }
 
   // Chưa chọn phòng (vào thẳng /booking) -> quay về danh sách khách sạn
   const hasBookingData = Array.isArray(stateData.selectedRooms) && stateData.selectedRooms.length > 0;
@@ -624,6 +635,13 @@ const BookingPage = () => {
                   <div className="text-center text-muted small mt-2" style={{ fontSize: '0.78rem' }}>
                     Nhấn thanh toán đồng nghĩa bạn đồng ý với Điều khoản đặt phòng của VinaStay.
                   </div>
+
+                  {cancelTerms && (
+                    <div className="p-2 border rounded-2 small mt-2" style={{ fontSize: '0.8rem' }}>
+                      <div className="fw-bold mb-1">Điều khoản hủy phòng</div>
+                      {cancelTerms}
+                    </div>
+                  )}
 
                   <div className="p-2 bg-warning-subtle text-warning-emphasis border border-warning rounded-2 text-center small mt-2" style={{ fontSize: '0.8rem' }}>
                     <FaClock className="text-danger me-1" />

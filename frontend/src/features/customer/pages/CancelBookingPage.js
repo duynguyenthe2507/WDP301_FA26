@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Form, Spinner, Modal, Button } from 'react-bootstrap';
+import { Container, Row, Col, Form, Spinner, Button } from 'react-bootstrap';
 import CustomerSidebar from '../components/CustomerSidebar';
 import { getCancelBookingInfo, cancelBooking } from '../CustomerApi';
 
@@ -49,7 +49,6 @@ const CancelBookingPage = () => {
   const [cancellationNote, setCancellationNote] = useState('');
   const [agreed, setAgreed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Tải dữ liệu đặt phòng & chính sách hủy từ backend
   useEffect(() => {
@@ -101,7 +100,7 @@ const CancelBookingPage = () => {
 
       const res = await cancelBooking(idOrCode, payload);
       if (res.data?.success) {
-        setShowSuccessModal(true);
+        navigate(`/booking/confirmation/${booking.bookingCode}`, { replace: true, state: { booking: res.data.booking } });
       } else {
         alert(res.data?.message || 'Có lỗi xảy ra khi hủy phòng.');
       }
@@ -605,52 +604,6 @@ const CancelBookingPage = () => {
           </Col>
         </Row>
       </Container>
-
-      {/* MODAL THÔNG BÁO HỦY THÀNH CÔNG */}
-      <Modal
-        show={showSuccessModal}
-        onHide={() => navigate('/booking-history')}
-        centered
-        backdrop="static"
-      >
-        <Modal.Body className="p-4 text-center">
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#ecfdf5',
-              color: '#059669',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              margin: '0 auto 16px',
-            }}
-          >
-            ✓
-          </div>
-          <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-            Hủy đặt phòng thành công!
-          </h3>
-          <p style={{ fontSize: '13.5px', color: '#475569', marginBottom: '16px', lineHeight: 1.5 }}>
-            Đơn đặt phòng <strong>{booking?.bookingCode}</strong> đã được hủy.
-            {calculations?.refundAmount > 0 && (
-              <>
-                {' '}Số tiền hoàn dự kiến <strong>{formatPrice(calculations?.refundAmount)}</strong> đã được ghi nhận và gửi đến bộ phận đối soát.
-              </>
-            )}
-          </p>
-          <Button
-            variant="dark"
-            className="w-100 py-2 fw-semibold"
-            style={{ borderRadius: '8px', fontSize: '14px' }}
-            onClick={() => navigate('/booking-history')}
-          >
-            Về danh sách đặt phòng
-          </Button>
-        </Modal.Body>
-      </Modal>
     </div>
   );
 };
