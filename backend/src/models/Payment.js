@@ -1,67 +1,36 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const paymentSchema = new mongoose.Schema(
   {
     bookingId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Booking',
+      ref: "Booking",
       required: true,
       index: true,
     },
-    transactionNo: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    txnRef: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
+    amount: { type: Number, required: true, min: 0 },
     type: {
       type: String,
-      enum: ['PAYMENT', 'REFUND'],
-      default: 'PAYMENT',
       required: true,
+      enum: ["PAYMENT", "REFUND"],
+      default: "PAYMENT",
     },
-    gateway: {
-      type: String,
-      default: 'VNPAY',
-      trim: true,
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    bankCode: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    cardType: {
-      type: String,
-      default: '',
-      trim: true,
-    },
-    responseCode: {
-      type: String,
-      default: '',
-      trim: true,
-    },
+    gateway: { type: String, required: true, default: "VNPAY" },
     status: {
       type: String,
-      enum: ['PENDING', 'SUCCESS', 'FAILED'],
-      default: 'PENDING',
-      index: true,
+      required: true,
+      enum: ["PENDING", "SUCCESS", "FAILED"],
+      default: "PENDING",
     },
-    payDate: {
-      type: Date,
-      default: null,
-    },
+    txnRef: { type: String, required: true, unique: true },
+    transactionNo: { type: String, default: "" },
+    bankCode: { type: String, default: "" },
+    cardType: { type: String, default: "" },
+    responseCode: { type: String, default: "" },
+    payDate: { type: Date, default: null },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-export default mongoose.model('Payment', paymentSchema);
+const Payment = mongoose.model("Payment", paymentSchema);
+export default Payment;

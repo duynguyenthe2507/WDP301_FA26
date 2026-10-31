@@ -119,8 +119,8 @@ const BookingConfirmationPage = () => {
   }
 
   const bookingDetails =
-    Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
-      ? booking.bookingDetails
+    Array.isArray(booking.details) && booking.details.length > 0
+      ? booking.details
       : [
         {
           roomTypeName: booking.roomTypeName || '',
@@ -132,8 +132,10 @@ const BookingConfirmationPage = () => {
         },
       ];
 
-  // Khách nhận phòng: chính chủ thì là người đặt, ngược lại lấy guestInfo
-  const guest = booking.isSelfGuest || !booking.guestInfo?.fullName ? booking.bookerInfo : booking.guestInfo;
+  // Khách nhận phòng: chính chủ thì là người đặt, ngược lại lấy thông tin khách ở
+  const guest = booking.isSelfGuest || !booking.guestFullName
+    ? { fullName: booking.bookerFullName, phoneNumber: booking.bookerPhone }
+    : { fullName: booking.guestFullName, phoneNumber: booking.guestPhone };
 
   const nights = Number(booking.totalNights) || 1;
   const lineTotal = (r) =>
@@ -144,11 +146,12 @@ const BookingConfirmationPage = () => {
 
   // Đơn đã hủy nhưng từng thanh toán -> hiện phần hoàn tiền
   const wasPaid = booking.paymentStatus === 'PAID';
-  const refundAmount = booking.refundAmount !== undefined ? booking.refundAmount : booking.totalAmount;
+  const cancellation = booking.cancellation || {};
+  const refundAmount = cancellation.refundAmount ?? 0;
   const refundStatusText = {
     PENDING: 'Đang xử lý',
     PROCESSED: 'Đã hoàn tiền',
-  }[booking.refundStatus] || (wasPaid ? 'Đang xử lý' : 'Không áp dụng');
+  }[cancellation.refundStatus] || (wasPaid ? 'Đang xử lý' : 'Không áp dụng');
 
   const countdown = `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
 
@@ -216,10 +219,10 @@ const BookingConfirmationPage = () => {
             <Section title="Thông tin khách nhận phòng">
               <InfoRow label="Họ tên">{guest?.fullName}</InfoRow>
               <InfoRow label="Điện thoại">{guest?.phoneNumber}</InfoRow>
-              {booking.isSelfGuest && <InfoRow label="Email">{booking.bookerInfo?.email}</InfoRow>}
+              {booking.isSelfGuest && <InfoRow label="Email">{booking.bookerEmail}</InfoRow>}
               {!booking.isSelfGuest && (
                 <InfoRow label="Người đặt hộ">
-                  {booking.bookerInfo?.fullName} ({booking.bookerInfo?.phoneNumber})
+                  {booking.bookerFullName} ({booking.bookerPhone})
                 </InfoRow>
               )}
               {Boolean(booking.specialRequests) && (
@@ -231,10 +234,10 @@ const BookingConfirmationPage = () => {
             <Section title="Thanh toán" last={!isCancelled}>
               <InfoRow label="Tiền phòng">{formatPrice(totalRoomCost)}</InfoRow>
               {serviceFee > 0 && <InfoRow label="Thuế & phí dịch vụ">{formatPrice(serviceFee)}</InfoRow>}
-              {(isPaid || wasPaid) && booking.vnpayTransaction?.vnp_TransactionNo && (
+              {(isPaid || wasPaid) && booking.payment?.transactionNo && (
                 <InfoRow label="Mã giao dịch VNPAY">
-                  <span className="font-monospace">{booking.vnpayTransaction.vnp_TransactionNo}</span>
-                  {booking.vnpayTransaction.vnp_BankCode && ` · ${booking.vnpayTransaction.vnp_BankCode}`}
+                  <span className="font-monospace">{booking.payment.transactionNo}</span>
+                  {booking.payment.bankCode && ` · ${booking.payment.bankCode}`}
                 </InfoRow>
               )}
               <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
@@ -248,14 +251,14 @@ const BookingConfirmationPage = () => {
             {/* HOÀN TIỀN (chỉ đơn đã hủy) */}
             {isCancelled && (
               <Section title="Thông tin hoàn tiền" last>
-                {booking.cancelledAt && (
+                {cancellation.cancelledAt && (
                   <InfoRow label="Thời gian hủy">
-                    {new Date(booking.cancelledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    {new Date(cancellation.cancelledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </InfoRow>
                 )}
-                {booking.cancellationReason && <InfoRow label="Lý do hủy">{booking.cancellationReason}</InfoRow>}
+                {cancellation.reason && <InfoRow label="Lý do hủy">{cancellation.reason}</InfoRow>}
                 <InfoRow label="Phí hủy">
-                  {booking.cancellationFee > 0 ? formatPrice(booking.cancellationFee) : 'Miễn phí'}
+                  {cancellation.cancellationFee > 0 ? formatPrice(cancellation.cancellationFee) : 'Miễn phí'}
                 </InfoRow>
                 {wasPaid && <InfoRow label="Phương thức hoàn">VNPAY / tài khoản nguồn</InfoRow>}
                 <InfoRow label="Trạng thái">{refundStatusText}</InfoRow>
@@ -264,9 +267,6 @@ const BookingConfirmationPage = () => {
                     <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
                       <span className="fw-bold text-success">Tiền được hoàn</span>
                       <span className="fw-bold fs-5 text-success">{formatPrice(refundAmount)}</span>
-                    </div>
-                    <div className="text-muted small mt-2">
-                      Tiền về tài khoản trong 3–5 ngày làm việc (không tính Thứ 7, Chủ nhật).
                     </div>
                   </>
                 )}

@@ -1,0 +1,34 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c701" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c301" },
+    "amount": 2400000,
+    "type": "PAYMENT",
+    "gateway": "VNPAY",
+    "status": "SUCCESS",
+    "txnRef": "VNS2026101101_TXN",
+    "transactionNo": "14568901",
+    "bankCode": "NCB",
+    "cardType": "ATM",
+    "responseCode": "00",
+    "payDate": { "$date": "2026-10-01T09:35:00.000Z" },
+    "createdAt": { "$date": "2026-10-01T09:30:00.000Z" },
+    "updatedAt": { "$date": "2026-10-01T09:35:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c702" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c302" },
+    "amount": 5400000,
+    "type": "PAYMENT",
+    "gateway": "VNPAY",
+    "status": "SUCCESS",
+    "txnRef": "VNS2026101202_TXN",
+    "transactionNo": "14568902",
+    "bankCode": "VCB",
+    "cardType": "QR",
+    "responseCode": "00",
+    "payDate": { "$date": "2026-10-10T14:20:00.000Z" },
+    "createdAt": { "$date": "2026-10-10T14:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-10T14:20:00.000Z" }
+  }
+]

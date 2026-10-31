@@ -3,8 +3,6 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
 import {
   FaUser,
-  FaPhoneAlt,
-  FaEnvelope,
   FaShieldAlt,
   FaArrowLeft,
   FaCheck,
@@ -14,6 +12,7 @@ import {
 } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import { createPendingBooking } from '../CustomerApi';
+import CancellationTerms from '../components/CancellationTerms';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
@@ -37,12 +36,14 @@ const BookingPage = () => {
   // Thanh toán lại đơn cũ: dựng dữ liệu từ đơn đã lưu thay vì dùng giá mặc định
   const stateData = pendingBooking
     ? {
-      hotel: { _id: pendingBooking.hotelId, name: pendingBooking.hotelName, address: pendingBooking.hotelAddress, cancellationPolicy: pendingBooking.hotelCancellationPolicy },
+      hotel: { _id: pendingBooking.hotelId, name: pendingBooking.hotelName, address: pendingBooking.hotelAddress, cancellationPolicy: pendingBooking.hotel?.cancellationPolicy },
       checkIn: new Date(pendingBooking.checkInDate).toISOString().split('T')[0],
       checkOut: new Date(pendingBooking.checkOutDate).toISOString().split('T')[0],
       nights: pendingBooking.totalNights,
-      bookingDetails: pendingBooking.bookingDetails,
-      selectedRooms: (pendingBooking.bookingDetails || []).map((d) => ({
+      bookingDetails: pendingBooking.details,
+      totalAdults: pendingBooking.adultsCount,
+      totalChildren: pendingBooking.childrenCount,
+      selectedRooms: (pendingBooking.details || []).map((d) => ({
         _id: d.roomTypeId,
         name: d.roomTypeName,
         quantity: d.quantity,
@@ -52,17 +53,6 @@ const BookingPage = () => {
     }
     : rawState;
   const hotel = stateData.hotel || {};
-
-  // Cùng quy tắc với backend (calculateCancellationDetails): miễn phí hủy trước 14:00 của N ngày trước nhận phòng
-  const freeCancelDays = { one: 1, three: 3 }[hotel.cancellationPolicy];
-  let cancelTerms = null;
-  if (hotel.cancellationPolicy === 'none') {
-    cancelTerms = 'Đặt phòng này không được hoàn hủy: hủy phòng sẽ không được hoàn tiền.';
-  } else if (freeCancelDays && stateData.checkIn) {
-    const d = new Date(`${stateData.checkIn}T14:00:00`);
-    d.setDate(d.getDate() - freeCancelDays);
-    cancelTerms = `Miễn phí hủy trước 14:00 ngày ${d.toLocaleDateString('vi-VN')}. Sau thời điểm này, phí hủy bằng giá đêm đầu tiên.`;
-  }
 
   // Chưa chọn phòng (vào thẳng /booking) -> quay về danh sách khách sạn
   const hasBookingData = Array.isArray(stateData.selectedRooms) && stateData.selectedRooms.length > 0;
@@ -231,26 +221,18 @@ const BookingPage = () => {
         // Có mã đơn cũ -> backend dùng lại đơn đó, không tạo đơn PENDING mới
         bookingCode: pendingBooking?.bookingCode,
         hotelId: hotel._id || hotel.id,
-        hotelName: hotel.name,
-        hotelAddress: hotel.address,
-        bookerInfo: {
-          fullName: bookerInfo.fullName.trim(),
-          phoneNumber: bookerInfo.phoneNumber.trim(),
-          email: bookerInfo.email.trim(),
-        },
+        bookerFullName: bookerInfo.fullName.trim(),
+        bookerPhone: bookerInfo.phoneNumber.trim(),
+        bookerEmail: bookerInfo.email.trim(),
         isSelfGuest,
-        guestInfo: isSelfGuest
-          ? { fullName: '', phoneNumber: '' }
-          : {
-            fullName: guestInfo.fullName.trim(),
-            phoneNumber: guestInfo.phoneNumber.trim(),
-          },
+        guestFullName: isSelfGuest ? '' : guestInfo.fullName.trim(),
+        guestPhone: isSelfGuest ? '' : guestInfo.phoneNumber.trim(),
         specialRequests: specialRequests.trim(),
         checkInDate: checkIn,
         checkOutDate: checkOut,
         totalNights: nights,
-        totalAdults,
-        totalChildren,
+        adultsCount: totalAdults,
+        childrenCount: totalChildren,
         bookingDetails: bookingDetailsList,
         totalAmount,
       };
@@ -556,7 +538,7 @@ const BookingPage = () => {
                       <strong className="text-dark text-end">
                         {nights} đêm, {totalQuantity} phòng
                         <div className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 500 }}>
-                          {totalAdults} người lớn{totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}
+                          {totalAdults} người lớn · {totalChildren} trẻ em
                         </div>
                       </strong>
                     </div>
@@ -584,7 +566,7 @@ const BookingPage = () => {
                               <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                                 {formatPrice(price)} × {qty} phòng × {nights} đêm
                                 {roomAdults != null && (
-                                  <span> · {roomAdults} NL{roomChildren > 0 ? `, ${roomChildren} TE` : ''}</span>
+                                  <span> · {roomAdults} người lớn, {roomChildren || 0} trẻ em</span>
                                 )}
                               </div>
                             </div>
@@ -636,12 +618,11 @@ const BookingPage = () => {
                     Nhấn thanh toán đồng nghĩa bạn đồng ý với Điều khoản đặt phòng của VinaStay.
                   </div>
 
-                  {cancelTerms && (
-                    <div className="p-2 border rounded-2 small mt-2" style={{ fontSize: '0.8rem' }}>
-                      <div className="fw-bold mb-1">Điều khoản hủy phòng</div>
-                      {cancelTerms}
-                    </div>
-                  )}
+                  <CancellationTerms
+                    policy={hotel.cancellationPolicy}
+                    checkIn={checkIn}
+                    totalAmount={totalAmount}
+                  />
 
                   <div className="p-2 bg-warning-subtle text-warning-emphasis border border-warning rounded-2 text-center small mt-2" style={{ fontSize: '0.8rem' }}>
                     <FaClock className="text-danger me-1" />

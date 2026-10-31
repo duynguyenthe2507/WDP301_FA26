@@ -421,6 +421,7 @@ const HotelDetailsPage = () => {
               roomCost={roomCost}
               serviceFee={serviceFee}
               totalAmount={totalAmount}
+              cancellationPolicy={hotel.cancellationPolicy}
               availLoading={availLoading}
               warningMessage={warningMessage}
               onSubmitBooking={handleSubmitBooking}

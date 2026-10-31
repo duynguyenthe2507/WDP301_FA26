@@ -1,4 +1,6 @@
 import Hotel from '../models/Hotel.js';
+import RoomType from '../models/RoomType.js';
+import '../models/BookingDetail.js'; // đăng ký model cho populate('details')
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import mongoose from 'mongoose';
@@ -80,12 +82,8 @@ export const getHotels = async (req, res) => {
       if (minPrice) priceFilter.$gte = Number(minPrice);
       if (maxPrice) priceFilter.$lte = Number(maxPrice);
 
-      query.roomTypes = {
-        $elemMatch: {
-          basePrice: priceFilter,
-          isDeleted: { $ne: true },
-        },
-      };
+      // roomTypes là virtual (collection RoomType) nên không lọc trực tiếp trên Hotel được
+      query._id = { $in: await RoomType.distinct('hotelId', { basePrice: priceFilter, isDeleted: { $ne: true } }) };
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -94,6 +92,7 @@ export const getHotels = async (req, res) => {
 
     const total = await Hotel.countDocuments(query);
     const rawHotels = await Hotel.find(query)
+      .populate('roomTypes')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -120,7 +119,7 @@ export const getHotels = async (req, res) => {
 export const getHotelById = async (req, res) => {
   try {
     const { id } = req.params;
-    const hotel = await Hotel.findById(id);
+    const hotel = await Hotel.findById(id).populate('roomTypes');
 
     if (!hotel) {
       return res.status(404).json({
@@ -148,7 +147,7 @@ export const checkRoomAvailability = async (req, res) => {
     const { id } = req.params;
     const { checkIn, checkOut } = req.query;
 
-    const hotel = await Hotel.findById(id);
+    const hotel = await Hotel.findById(id).populate('roomTypes');
     if (!hotel) {
       return res.status(404).json({
         success: false,
@@ -181,7 +180,7 @@ export const checkRoomAvailability = async (req, res) => {
 
     // Lay danh sach don dat cua khach san
     // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
-    // hotelId trong Booking la ObjectId (mongoose tu ep kieu)
+    // chi tiet phong cua don nam o collection BookingDetail (virtual `details`)
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const activeBookings = await Booking.find({
@@ -196,7 +195,7 @@ export const checkRoomAvailability = async (req, res) => {
           createdAt: { $gte: fifteenMinutesAgo },
         },
       ],
-    });
+    }).populate('details');
 
     // Tinh tong so phong da dat theo tung roomTypeId trong khoang [checkIn, checkOut]
     const bookedCountsByRoomType = {};
@@ -208,8 +207,8 @@ export const checkRoomAvailability = async (req, res) => {
       // Kiem tra trung ngay: bIn < reqOut && bOut > reqIn
       const isOverlap = bInStr < reqOutStr && bOutStr > reqInStr;
 
-      if (isOverlap && Array.isArray(b.bookingDetails)) {
-        for (const detail of b.bookingDetails) {
+      if (isOverlap && Array.isArray(b.details)) {
+        for (const detail of b.details) {
           const rtId = detail.roomTypeId?.toString();
           const qty = Number(detail.quantity) || 1;
           if (rtId) {

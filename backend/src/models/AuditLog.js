@@ -16,13 +16,10 @@ const auditLogSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    old_status: String,
-    new_status: String,
-    old_reason: String,
-    new_reason: String,
-    entityType: { type: String, trim: true },
-    entityId: { type: mongoose.Schema.Types.ObjectId },
-    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+    old_status: { type: String, default: '' },
+    new_status: { type: String, default: '' },
+    old_reason: { type: String, default: '' },
+    new_reason: { type: String, default: '' },
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: false },
@@ -30,5 +27,4 @@ const auditLogSchema = new mongoose.Schema(
 );
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
-
 export default AuditLog;

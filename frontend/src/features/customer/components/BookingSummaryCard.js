@@ -7,6 +7,7 @@ import {
   FaExclamationTriangle,
   FaArrowRight,
 } from 'react-icons/fa';
+import CancellationTerms from './CancellationTerms';
 
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -26,6 +27,7 @@ const BookingSummaryCard = ({
   roomCost,
   serviceFee,
   totalAmount,
+  cancellationPolicy,
   availLoading,
   warningMessage,
   onSubmitBooking,
@@ -182,6 +184,17 @@ const BookingSummaryCard = ({
                 {formatPrice(totalAmount)}
               </strong>
             </div>
+          </div>
+        )}
+
+        {/* CHÍNH SÁCH HỦY PHÒNG CỦA KHÁCH SẠN */}
+        {totalRooms > 0 && (
+          <div className="mb-3">
+            <CancellationTerms
+              policy={cancellationPolicy}
+              checkIn={checkIn}
+              totalAmount={totalAmount}
+            />
           </div>
         )}
 
