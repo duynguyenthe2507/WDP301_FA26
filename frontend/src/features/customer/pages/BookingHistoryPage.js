@@ -285,8 +285,8 @@ const BookingHistoryPage = () => {
               <div className="d-flex flex-column gap-3">
                 {filteredBookings.map((booking) => {
                   const category = categorizeBooking(booking);
-                  const detailsList = Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
-                    ? booking.bookingDetails
+                  const detailsList = Array.isArray(booking.details) && booking.details.length > 0
+                    ? booking.details
                     : [];
                   const roomCount = detailsList.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0) || 1;
                   const roomName = detailsList.length > 1
@@ -306,8 +306,8 @@ const BookingHistoryPage = () => {
                     },
                   };
 
-                  const totalAdults = booking.totalAdults || detailsList.reduce((sum, r) => sum + (Number(r.adults) || 1), 0) || 2;
-                  const totalChildren = booking.totalChildren || detailsList.reduce((sum, r) => sum + (Number(r.children) || 0), 0) || 0;
+                  const totalAdults = booking.adultsCount;
+                  const totalChildren = booking.childrenCount;
                   const guestsText = `${totalAdults} người lớn${totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}`;
 
                   let detailLine = `${totalNights} đêm · ${roomCount} phòng · ${guestsText}`;
@@ -523,7 +523,7 @@ const BookingHistoryPage = () => {
                         {/* ẢNH & THÔNG TIN CHI TIẾT */}
                         <div className="d-flex gap-3 align-items-start" style={{ flex: 1, minWidth: 0 }}>
                           <img
-                            src={booking.hotelImage || BLANK_IMG}
+                            src={booking.hotel?.images?.find((img) => img.isCover)?.url || booking.hotel?.images?.[0]?.url || BLANK_IMG}
                             alt={hotelName}
                             onError={onImgError}
                             style={{

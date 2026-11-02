@@ -29,7 +29,7 @@ export const getMyReviews = async (req, res) => {
 
     // Tìm các review gắn với customerId hoặc gắn với các booking của customer
     const userBookings = await Booking.find({
-      $or: [{ customerId }, { 'bookerInfo.email': req.user.email?.toLowerCase() }],
+      $or: [{ customerId }, { bookerEmail: req.user.email?.toLowerCase() }],
     }).select('_id');
 
     const bookingIds = userBookings.map((b) => b._id);
@@ -39,7 +39,7 @@ export const getMyReviews = async (req, res) => {
     })
       .populate({
         path: 'bookingId',
-        select: 'bookingCode hotelName hotelAddress checkInDate checkOutDate bookingDetails bookingStatus totalAmount',
+        select: 'bookingCode checkInDate checkOutDate bookingDetails bookingStatus totalAmount',
       })
       .populate({
         path: 'hotelId',
@@ -87,12 +87,14 @@ export const getPendingReviewBookings = async (req, res) => {
 
     // 1. Lấy tất cả đơn phòng của khách
     let filter = {
-      $or: [{ customerId }, { 'bookerInfo.email': email }],
+      $or: [{ customerId }, { bookerEmail: email }],
     };
 
     let bookings = await Booking.find(filter)
-      .select('bookingCode hotelName hotelId checkInDate checkOutDate bookingDetails bookingStatus')
+      .select('bookingCode hotelId checkInDate checkOutDate bookingDetails bookingStatus')
+      .populate('hotelId', 'name')
       .lean();
+    bookings = bookings.map((b) => ({ ...b, hotelName: b.hotelId?.name || '', hotelId: b.hotelId?._id }));
 
     // Lọc các kỳ nghỉ đã hoàn thành (bookingStatus == 'COMPLETED' hoặc ngày checkOut đã qua)
     const completedBookings = bookings.filter((b) => {
@@ -155,17 +157,7 @@ export const createReview = async (req, res) => {
       });
     }
 
-    // 3. Tìm hotelId tương ứng
-    let hotelObjectId = null;
-    if (booking.hotelId && mongoose.isValidObjectId(booking.hotelId)) {
-      hotelObjectId = new mongoose.Types.ObjectId(booking.hotelId);
-    } else {
-      const foundHotel = await Hotel.findOne({ name: booking.hotelName });
-      if (!foundHotel) {
-        return res.status(404).json({ message: 'Không tìm thấy khách sạn của đơn đặt phòng này' });
-      }
-      hotelObjectId = foundHotel._id;
-    }
+    const hotelObjectId = booking.hotelId;
 
     // Chuẩn hóa định dạng mảng ảnh
     const formattedImages = Array.isArray(images)
@@ -195,7 +187,7 @@ export const createReview = async (req, res) => {
     const populatedReview = await Review.findById(newReview._id)
       .populate({
         path: 'bookingId',
-        select: 'bookingCode hotelName checkInDate checkOutDate bookingDetails',
+        select: 'bookingCode checkInDate checkOutDate bookingDetails',
       })
       .populate({
         path: 'hotelId',
@@ -276,7 +268,7 @@ export const updateReview = async (req, res) => {
     const populated = await Review.findById(review._id)
       .populate({
         path: 'bookingId',
-        select: 'bookingCode hotelName checkInDate checkOutDate bookingDetails',
+        select: 'bookingCode checkInDate checkOutDate bookingDetails',
       })
       .populate({
         path: 'hotelId',
@@ -358,13 +350,7 @@ export const getBookingReviewInfo = async (req, res) => {
 
     const existingReview = await Review.findOne({ bookingId: booking._id }).lean();
 
-    let hotel = null;
-    if (booking.hotelId && mongoose.isValidObjectId(booking.hotelId)) {
-      hotel = await Hotel.findById(booking.hotelId).lean();
-    }
-    if (!hotel) {
-      hotel = await Hotel.findOne({ name: booking.hotelName }).lean() || await Hotel.findOne().lean();
-    }
+    const hotel = await Hotel.findById(booking.hotelId).lean();
 
     res.status(200).json({
       success: true,
