@@ -304,6 +304,9 @@ export const createPendingBooking = async (req, res) => {
           const rtId = item.roomTypeId?.toString();
           const roomType = (hotelDoc.roomTypes || []).find((rt) => rt._id.toString() === rtId);
           if (roomType) {
+            if (roomType.isDeleted || roomType.status !== 'ACTIVE') {
+              return res.status(400).json({ message: `Loại phòng "${roomType.name}" hiện không còn mở bán.` });
+            }
             const total = Number(roomType.totalRooms) || 1;
             const booked = bookedCounts[rtId] || 0;
             const available = Math.max(0, total - booked);
@@ -330,6 +333,7 @@ export const createPendingBooking = async (req, res) => {
       hotelId,
       hotelName: hotelDoc.name,
       hotelAddress: hotelDoc.address,
+      cancellationPolicy: hotelDoc.cancellationPolicy,
       ...bookerFields,
       specialRequests: (specialRequests || '').trim(),
       checkInDate: checkIn,
@@ -638,7 +642,9 @@ const REFUND_TIERS = {
 };
 
 export const calculateCancellationDetails = (booking, hotel) => {
-  const policy = REFUND_TIERS[hotel?.cancellationPolicy] ? hotel.cancellationPolicy : 'three';
+  // Đơn cũ chưa lưu chính sách lúc đặt thì dùng chính sách hiện tại của khách sạn
+  const bookedPolicy = booking.cancellationPolicy || hotel?.cancellationPolicy;
+  const policy = REFUND_TIERS[bookedPolicy] ? bookedPolicy : 'three';
   const tiers = REFUND_TIERS[policy];
   const totalAmount = Number(booking.totalAmount) || 0;
   const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : new Date();

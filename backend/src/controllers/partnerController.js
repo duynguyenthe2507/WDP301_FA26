@@ -2,11 +2,29 @@ import mongoose from 'mongoose';
 import Hotel, { TIME_PATTERN } from "../models/Hotel.js";
 import RoomType from '../models/RoomType.js';
 import HotelVerification from '../models/HotelVerification.js';
-import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import PartnerChangeRequest, { CHANGE_REQUEST_FIELDS } from '../models/PartnerChangeRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
+import Booking from '../models/Booking.js';
+import BookingDetail from '../models/BookingDetail.js';
+import { deleteImage, uploadImageBuffer } from '../config/cloudinary.js';
 
 export const pingPartner = (req, res) => {
   res.status(200).json({ message: "Hotel Partner API works!" });
+};
+
+// Thư mục Cloudinary theo loại ảnh; ảnh của mỗi partner nằm riêng một thư mục con
+const UPLOAD_FOLDERS = { hotel: 'hotels', room: 'rooms' };
+
+export const uploadPartnerImages = async (req, res, next) => {
+  try {
+    const folder = UPLOAD_FOLDERS[req.query.type];
+    if (!folder) return res.status(400).json({ message: 'Loại ảnh không hợp lệ (hotel hoặc room).' });
+    if (!req.files?.length) return res.status(400).json({ message: 'Vui lòng chọn ít nhất một ảnh.' });
+    const images = await Promise.all(
+      req.files.map((file) => uploadImageBuffer(file.buffer, `vinastay/${folder}/${req.user._id}`)),
+    );
+    res.status(201).json({ images });
+  } catch (error) { next(error); }
 };
 const toNumber = (value) =>
   value === "" || value === null || value === undefined ? NaN : Number(value);
@@ -33,6 +51,42 @@ const imageList = (value) =>
       publicId: image.publicId,
       isCover: index === 0,
     }));
+const MAX_HOTEL_IMAGES = 20;
+const MAX_ROOM_IMAGES = 10;
+const toRoomType = (room) => ({
+  name: room.name?.trim(),
+  description: room.description?.trim() || "",
+  bedType: room.bedType?.trim(),
+  roomSize: toNumber(room.roomSize),
+  adultCapacity: toNumber(room.adultCapacity),
+  childrenCapacity: toNumber(room.childrenCapacity),
+  totalRooms: toNumber(room.totalRooms),
+  basePrice: toNumber(room.basePrice),
+  amenities: stringList(room.amenities),
+  images: imageList(room.images),
+});
+// Khớp ràng buộc của RoomType: tối thiểu 1 người lớn và 1 phòng
+const isValidRoomType = (room) =>
+  room.name &&
+  room.bedType &&
+  room.roomSize > 0 &&
+  Number.isInteger(room.adultCapacity) &&
+  room.adultCapacity >= 1 &&
+  Number.isInteger(room.childrenCapacity) &&
+  room.childrenCapacity >= 0 &&
+  Number.isInteger(room.totalRooms) &&
+  room.totalRooms >= 1 &&
+  room.basePrice >= 0;
+const INVALID_ROOM_TYPE_MESSAGE =
+  "Mỗi loại phòng cần có tên, loại giường, diện tích, sức chứa (tối thiểu 1 người lớn), số lượng phòng (tối thiểu 1) và giá hợp lệ.";
+// Xoá trên Cloudinary các ảnh partner đã bỏ; chỉ xoá ảnh trong thư mục của chính partner, lỗi không chặn việc lưu
+const removeDroppedImages = (userId, before, after) => {
+  const kept = new Set(after.map((image) => image.publicId));
+  const ownFolder = new RegExp(`^vinastay/(hotels|rooms)/${userId}/`);
+  before
+    .filter((image) => image.publicId && !kept.has(image.publicId) && ownFolder.test(image.publicId))
+    .forEach((image) => deleteImage(image.publicId).catch((error) => console.warn('Không xoá được ảnh:', error.message)));
+};
 
 export const createHotel = async (req, res, next) => {
   try {
@@ -84,42 +138,10 @@ export const createHotel = async (req, res, next) => {
         .json({ message: "Tài khoản này đã có khách sạn." });
     }
 
-    const roomTypes = rooms.map((room) => ({
-      name: room.name?.trim(),
-      description: room.description,
-      bedType: room.bedType?.trim(),
-      roomSize: toNumber(room.roomSize),
-      adultCapacity: toNumber(room.adultCapacity),
-      childrenCapacity: toNumber(room.childrenCapacity),
-      totalRooms: toNumber(room.totalRooms),
-      basePrice: toNumber(room.basePrice),
-      amenities: stringList(room.amenities),
-      images: imageList(room.images),
-    }));
+    const roomTypes = rooms.map(toRoomType);
 
-    if (
-      !roomTypes.length ||
-      roomTypes.some(
-        (room) =>
-          !room.name ||
-          !room.bedType ||
-          !Number.isFinite(room.roomSize) ||
-          !Number.isInteger(room.adultCapacity) ||
-          !Number.isInteger(room.childrenCapacity) ||
-          !Number.isInteger(room.totalRooms) ||
-          !Number.isFinite(room.basePrice),
-      )
-    ) {
-      return res.status(400).json({
-        message:
-          "Mỗi loại phòng cần có tên, loại giường, diện tích, sức chứa, số lượng phòng và giá hợp lệ.",
-      });
-    }
-    // RoomType yêu cầu tối thiểu 1 người lớn và 1 phòng
-    if (roomTypes.some((room) => room.adultCapacity < 1 || room.totalRooms < 1)) {
-      return res.status(400).json({
-        message: "Số người lớn tối đa và tổng số phòng phải từ 1 trở lên.",
-      });
+    if (!roomTypes.length || !roomTypes.every(isValidRoomType)) {
+      return res.status(400).json({ message: INVALID_ROOM_TYPE_MESSAGE });
     }
 
     const hotel = await Hotel.create({
@@ -189,8 +211,7 @@ export const createHotel = async (req, res, next) => {
 export const createPartnerChangeRequest = async (req, res, next) => {
   try {
     const { hotelId, changes, documents = [] } = req.body;
-    const allowedFields = ['name', 'address', 'legalProfile'];
-    if (!hotelId || !Array.isArray(changes) || !changes.length || changes.some((change) => !allowedFields.includes(change.field))) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
+    if (!hotelId || !Array.isArray(changes) || !changes.length || changes.some((change) => !CHANGE_REQUEST_FIELDS.includes(change.field))) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
     const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'ACTIVE' });
     if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn đã được phê duyệt của bạn.' });
     const pending = await PartnerChangeRequest.exists({ hotelId, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } });
@@ -229,8 +250,58 @@ export const getMyHotelDetail = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    res.json({ hotel });
+    const changeRequest = await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
+    res.json({ hotel, changeRequest });
   } catch (error) { next(error); }
+};
+
+// Các trường trên form quản lý cần quản lý vận hành duyệt; những trường còn lại lưu thẳng vào khách sạn
+const FORM_APPROVAL_FIELDS = ['name', 'provinceCity', 'address', 'starRating'];
+
+export const updateMyHotel = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+
+    const { description, amenities, checkInTime, checkOutTime, cancellationPolicy } = req.body;
+    const proposed = {
+      name: req.body.name?.trim(),
+      provinceCity: req.body.provinceCity?.trim(),
+      address: req.body.address?.trim(),
+      starRating: toNumber(req.body.starRating),
+    };
+    if (!proposed.name || !proposed.provinceCity || !proposed.address || !Number.isInteger(proposed.starRating) || proposed.starRating < 1 || proposed.starRating > 5) {
+      return res.status(400).json({ message: 'Tên, địa chỉ, tỉnh/thành phố và hạng sao từ 1 đến 5 là bắt buộc.' });
+    }
+    if (!['one', 'three', 'none'].includes(cancellationPolicy)) return res.status(400).json({ message: 'Chính sách hủy không hợp lệ.' });
+    if (!TIME_PATTERN.test(checkInTime) || !TIME_PATTERN.test(checkOutTime)) return res.status(400).json({ message: 'Giờ nhận phòng và trả phòng không hợp lệ.' });
+    const images = imageList(req.body.images);
+    if (images.length > MAX_HOTEL_IMAGES) return res.status(400).json({ message: `Khách sạn có tối đa ${MAX_HOTEL_IMAGES} ảnh.` });
+
+    const changes = FORM_APPROVAL_FIELDS
+      .filter((field) => proposed[field] !== hotel[field])
+      .map((field) => ({ field, currentValue: hotel[field], proposedValue: proposed[field] }));
+    if (changes.length && await PartnerChangeRequest.exists({ hotelId: hotel._id, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } })) {
+      return res.status(409).json({ message: 'Khách sạn đang có yêu cầu thay đổi nhạy cảm chờ xử lý.' });
+    }
+
+    const previousImages = hotel.images.map(({ publicId }) => ({ publicId }));
+    hotel.set({ description: description?.trim() || '', amenities: stringList(amenities), checkInTime, checkOutTime, cancellationPolicy, images });
+    await hotel.save();
+    removeDroppedImages(req.user._id, previousImages, images);
+
+    const changeRequest = changes.length
+      ? await PartnerChangeRequest.create({ hotelId: hotel._id, partnerId: req.user._id, changes })
+      : await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
+    res.json({
+      message: changes.length ? 'Đã lưu thay đổi và gửi các thông tin nhạy cảm để quản lý vận hành phê duyệt.' : 'Đã lưu thay đổi thông tin khách sạn.',
+      hotel,
+      changeRequest,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
+    next(error);
+  }
 };
 
 const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'ACTIVE' });
@@ -250,14 +321,129 @@ export const getRoomTypes = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+const findOwnedRoomType = (hotelId, id) =>
+  mongoose.isValidObjectId(id) ? RoomType.findOne({ _id: id, hotelId, isDeleted: false }) : null;
+const roomTypeNotFound = (res) => res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
+
 export const getRoomType = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
-    const roomType = await RoomType.findOne({ _id: req.params.id, hotelId: hotel._id, isDeleted: false });
-    if (!roomType) return res.status(404).json({ message: 'Không tìm thấy loại phòng.' });
+    const roomType = await findOwnedRoomType(hotel._id, req.params.id);
+    if (!roomType) return roomTypeNotFound(res);
     res.json({ roomType });
+  } catch (error) { next(error); }
+};
+
+// Tên loại phòng là duy nhất trong khách sạn, không phân biệt hoa thường
+const isRoomNameTaken = (hotelId, name, exceptId) =>
+  RoomType.exists({ hotelId, name, isDeleted: false, ...(exceptId && { _id: { $ne: exceptId } }) }).collation({ locale: 'vi', strength: 2 });
+
+// Trả về thông báo lỗi nếu dữ liệu loại phòng không lưu được
+const roomTypeFormError = async (hotelId, room, exceptId) => {
+  if (!isValidRoomType(room)) return INVALID_ROOM_TYPE_MESSAGE;
+  if (!room.images.length || room.images.length > MAX_ROOM_IMAGES) return `Mỗi loại phòng cần từ 1 đến ${MAX_ROOM_IMAGES} ảnh.`;
+  if (await isRoomNameTaken(hotelId, room.name, exceptId)) return 'Tên loại phòng đã tồn tại trong khách sạn.';
+  return null;
+};
+
+// Các đơn chưa trả phòng đang giữ loại phòng này; cùng điều kiện với kiểm tra phòng trống khi khách đặt
+const upcomingBookings = async (roomTypeId) => {
+  const details = await BookingDetail.find({ roomTypeId }).select('bookingId quantity');
+  if (!details.length) return [];
+  const bookings = await Booking.find({
+    _id: { $in: details.map((detail) => detail.bookingId) },
+    checkOutDate: { $gt: new Date() },
+    bookingStatus: { $ne: 'CANCELLED' },
+    paymentStatus: { $ne: 'FAILED' },
+    $or: [
+      { bookingStatus: 'CONFIRMED' },
+      { paymentStatus: 'PAID' },
+      { bookingStatus: 'PENDING_PAYMENT', createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) } },
+    ],
+  }).select('checkInDate checkOutDate');
+  return bookings.map((booking) => ({
+    checkIn: booking.checkInDate.getTime(),
+    checkOut: booking.checkOutDate.getTime(),
+    quantity: details.filter((detail) => detail.bookingId.equals(booking._id)).reduce((sum, detail) => sum + detail.quantity, 0),
+  }));
+};
+
+// Số phòng bị giữ nhiều nhất tại cùng một thời điểm (trả phòng được tính trước nhận phòng nếu trùng giờ)
+const peakBookedRooms = (bookings) => {
+  const events = bookings.flatMap(({ checkIn, checkOut, quantity }) => [{ at: checkIn, delta: quantity }, { at: checkOut, delta: -quantity }]);
+  events.sort((a, b) => a.at - b.at || a.delta - b.delta);
+  let current = 0;
+  let peak = 0;
+  events.forEach(({ delta }) => { current += delta; peak = Math.max(peak, current); });
+  return peak;
+};
+
+export const createRoomType = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    const room = toRoomType(req.body);
+    const formError = await roomTypeFormError(hotel._id, room);
+    if (formError) return res.status(400).json({ message: formError });
+    const roomType = await RoomType.create({ ...room, hotelId: hotel._id });
+    res.status(201).json({ message: 'Đã thêm loại phòng.', roomType });
+  } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
+    next(error);
+  }
+};
+
+// Giá của đơn đã đặt nằm trong BookingDetail nên thay đổi chỉ áp dụng cho đơn mới
+export const updateRoomType = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    const roomType = await findOwnedRoomType(hotel._id, req.params.id);
+    if (!roomType) return roomTypeNotFound(res);
+    const room = toRoomType(req.body);
+    const formError = await roomTypeFormError(hotel._id, room, roomType._id);
+    if (formError) return res.status(400).json({ message: formError });
+    if (room.totalRooms < roomType.totalRooms) {
+      const peak = peakBookedRooms(await upcomingBookings(roomType._id));
+      if (room.totalRooms < peak) return res.status(409).json({ message: `Không thể giảm xuống ${room.totalRooms} phòng vì đang có ${peak} phòng được đặt cùng lúc trong thời gian tới.` });
+    }
+    const previousImages = roomType.images.map(({ publicId }) => ({ publicId }));
+    roomType.set(room);
+    await roomType.save();
+    removeDroppedImages(req.user._id, previousImages, room.images);
+    res.json({ message: 'Đã lưu loại phòng.', roomType });
+  } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
+    next(error);
+  }
+};
+
+// Ngừng bán chỉ chặn đơn mới, các đơn đã đặt vẫn giữ nguyên
+export const updateRoomTypeStatus = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    if (!['ACTIVE', 'INACTIVE'].includes(req.body.status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
+    const roomType = await findOwnedRoomType(hotel._id, req.params.id);
+    if (!roomType) return roomTypeNotFound(res);
+    roomType.status = req.body.status;
+    await roomType.save();
+    res.json({ roomType });
+  } catch (error) { next(error); }
+};
+
+// Xoá mềm để lịch sử đặt phòng vẫn tham chiếu được; giữ nguyên ảnh vì lý do đó
+export const deleteRoomType = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    const roomType = await findOwnedRoomType(hotel._id, req.params.id);
+    if (!roomType) return roomTypeNotFound(res);
+    if ((await upcomingBookings(roomType._id)).length) return res.status(409).json({ message: 'Loại phòng đang có đơn đặt chưa hoàn tất, hãy chọn Ngừng bán thay vì xóa.' });
+    roomType.isDeleted = true;
+    await roomType.save();
+    res.json({ message: 'Đã xóa loại phòng.' });
   } catch (error) { next(error); }
 };
 

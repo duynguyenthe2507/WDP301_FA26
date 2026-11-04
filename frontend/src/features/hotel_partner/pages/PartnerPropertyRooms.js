@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { FaPlus } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
+import ImageUploadButton from "../components/ImageUploadButton";
 import { BED_TYPES } from "../data/hotelOptions";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 
@@ -35,7 +36,6 @@ const PartnerPropertyRooms = () => {
   const [rooms, setRooms] = useState(
     draft.rooms?.length ? draft.rooms : [blankRoom()],
   );
-  const [imageUrlInputs, setImageUrlInputs] = useState({});
   // Khớp ràng buộc của RoomType: bedType bắt buộc, sức chứa và số phòng tối thiểu 1
   const isBelowOne = (value) => !(Number(value) >= 1);
   const hasInvalidRoom = rooms.some(
@@ -51,12 +51,15 @@ const PartnerPropertyRooms = () => {
       ),
     );
 
-  const addRoomImage = (index) => {
-    const url = imageUrlInputs[index]?.trim();
-    if (!/^https?:\/\//i.test(url)) return;
-    updateRoom(index, "images", [...rooms[index].images, { url }]);
-    setImageUrlInputs((current) => ({ ...current, [index]: "" }));
-  };
+  // Upload chạy bất đồng bộ nên cập nhật theo state mới nhất, không dùng `rooms` trong closure
+  const addRoomImages = (index, images) =>
+    setRooms((current) =>
+      current.map((room, roomIndex) =>
+        roomIndex === index
+          ? { ...room, images: [...room.images, ...images] }
+          : room,
+      ),
+    );
 
   const removeRoomImage = (roomIndex, imageIndex) =>
     updateRoom(
@@ -201,33 +204,17 @@ const PartnerPropertyRooms = () => {
               />
             </Form.Group>
             <Form.Group className="col-12">
-              <Form.Label>URL ảnh phòng (cách nhau bằng dấu phẩy)</Form.Label>
-              <div className="input-group">
-                <Form.Control
-                  type="url"
-                  value={imageUrlInputs[index] || ""}
-                  placeholder="https://..."
-                  onChange={(e) =>
-                    setImageUrlInputs((current) => ({
-                      ...current,
-                      [index]: e.target.value,
-                    }))
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addRoomImage(index);
-                    }
-                  }}
-                />
-                <Button type="button" onClick={() => addRoomImage(index)}>
-                  Thêm ảnh
-                </Button>
-              </div>
+              <Form.Label className="d-block">
+                Ảnh phòng (JPG, PNG, WEBP, tối đa 5MB mỗi ảnh)
+              </Form.Label>
+              <ImageUploadButton
+                type="room"
+                onUploaded={(images) => addRoomImages(index, images)}
+              />
               {room.images.length > 0 && (
                 <div className="d-flex flex-wrap gap-3 mt-3">
                   {room.images.map((image, imageIndex) => (
-                    <div key={`${image.url}-${imageIndex}`}>
+                    <div key={image.publicId || `${image.url}-${imageIndex}`}>
                       <img
                         src={image.url}
                         alt={`Ảnh phòng ${imageIndex + 1}`}

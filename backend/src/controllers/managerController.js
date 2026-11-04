@@ -6,7 +6,7 @@ import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
 import Payment from '../models/Payment.js';
 import Payout from '../models/Payout.js';
-import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import PartnerChangeRequest, { CHANGE_REQUEST_FIELDS } from '../models/PartnerChangeRequest.js';
 import RefundRequest from '../models/RefundRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
@@ -140,9 +140,8 @@ export const reviewPartnerChangeRequest = async (req, res, next) => {
     if (decision === 'APPROVE') {
       const hotel = await Hotel.findById(request.hotelId);
       if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn của yêu cầu.' });
-      const allowedFields = new Set(['name', 'address', 'legalProfile']);
       request.changes.forEach((change) => {
-        if (allowedFields.has(change.field)) hotel[change.field] = change.proposedValue;
+        if (CHANGE_REQUEST_FIELDS.includes(change.field)) hotel[change.field] = change.proposedValue;
       });
       await hotel.save();
     }
