@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Card } from "react-bootstrap";
-import { FaBed, FaHotel } from "react-icons/fa";
+import { FaBed, FaCalendarCheck, FaChartBar, FaHotel } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 const PartnerDashboard = () => (
@@ -13,6 +13,12 @@ const PartnerDashboard = () => (
       </div>
       <div className="col-md-6">
         <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaBed className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Loại phòng</h3><p className="text-muted small">Xem, thêm và cập nhật các loại phòng đang kinh doanh.</p><Button as={Link} to="/partner/room-types" variant="outline-dark" size="sm">Quản lý loại phòng</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaCalendarCheck className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Quản lý đặt phòng</h3><p className="text-muted small">Xem đơn đặt phòng, xác nhận, cập nhật trạng thái lưu trú và xử lý yêu cầu hủy.</p><Button as={Link} to="/partner/bookings" variant="outline-dark" size="sm">Quản lý đặt phòng</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaChartBar className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Thống kê</h3><p className="text-muted small">Theo dõi số khách, đặt phòng, doanh thu và lịch sử thanh toán.</p><Button as={Link} to="/partner/statistics" variant="outline-dark" size="sm">Xem thống kê</Button></Card.Body></Card>
       </div>
     </div>
   </div>

@@ -46,6 +46,31 @@ export const deleteRoomType = (id, token) => axios.delete(`http://localhost:9999
   headers: { Authorization: `Bearer ${token}` },
 });
 
+export const getStatistics = (params, token) => axios.get('http://localhost:9999/api/partner/statistics', {
+  params,
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getRevenueLines = (params, token) => axios.get('http://localhost:9999/api/partner/statistics/revenue-lines', {
+  params,
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getRevenueReport = (params, token) => axios.get('http://localhost:9999/api/partner/statistics/revenue-report', {
+  params,
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+// Bỏ các bộ lọc rỗng để backend không phải kiểm tra chuỗi rỗng
+export const getPayouts = (params, token) => axios.get('http://localhost:9999/api/partner/payouts', {
+  params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getPayout = (id, token) => axios.get(`http://localhost:9999/api/partner/payouts/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
 export const getRoomTypes = (token) => axios.get('http://localhost:9999/api/partner/room-types', {
   headers: { Authorization: `Bearer ${token}` },
 });

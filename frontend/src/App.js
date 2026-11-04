@@ -44,6 +44,9 @@ import PartnerHotelInformation from './features/hotel_partner/pages/PartnerHotel
 import PartnerRoomTypes from './features/hotel_partner/pages/PartnerRoomTypes';
 import { PartnerAddRoomType, PartnerEditRoomType } from './features/hotel_partner/pages/PartnerRoomTypeForm';
 import PartnerRegistrationStatus from './features/hotel_partner/pages/PartnerRegistrationStatus';
+import PartnerBookings from './features/hotel_partner/pages/PartnerBookings';
+import PartnerBookingDetail from './features/hotel_partner/pages/PartnerBookingDetail';
+import PartnerStatistics from './features/hotel_partner/pages/PartnerStatistics';
 import PartnerHotelGate from './features/hotel_partner/components/PartnerHotelGate';
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -128,6 +131,9 @@ function App() {
                 <Route path="room-types" element={<PartnerRoomTypes />} />
                 <Route path="room-types/new" element={<PartnerAddRoomType />} />
                 <Route path="room-types/:roomTypeId/edit" element={<PartnerEditRoomType />} />
+                <Route path="bookings" element={<PartnerBookings />} />
+                <Route path="bookings/:bookingId" element={<PartnerBookingDetail />} />
+                <Route path="statistics" element={<PartnerStatistics />} />
               </Route>
             </Route>
           </Route>

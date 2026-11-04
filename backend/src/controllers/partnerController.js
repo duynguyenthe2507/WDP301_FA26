@@ -304,8 +304,8 @@ export const updateMyHotel = async (req, res, next) => {
   }
 };
 
-const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'ACTIVE' });
-const notApproved = (res) =>
+export const findApprovedHotel = (userId) => Hotel.findOne({ ownerId: userId, status: 'ACTIVE' });
+export const notApproved = (res) =>
   res.status(403).json({ message: 'Khách sạn chưa được duyệt hoặc không thuộc tài khoản này.' });
 
 // Danh sách loại phòng (bỏ các loại đã xoá mềm) kèm thông tin ngắn của khách sạn
