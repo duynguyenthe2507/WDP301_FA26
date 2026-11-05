@@ -56,6 +56,15 @@ export const getPartnerBooking = (id, token) => axios.get(`http://localhost:9999
   headers: { Authorization: `Bearer ${token}` },
 });
 
+export const acknowledgeBooking = (id, token) => axios.post(`http://localhost:9999/api/partner/bookings/${id}/acknowledge`, {}, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+// body: { initiator: 'CUSTOMER' | 'HOTEL', reason, note, waiveFee }
+export const cancelPartnerBooking = (id, body, token) => axios.post(`http://localhost:9999/api/partner/bookings/${id}/cancel`, body, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
 export const getPartnerReviews = (params, token) => axios.get('http://localhost:9999/api/partner/reviews', {
   params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
   headers: { Authorization: `Bearer ${token}` },

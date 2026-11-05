@@ -72,7 +72,7 @@ const PartnerBookings = () => {
         <Card.Body className="p-3">
           <Form onSubmit={applyFilters} className="row g-2 align-items-end">
             <Form.Group className="col-md-4" controlId="booking-search"><Form.Label className="small fw-semibold">Mã đặt phòng hoặc tên khách</Form.Label><div className="input-group"><span className="input-group-text bg-white"><FaSearch /></span><Form.Control name="search" value={filters.search} onChange={updateFilter} placeholder="Ví dụ: VNS2026 hoặc Nguyễn" /></div></Form.Group>
-            <Form.Group className="col-md-2" controlId="booking-status"><Form.Label className="small fw-semibold">Trạng thái</Form.Label><Form.Select name="status" value={filters.status} onChange={updateFilter}><option value="">Tất cả</option>{Object.entries(BOOKING_STATUS).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}</Form.Select></Form.Group>
+            <Form.Group className="col-md-2" controlId="booking-status"><Form.Label className="small fw-semibold">Trạng thái</Form.Label><Form.Select name="status" value={filters.status} onChange={updateFilter}><option value="">Tất cả</option><option value="NEW">Mới (chưa xác nhận nhận)</option>{Object.entries(BOOKING_STATUS).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}</Form.Select></Form.Group>
             <Form.Group className="col-6 col-md-3" controlId="booking-from"><Form.Label className="small fw-semibold">Nhận phòng từ</Form.Label><Form.Control type="date" name="from" value={filters.from} onChange={updateFilter} /></Form.Group>
             <Form.Group className="col-6 col-md-3" controlId="booking-to"><Form.Label className="small fw-semibold">Đến ngày</Form.Label><Form.Control type="date" name="to" value={filters.to} onChange={updateFilter} /></Form.Group>
             <div className="col-12 d-flex flex-wrap gap-2 align-items-center">
@@ -101,7 +101,11 @@ const PartnerBookings = () => {
                   <td className="text-nowrap">{formatDate(booking.checkInDate)}<br /><span className="text-muted">{formatDate(booking.checkOutDate)}</span></td>
                   <td className="text-end text-nowrap">{formatMoney(booking.totalAmount)}</td>
                   <td>{PAYMENT_STATUS[booking.paymentStatus]}</td>
-                  <td><Badge bg={BOOKING_STATUS[booking.bookingStatus].bg} className="fw-normal">{BOOKING_STATUS[booking.bookingStatus].label}</Badge></td>
+                  <td>
+                    <Badge bg={BOOKING_STATUS[booking.bookingStatus].bg} className="fw-normal">{BOOKING_STATUS[booking.bookingStatus].label}</Badge>
+                    {booking.isNew && <Badge bg="warning" text="dark" className="fw-normal ms-1">Mới</Badge>}
+                    {booking.ackOverdue && <div className="text-danger small mt-1">Quá hạn xác nhận</div>}
+                  </td>
                 </tr>
               ))}
               {!result.bookings.length && <tr><td colSpan="8" className="text-center text-muted py-5">{MESSAGES.NO_BOOKINGS}</td></tr>}
