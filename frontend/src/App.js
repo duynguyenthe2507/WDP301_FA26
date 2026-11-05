@@ -47,6 +47,7 @@ import PartnerRegistrationStatus from './features/hotel_partner/pages/PartnerReg
 import PartnerBookings from './features/hotel_partner/pages/PartnerBookings';
 import PartnerBookingDetail from './features/hotel_partner/pages/PartnerBookingDetail';
 import PartnerStatistics from './features/hotel_partner/pages/PartnerStatistics';
+import PartnerReviews from './features/hotel_partner/pages/PartnerReviews';
 import PartnerHotelGate from './features/hotel_partner/components/PartnerHotelGate';
 // Role Dashboards
 import AdminDashboard from './features/admin/pages/AdminDashboard';
@@ -134,6 +135,7 @@ function App() {
                 <Route path="bookings" element={<PartnerBookings />} />
                 <Route path="bookings/:bookingId" element={<PartnerBookingDetail />} />
                 <Route path="statistics" element={<PartnerStatistics />} />
+                <Route path="reviews" element={<PartnerReviews />} />
               </Route>
             </Route>
           </Route>

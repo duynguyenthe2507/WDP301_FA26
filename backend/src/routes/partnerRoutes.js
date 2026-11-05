@@ -1,6 +1,8 @@
 import express from 'express';
 const router = express.Router();
 import { createHotel, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
+import { getPartnerBooking, getPartnerBookings } from '../controllers/partnerBookingController.js';
+import { getPartnerReviews } from '../controllers/partnerReviewController.js';
 import { getPayout, getPayouts, getRevenueLines, getRevenueReport, getStatistics } from '../controllers/partnerStatisticsController.js';
 import { authorizeRoles, verifyToken } from '../middlewares/authMiddleware.js';
 import { uploadImages } from '../middlewares/uploadMiddleware.js';
@@ -20,6 +22,9 @@ router.get('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getR
 router.put('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateRoomType);
 router.patch('/room-types/:id/status', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateRoomTypeStatus);
 router.delete('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), deleteRoomType);
+router.get('/bookings', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerBookings);
+router.get('/bookings/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerBooking);
+router.get('/reviews', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerReviews);
 router.get('/statistics', verifyToken, authorizeRoles('HOTEL_PARTNER'), getStatistics);
 router.get('/statistics/revenue-lines', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRevenueLines);
 router.get('/statistics/revenue-report', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRevenueReport);

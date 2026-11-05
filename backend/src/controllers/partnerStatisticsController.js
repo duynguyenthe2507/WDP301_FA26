@@ -17,18 +17,18 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const NO_DATA_MESSAGE = 'Không có dữ liệu thống kê trong khoảng thời gian đã chọn.';
 
 // Khách bắt buộc trả tiền khi đặt nên partner chỉ thống kê đơn đã thanh toán
-const PAID_FILTER = { paymentStatus: { $in: ['PAID', 'REFUNDED'] } };
+export const PAID_FILTER = { paymentStatus: { $in: ['PAID', 'REFUNDED'] } };
 
 // Kỳ thống kê tính theo giờ Việt Nam, ngày ở dạng YYYY-MM-DD
-const vnDate = (date) => new Date(new Date(date).getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
-const startOfDay = (day) => new Date(`${day}T00:00:00+07:00`);
-const endOfDay = (day) => new Date(`${day}T23:59:59.999+07:00`);
+export const vnDate = (date) => new Date(new Date(date).getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
+export const startOfDay = (day) => new Date(`${day}T00:00:00+07:00`);
+export const endOfDay = (day) => new Date(`${day}T23:59:59.999+07:00`);
 const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
 const addDays = (day, days) => new Date(Date.parse(day) + days * DAY_MS).toISOString().slice(0, 10);
 const sumBy = (items, read) => items.reduce((total, item) => total + read(item), 0);
 
-const isValidDay = (day) => DATE_PATTERN.test(day || '') && !Number.isNaN(Date.parse(day));
-const rangeError = (from, to) => {
+export const isValidDay = (day) => DATE_PATTERN.test(day || '') && !Number.isNaN(Date.parse(day));
+export const rangeError = (from, to) => {
   if (isValidDay(from) && isValidDay(to) && to >= from && daysBetween(from, to) <= MAX_RANGE_DAYS) return null;
   return `Khoảng thời gian không hợp lệ. Ngày kết thúc phải sau ngày bắt đầu và không vượt quá ${MAX_RANGE_DAYS} ngày.`;
 };
@@ -37,7 +37,7 @@ const rangeError = (from, to) => {
 // giống cách lịch sử đặt phòng của khách đang xử lý
 const isCompleted = (booking, now) =>
   booking.bookingStatus === 'COMPLETED' || (booking.bookingStatus === 'CONFIRMED' && booking.checkOutDate < now);
-const effectiveStatus = (booking, now) => (isCompleted(booking, now) ? 'COMPLETED' : booking.bookingStatus);
+export const effectiveStatus = (booking, now) => (isCompleted(booking, now) ? 'COMPLETED' : booking.bookingStatus);
 const guestsOf = (booking) => (booking.adultsCount || 0) + (booking.childrenCount || 0);
 
 // Chọn chính sách hoa hồng đang hiệu lực lúc đặt phòng, cùng thứ tự ưu tiên với generatePayout

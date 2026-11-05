@@ -17,19 +17,10 @@ export const PAYOUT_STATUS = {
   FAILED: { label: "Thất bại", bg: "danger" },
 };
 
-export const PARTNER_CANCEL_REASONS = [
-  "Hết phòng / trùng lịch đặt",
-  "Phòng đang bảo trì hoặc sửa chữa",
-  "Khách sạn tạm ngừng hoạt động",
-  "Sự kiện bất khả kháng",
-  "Lý do khác",
-];
-
 export const MESSAGES = {
   NO_BOOKINGS: "Không tìm thấy đặt phòng nào phù hợp.", // MSG14
   NO_STATISTICS: "Không có dữ liệu thống kê trong khoảng thời gian đã chọn.", // MSG11
   NO_PAYOUTS: "Bạn chưa có khoản thanh toán nào.", // MSG12
-  MISSING_REASON: "Vui lòng chọn lý do và nhập ghi chú.", // MSG17
   invalidRange: (days) => `Khoảng thời gian không hợp lệ. Ngày kết thúc phải sau ngày bắt đầu và không vượt quá ${days} ngày.`, // MSG18
 };
 

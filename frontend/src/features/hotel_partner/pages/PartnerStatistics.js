@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Form, Modal, Nav, Spinner, Table } from "react-bootstrap";
 import { FaFileExport } from "react-icons/fa";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import { HorizontalBars, StatTile, TrendColumns } from "../components/StatsCharts";
 import TablePagination from "../components/TablePagination";
@@ -96,7 +97,7 @@ const PartnerStatistics = () => {
             <div style={{ opacity: loading ? 0.6 : 1 }}>
               {tab === "overview" && <OverviewTab stats={stats} />}
               {tab === "guests" && <GuestsTab stats={stats} />}
-              {tab === "bookings" && <BookingsTab stats={stats} />}
+              {tab === "bookings" && <BookingsTab stats={stats} criteria={criteria} />}
               {tab === "revenue" && <RevenueTab stats={stats} criteria={criteria} token={token} />}
             </div>
           )}
@@ -149,12 +150,15 @@ const GuestsTab = ({ stats }) => {
   );
 };
 
-const BookingsTab = ({ stats }) => {
+const BookingsTab = ({ stats, criteria }) => {
   const { bookings, trend, roomTypes } = stats;
+  const navigate = useNavigate();
+  const openList = (status) => navigate(`/partner/bookings?${new URLSearchParams({ status, from: criteria.from, to: criteria.to })}`);
   return (
     <>
+      <div className="small text-muted mb-2">Chọn một trạng thái để mở danh sách đặt phòng tương ứng.</div>
       <Tiles items={[
-        ...bookings.byStatus.map(({ status, count }) => ({ label: BOOKING_STATUS[status].label, value: count.toLocaleString("vi-VN") })),
+        ...bookings.byStatus.map(({ status, count }) => ({ label: BOOKING_STATUS[status].label, value: count.toLocaleString("vi-VN"), onClick: () => openList(status) })),
         { label: "Tỷ lệ hủy", value: formatPercent(bookings.cancellationRate) },
         { label: "Công suất phòng", value: formatPercent(bookings.occupancy) },
         { label: "Thời gian lưu trú TB", value: `${bookings.averageStay.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} đêm` },
@@ -169,6 +173,8 @@ const BookingsTab = ({ stats }) => {
 
 const RevenueTab = ({ stats, criteria, token }) => {
   const { revenue, trend, roomTypes } = stats;
+  const navigate = useNavigate();
+  const location = useLocation();
   const [lines, setLines] = useState(null);
   const [page, setPage] = useState(1);
   const [linesError, setLinesError] = useState("");
@@ -210,10 +216,10 @@ const RevenueTab = ({ stats, criteria, token }) => {
       <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
         <Card.Body className="pb-0"><h3 className="h6 fw-bold">Chi tiết theo đặt phòng</h3></Card.Body>
         {linesError && <Alert variant="danger" className="mx-3">{linesError}</Alert>}
-        <Table responsive className="align-middle mb-0 small">
+        <Table responsive hover className="align-middle mb-0 small">
           <thead className="table-light"><tr><th>Mã đặt phòng</th><th>Loại phòng</th><th>Lưu trú</th><th>Trạng thái</th><th className="text-end">Gộp</th><th className="text-end">Hoa hồng</th><th className="text-end">Ròng</th></tr></thead>
           <tbody>
-            {lines?.lines.map((line) => <tr key={line._id}><td className="fw-semibold text-nowrap">{line.bookingCode}</td><td>{line.roomTypeName}</td><td className="text-nowrap">{formatDate(line.checkInDate)} – {formatDate(line.checkOutDate)}</td><td>{BOOKING_STATUS[line.bookingStatus].label}</td><td className="text-end text-nowrap">{formatMoney(line.gross)}</td><td className="text-end text-nowrap">{formatMoney(line.commission)}</td><td className="text-end text-nowrap">{formatMoney(line.net)}</td></tr>)}
+            {lines?.lines.map((line) => <tr key={line._id} role="button" onClick={() => navigate(`/partner/bookings/${line._id}`, { state: { from: location.pathname } })}><td className="fw-semibold text-nowrap">{line.bookingCode}</td><td>{line.roomTypeName}</td><td className="text-nowrap">{formatDate(line.checkInDate)} – {formatDate(line.checkOutDate)}</td><td>{BOOKING_STATUS[line.bookingStatus].label}</td><td className="text-end text-nowrap">{formatMoney(line.gross)}</td><td className="text-end text-nowrap">{formatMoney(line.commission)}</td><td className="text-end text-nowrap">{formatMoney(line.net)}</td></tr>)}
             {lines && !lines.lines.length && <tr><td colSpan="7" className="text-center text-muted py-4">{MESSAGES.NO_STATISTICS}</td></tr>}
           </tbody>
         </Table>

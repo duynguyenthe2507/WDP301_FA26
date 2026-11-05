@@ -42,6 +42,6 @@ export const BED_TYPES = [
 // Giá trị khớp enum Hotel.cancellationPolicy
 export const CANCELLATION_POLICIES = [
   ["one", "Có thể hoàn tiền tối đa 1 ngày trước ngày nhận phòng"],
-  ["three", "Có thể hoàn tiền tối đa 3 ngày trước ngày nhận phòng"],
+  ["three", "Hoàn 100% nếu hủy trước 3 ngày, hoàn 50% nếu hủy trước 1 ngày so với ngày nhận phòng"],
   ["none", "Không hoàn tiền"],
 ];

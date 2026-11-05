@@ -5,14 +5,14 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import TablePagination from "../components/TablePagination";
 import { BOOKING_STATUS, formatDate, formatMoney, isInvalidRange, MAX_RANGE_DAYS, MESSAGES, PAYMENT_STATUS } from "../data/bookingOptions";
-import { getPartnerBookings, getPartnerHotels } from "../partnerBookingApi";
+import { getPartnerBookings } from "../partnerApi";
 
 const SORT_OPTIONS = [
   ["checkIn", "Ngày nhận phòng (sắp tới trước)"],
   ["bookedAt", "Ngày đặt (mới nhất)"],
   ["amount", "Số tiền (cao nhất)"],
 ];
-const FILTER_KEYS = ["search", "hotelId", "status", "from", "to"];
+const FILTER_KEYS = ["search", "status", "from", "to"];
 const readFilters = (params) => Object.fromEntries(FILTER_KEYS.map((key) => [key, params.get(key) || ""]));
 
 const PartnerBookings = () => {
@@ -20,7 +20,6 @@ const PartnerBookings = () => {
   // Bộ lọc nằm trên URL để màn Thống kê mở được danh sách đã lọc và nút Back giữ nguyên kết quả
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState(() => readFilters(searchParams));
-  const [hotels, setHotels] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -28,10 +27,6 @@ const PartnerBookings = () => {
   const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    getPartnerHotels(token).then(({ data }) => setHotels(data.hotels));
-  }, [token]);
 
   useEffect(() => {
     let active = true;
@@ -67,22 +62,19 @@ const PartnerBookings = () => {
     setSearchParams(new URLSearchParams());
   };
   const openBooking = (booking) => navigate(`/partner/bookings/${booking._id}`, { state: { from: location.pathname + location.search } });
-  const showHotel = hotels.length > 1;
 
   return (
     <div className="container-fluid px-0" style={{ maxWidth: 1280 }}>
       <div className="text-muted small mb-3">Khách sạn của tôi / Đặt phòng</div>
       <h1 className="h3 fw-bold mb-4">Quản lý đặt phòng</h1>
-      <Alert variant="warning" className="small py-2">Đang dùng dữ liệu mẫu, thay đổi sẽ mất khi tải lại trang.</Alert>
 
       <Card className="border-0 shadow-sm rounded-4 mb-3">
         <Card.Body className="p-3">
           <Form onSubmit={applyFilters} className="row g-2 align-items-end">
             <Form.Group className="col-md-4" controlId="booking-search"><Form.Label className="small fw-semibold">Mã đặt phòng hoặc tên khách</Form.Label><div className="input-group"><span className="input-group-text bg-white"><FaSearch /></span><Form.Control name="search" value={filters.search} onChange={updateFilter} placeholder="Ví dụ: VNS2026 hoặc Nguyễn" /></div></Form.Group>
-            {showHotel && <Form.Group className="col-md-3" controlId="booking-hotel"><Form.Label className="small fw-semibold">Khách sạn</Form.Label><Form.Select name="hotelId" value={filters.hotelId} onChange={updateFilter}><option value="">Tất cả khách sạn</option>{hotels.map((hotel) => <option key={hotel._id} value={hotel._id}>{hotel.name}</option>)}</Form.Select></Form.Group>}
             <Form.Group className="col-md-2" controlId="booking-status"><Form.Label className="small fw-semibold">Trạng thái</Form.Label><Form.Select name="status" value={filters.status} onChange={updateFilter}><option value="">Tất cả</option>{Object.entries(BOOKING_STATUS).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}</Form.Select></Form.Group>
-            <Form.Group className="col-6 col-md-3 col-lg-2" controlId="booking-from"><Form.Label className="small fw-semibold">Nhận phòng từ</Form.Label><Form.Control type="date" name="from" value={filters.from} onChange={updateFilter} /></Form.Group>
-            <Form.Group className="col-6 col-md-3 col-lg-2" controlId="booking-to"><Form.Label className="small fw-semibold">Đến ngày</Form.Label><Form.Control type="date" name="to" value={filters.to} onChange={updateFilter} /></Form.Group>
+            <Form.Group className="col-6 col-md-3" controlId="booking-from"><Form.Label className="small fw-semibold">Nhận phòng từ</Form.Label><Form.Control type="date" name="from" value={filters.from} onChange={updateFilter} /></Form.Group>
+            <Form.Group className="col-6 col-md-3" controlId="booking-to"><Form.Label className="small fw-semibold">Đến ngày</Form.Label><Form.Control type="date" name="to" value={filters.to} onChange={updateFilter} /></Form.Group>
             <div className="col-12 d-flex flex-wrap gap-2 align-items-center">
               <Button type="submit" variant="dark" size="sm">Tìm</Button>
               <Button type="button" variant="outline-secondary" size="sm" onClick={clearFilters}>Xóa bộ lọc</Button>
@@ -98,13 +90,12 @@ const PartnerBookings = () => {
       {result && (
         <Card className="border-0 shadow-sm rounded-4 overflow-hidden" style={{ opacity: loading ? 0.6 : 1 }}>
           <Table responsive hover className="align-middle mb-0 small">
-            <thead className="table-light"><tr><th>Mã đặt phòng</th><th>Khách</th>{showHotel && <th>Khách sạn</th>}<th>Loại phòng</th><th>Số phòng</th><th>Nhận / trả phòng</th><th className="text-end">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr></thead>
+            <thead className="table-light"><tr><th>Mã đặt phòng</th><th>Khách</th><th>Loại phòng</th><th>Số phòng</th><th>Nhận / trả phòng</th><th className="text-end">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr></thead>
             <tbody>
               {result.bookings.map((booking) => (
                 <tr key={booking._id} role="button" onClick={() => openBooking(booking)}>
-                  <td className="text-nowrap"><Button variant="link" className="p-0 fw-semibold text-dark small" onClick={(event) => { event.stopPropagation(); openBooking(booking); }}>{booking.bookingCode}</Button>{booking.isNew && <Badge bg="warning" text="dark" className="ms-2">Mới</Badge>}{booking.cancellationRequest?.status === "PENDING" && <Badge bg="danger" className="ms-2">Yêu cầu hủy</Badge>}</td>
+                  <td className="text-nowrap"><Button variant="link" className="p-0 fw-semibold text-dark small" onClick={(event) => { event.stopPropagation(); openBooking(booking); }}>{booking.bookingCode}</Button></td>
                   <td>{booking.guestName}</td>
-                  {showHotel && <td>{booking.hotelName}</td>}
                   <td>{booking.roomTypeName}</td>
                   <td>{booking.quantity}</td>
                   <td className="text-nowrap">{formatDate(booking.checkInDate)}<br /><span className="text-muted">{formatDate(booking.checkOutDate)}</span></td>
@@ -113,7 +104,7 @@ const PartnerBookings = () => {
                   <td><Badge bg={BOOKING_STATUS[booking.bookingStatus].bg} className="fw-normal">{BOOKING_STATUS[booking.bookingStatus].label}</Badge></td>
                 </tr>
               ))}
-              {!result.bookings.length && <tr><td colSpan={showHotel ? 9 : 8} className="text-center text-muted py-5">{MESSAGES.NO_BOOKINGS}</td></tr>}
+              {!result.bookings.length && <tr><td colSpan="8" className="text-center text-muted py-5">{MESSAGES.NO_BOOKINGS}</td></tr>}
             </tbody>
           </Table>
           {result.pagination.totalPages > 1 && <Card.Footer className="bg-white"><TablePagination pagination={result.pagination} onChange={(page) => setParam("page", String(page))} /></Card.Footer>}

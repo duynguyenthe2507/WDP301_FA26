@@ -634,10 +634,11 @@ export const createRefundRequest = async (req, res) => {
 // HỦY ĐẶT PHÒNG & TÍNH TOÁN HOÀN TIỀN
 // Hàm tính toán chi tiết chính sách hủy, hạn hủy và số tiền hoàn
 // Hạn hoàn tiền theo chính sách khách sạn (tính đến 14:00 của ngày nhận phòng trừ N ngày):
-// hủy trong hạn thì hoàn 100%, hủy sau hạn thì mất toàn bộ; 'none' = không hoàn tiền
+// 'one': trước 1 ngày hoàn 100%; 'three': trước 3 ngày hoàn 100%, trước 1 ngày hoàn 50%;
+// hủy sau mốc cuối cùng thì mất toàn bộ; 'none' = không hoàn tiền. Mỗi chính sách xếp mốc xa nhất trước.
 const REFUND_TIERS = {
   one: [{ days: 1, rate: 1 }],
-  three: [{ days: 3, rate: 1 }],
+  three: [{ days: 3, rate: 1 }, { days: 1, rate: 0.5 }],
   none: [],
 };
 
