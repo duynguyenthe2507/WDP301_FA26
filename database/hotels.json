@@ -7,12 +7,10 @@
     "address": "12 Hàng Trống, Hoàn Kiếm, Hà Nội",
     "description": "Khách sạn trung tâm phố cổ gần hồ Gươm, dịch vụ tiện nghi sang trọng và phong cách kiến trúc Pháp cổ điển kết hợp tinh hoa truyền thống Việt Nam.",
     "starRating": 4,
-    "cancellationPolicy": "Miễn phí hủy phòng trước 24h trước ngày nhận phòng.",
-    "ratingSummary": {
-      "averageRating": 4.8,
-      "totalReviews": 128
-    },
-    "status": "APPROVED",
+    "cancellationPolicy": "one",
+    "averageRating": 4.8,
+    "totalReviews": 128,
+    "status": "ACTIVE",
     "images": [
       {
         "url": "https://res.cloudinary.com/vinastay/hotels/hanoi1.jpg",
@@ -38,48 +36,7 @@
       "Phòng gym & Spa",
       "Lễ tân 24/7"
     ],
-    "roomTypes": [
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c201" },
-        "name": "Deluxe Double Room",
-        "description": "Phòng đôi có ban công nhìn ra phố cổ",
-        "bedType": "1 giường đôi lớn",
-        "roomSize": 32,
-        "adultCapacity": 2,
-        "childrenCapacity": 1,
-        "totalRooms": 10,
-        "basePrice": 1200000,
-        "amenities": ["Điều hòa", "TV 55 inch", "Minibar", "Máy sấy tóc"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/room1.jpg",
-            "publicId": "vinastay/rooms/room1"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      },
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c202" },
-        "name": "Family Suite Room",
-        "description": "Phòng gia đình rộng rãi, 2 giường lớn",
-        "bedType": "2 giường đôi lớn",
-        "roomSize": 48,
-        "adultCapacity": 4,
-        "childrenCapacity": 2,
-        "totalRooms": 5,
-        "basePrice": 2200000,
-        "amenities": ["Điều hòa", "TV 65 inch", "Bồn tắm", "Minibar"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/room2.jpg",
-            "publicId": "vinastay/rooms/room2"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      }
-    ],
+    "legalProfile": {},
     "createdAt": { "$date": "2026-10-01T09:00:00.000Z" },
     "updatedAt": { "$date": "2026-10-01T09:00:00.000Z" }
   },
@@ -91,12 +48,10 @@
     "address": "08 Mường Hoa, Thị xã Sa Pa, Lào Cai",
     "description": "Nằm trọn giữa thung lũng Mường Hoa kỳ vĩ, sở hữu tầm nhìn biển mây bồng bềnh và không gian nghỉ dưỡng thanh bình đậm chất Tây Bắc.",
     "starRating": 4,
-    "cancellationPolicy": "Miễn phí hủy phòng trước 48h trước ngày nhận phòng.",
-    "ratingSummary": {
-      "averageRating": 4.7,
-      "totalReviews": 86
-    },
-    "status": "APPROVED",
+    "cancellationPolicy": "three",
+    "averageRating": 4.7,
+    "totalReviews": 86,
+    "status": "ACTIVE",
     "images": [
       {
         "url": "https://res.cloudinary.com/vinastay/hotels/sapa1.jpg",
@@ -112,69 +67,26 @@
     "amenities": [
       "Wifi miễn phí",
       "Lò sưởi",
-      "Nhà hàng",
-      "Bể bơi nước nóng",
-      "Dịch vụ đưa đón"
+      "Nhà hàng món bản địa",
+      "Tour trekking",
+      "Lễ tân 24/7"
     ],
-    "roomTypes": [
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c203" },
-        "name": "Mountain Valley View Room",
-        "description": "Phòng hướng thung lũng đón biển mây bồng bềnh mỗi sớm mai.",
-        "bedType": "1 giường đôi lớn",
-        "roomSize": 36,
-        "adultCapacity": 2,
-        "childrenCapacity": 1,
-        "totalRooms": 12,
-        "basePrice": 1450000,
-        "amenities": ["Máy sưởi", "TV 50 inch", "Ban công ngắm mây", "Bồn tắm gỗ"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/sapa_room1.jpg",
-            "publicId": "vinastay/rooms/sapa_room1"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      },
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c204" },
-        "name": "Cloud Terrace VIP Suite",
-        "description": "Căn suite góc 2 mặt kính ôm trọn dãy Hoàng Liên Sơn hùng vĩ.",
-        "bedType": "1 giường King size",
-        "roomSize": 60,
-        "adultCapacity": 2,
-        "childrenCapacity": 2,
-        "totalRooms": 4,
-        "basePrice": 2800000,
-        "amenities": ["Lò sưởi củi", "TV 65 inch", "Bồn ngâm thảo dược", "Minibar cao cấp"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/sapa_room2.jpg",
-            "publicId": "vinastay/rooms/sapa_room2"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      }
-    ],
-    "createdAt": { "$date": "2026-10-02T08:00:00.000Z" },
-    "updatedAt": { "$date": "2026-10-02T08:00:00.000Z" }
+    "legalProfile": {},
+    "createdAt": { "$date": "2026-10-02T10:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-02T10:00:00.000Z" }
   },
   {
     "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c103" },
     "ownerId": { "$oid": "64f1a2b3c4d5e6f7a8b9c004" },
     "name": "VinaStay Ocean Beach Resort Danang",
     "provinceCity": "Đà Nẵng",
-    "address": "256 Võ Nguyên Giáp, Sơn Trà, Đà Nẵng",
-    "description": "Khu nghỉ dưỡng 5 sao sát biển Mỹ Khê xinh đẹp, kiến trúc hiện đại hòa cùng thiên nhiên, bãi cát trắng mịn riêng tư.",
+    "address": "Võ Nguyên Giáp, Sơn Trà, Đà Nẵng",
+    "description": "Resort 5 sao cao cấp bên bờ biển Mỹ Khê với bãi tắm riêng, hồ bơi vô cực và ẩm thực hải sản phong phú.",
     "starRating": 5,
-    "cancellationPolicy": "Miễn phí hủy phòng trước 72h trước ngày nhận phòng.",
-    "ratingSummary": {
-      "averageRating": 4.9,
-      "totalReviews": 215
-    },
-    "status": "APPROVED",
+    "cancellationPolicy": "one",
+    "averageRating": 4.9,
+    "totalReviews": 215,
+    "status": "ACTIVE",
     "images": [
       {
         "url": "https://res.cloudinary.com/vinastay/hotels/danang1.jpg",
@@ -188,56 +100,14 @@
       }
     ],
     "amenities": [
+      "Wifi miễn phí",
       "Bãi biển riêng",
-      "Bể bơi vô cực",
-      "Spa & Xông hơi",
-      "Nhà hàng hải sản",
-      "Quầy bar",
-      "Đưa đón sân bay"
+      "Hồ bơi vô cực",
+      "Quầy bar bãi biển",
+      "Spa & Sauna"
     ],
-    "roomTypes": [
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c205" },
-        "name": "Ocean Front Deluxe Room",
-        "description": "Phòng nhìn thẳng ra biển Mỹ Khê, đón gió biển trong lành mỗi sớm mai.",
-        "bedType": "1 giường King lớn",
-        "roomSize": 42,
-        "adultCapacity": 2,
-        "childrenCapacity": 1,
-        "totalRooms": 15,
-        "basePrice": 1800000,
-        "amenities": ["Ban công view biển", "Điều hòa", "Smart TV", "Bồn tắm nằm"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/danang_room1.jpg",
-            "publicId": "vinastay/rooms/danang_room1"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      },
-      {
-        "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c206" },
-        "name": "Beachfront Private Villa",
-        "description": "Biệt thự cao cấp mặt biển với bể bơi riêng biệt và khu vườn nhiệt đới.",
-        "bedType": "1 giường Grand King",
-        "roomSize": 95,
-        "adultCapacity": 2,
-        "childrenCapacity": 2,
-        "totalRooms": 3,
-        "basePrice": 4500000,
-        "amenities": ["Hồ bơi riêng", "Lối ra bãi biển", "Quản gia riêng", "Bếp nhỏ & Minibar"],
-        "images": [
-          {
-            "url": "https://res.cloudinary.com/vinastay/rooms/danang_room2.jpg",
-            "publicId": "vinastay/rooms/danang_room2"
-          }
-        ],
-        "status": "ACTIVE",
-        "isDeleted": false
-      }
-    ],
-    "createdAt": { "$date": "2026-10-03T08:00:00.000Z" },
-    "updatedAt": { "$date": "2026-10-03T08:00:00.000Z" }
+    "legalProfile": {},
+    "createdAt": { "$date": "2026-10-03T11:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-03T11:00:00.000Z" }
   }
 ]

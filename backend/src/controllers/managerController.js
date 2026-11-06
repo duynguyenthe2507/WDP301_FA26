@@ -1,12 +1,13 @@
 import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
+import BookingCancellation from '../models/BookingCancellation.js';
 import CommissionPolicy from '../models/CommissionPolicy.js';
 import Dispute from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
 import Payment from '../models/Payment.js';
 import Payout from '../models/Payout.js';
-import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import PartnerChangeRequest, { CHANGE_REQUEST_FIELDS } from '../models/PartnerChangeRequest.js';
 import RefundRequest from '../models/RefundRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
@@ -73,10 +74,11 @@ export const getVerificationById = async (req, res, next) => {
 export const reviewVerification = async (req, res, next) => {
   try {
     const { decision, note = '' } = req.body;
+    // [trạng thái hồ sơ, trạng thái khách sạn (Hotel chỉ có PENDING/ACTIVE/REJECTED), hành động audit]
     const outcomes = {
-      APPROVE: ['APPROVED', 'APPROVED', 'HOTEL_VERIFICATION_APPROVED'],
+      APPROVE: ['APPROVED', 'ACTIVE', 'HOTEL_VERIFICATION_APPROVED'],
       REJECT: ['REJECTED', 'REJECTED', 'HOTEL_VERIFICATION_REJECTED'],
-      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', 'ADDITIONAL_INFO_REQUIRED', 'HOTEL_VERIFICATION_INFO_REQUESTED'],
+      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', null, 'HOTEL_VERIFICATION_INFO_REQUESTED'],
     };
     const outcome = outcomes[decision];
     if (!outcome) return res.status(400).json({ message: 'Quyết định xác minh không hợp lệ.' });
@@ -92,9 +94,7 @@ export const reviewVerification = async (req, res, next) => {
     verification.reviewedBy = req.user._id;
     verification.reviewedAt = now;
     verification.history.push({ action: outcome[2], note: note.trim(), performedBy: req.user._id });
-    hotel.status = outcome[1];
-    hotel.verificationStatus = outcome[0];
-    hotel.verificationUpdatedAt = now;
+    if (outcome[1]) hotel.status = outcome[1];
     await Promise.all([verification.save(), hotel.save()]);
     await audit(req.user._id, outcome[2], 'HOTEL_VERIFICATION', verification._id, { note: note.trim() });
     res.json({ message: 'Đã cập nhật kết quả xác minh.', verification });
@@ -141,9 +141,8 @@ export const reviewPartnerChangeRequest = async (req, res, next) => {
     if (decision === 'APPROVE') {
       const hotel = await Hotel.findById(request.hotelId);
       if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn của yêu cầu.' });
-      const allowedFields = new Set(['name', 'address', 'legalProfile']);
       request.changes.forEach((change) => {
-        if (allowedFields.has(change.field)) hotel[change.field] = change.proposedValue;
+        if (CHANGE_REQUEST_FIELDS.includes(change.field)) hotel[change.field] = change.proposedValue;
       });
       await hotel.save();
     }
@@ -243,7 +242,7 @@ export const reviewRefund = async (req, res, next) => {
     if (decision === 'REJECT') refund.status = 'REJECTED';
     if (decision === 'MARK_PROCESSED') {
       if (refund.status !== 'APPROVED') return res.status(409).json({ message: 'Chỉ yêu cầu đã duyệt mới có thể hoàn tiền.' });
-      const payment = await Payment.create({ bookingId: refund.bookingId, transactionId: paymentReference.trim() || `REF-${refund._id}-${Date.now()}`, type: 'REFUND', amount: refund.approvedAmount, status: 'SUCCESS' });
+      const payment = await Payment.create({ bookingId: refund.bookingId, txnRef: paymentReference.trim() || `REF-${refund._id}-${Date.now()}`, type: 'REFUND', amount: refund.approvedAmount, status: 'SUCCESS' });
       refund.status = 'PROCESSED'; refund.processedAt = new Date(); refund.paymentId = payment._id;
     }
     refund.reviewedBy = req.user._id; refund.reviewNote = note.trim(); refund.reviewedAt = new Date();
@@ -302,25 +301,45 @@ export const getPayouts = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// Ngày dạng YYYY-MM-DD từ form được hiểu theo giờ Việt Nam để kỳ thanh toán tính đủ cả ngày cuối
+const toPeriodBound = (value, time) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T${time}+07:00` : value);
+
 export const generatePayout = async (req, res, next) => {
   try {
     const { partnerId, periodStart, periodEnd } = req.body;
-    const start = new Date(periodStart); const end = new Date(periodEnd);
+    const start = toPeriodBound(periodStart, '00:00:00'); const end = toPeriodBound(periodEnd, '23:59:59.999');
     if (!partnerId || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return res.status(400).json({ message: 'Partner hoặc kỳ thanh toán không hợp lệ.' });
     const partner = await User.findOne({ _id: partnerId, role: 'HOTEL_PARTNER' });
     if (!partner) return res.status(404).json({ message: 'Không tìm thấy đối tác khách sạn.' });
     const hotelIds = (await Hotel.find({ ownerId: partnerId }).select('_id')).map((hotel) => hotel._id.toString());
-    const bookings = await Booking.find({ hotelId: { $in: hotelIds }, paymentStatus: 'PAID', bookingStatus: { $in: ['CONFIRMED', 'COMPLETED'] }, checkOutDate: { $gte: start, $lte: end } });
-    const bookingIds = bookings.map((booking) => booking._id);
-    const grossRevenue = bookings.reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0);
+    // Cùng quy tắc doanh thu với màn Thống kê của đối tác: đơn đã qua ngày trả phòng tính vào kỳ của ngày trả phòng,
+    // đơn hủy chỉ tính phí giữ lại và tính vào kỳ của ngày hủy
+    const paidStatuses = ['PAID', 'REFUNDED'];
+    const completed = await Booking.find({
+      hotelId: { $in: hotelIds },
+      paymentStatus: { $in: paidStatuses },
+      checkOutDate: { $gte: start, $lte: end },
+      $or: [{ bookingStatus: 'COMPLETED' }, { bookingStatus: 'CONFIRMED', checkOutDate: { $lt: new Date() } }],
+    });
+    const cancellations = (await BookingCancellation.find({ cancelledAt: { $gte: start, $lte: end }, cancellationFee: { $gt: 0 } }).populate('bookingId'))
+      .filter(({ bookingId: booking }) => booking && hotelIds.includes(String(booking.hotelId)) && paidStatuses.includes(booking.paymentStatus));
+    const completedIds = completed.map((booking) => booking._id);
+    const bookingIds = [...completedIds, ...cancellations.map((item) => item.bookingId._id)];
     const [refunds, openDisputes, openRefunds] = await Promise.all([
-      RefundRequest.find({ bookingId: { $in: bookingIds }, status: 'PROCESSED' }),
+      // Tiền hoàn lúc hủy đã nằm ngoài phí giữ lại nên chỉ trừ khoản hoàn của đơn hoàn thành
+      RefundRequest.find({ bookingId: { $in: completedIds }, status: 'PROCESSED' }),
       Dispute.find({ bookingId: { $in: bookingIds }, status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] } }),
       RefundRequest.find({ bookingId: { $in: bookingIds }, status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED'] } }),
     ]);
+    const revenueItems = [
+      ...completed.map((booking) => ({ booking, revenue: Number(booking.totalAmount || 0) })),
+      ...cancellations.map((item) => ({ booking: item.bookingId, revenue: Number(item.cancellationFee) })),
+    ];
+    const grossRevenue = revenueItems.reduce((sum, item) => sum + item.revenue, 0);
     const refundAdjustment = refunds.reduce((sum, refund) => sum + Number(refund.approvedAmount || 0), 0);
+    const refundedOf = (booking) => refunds.filter((refund) => refund.bookingId.equals(booking._id)).reduce((sum, refund) => sum + Number(refund.approvedAmount || 0), 0);
     const scopePriority = { HOTEL: 3, PARTNER: 2, GLOBAL: 1 };
-    const commissionBreakdown = await Promise.all(bookings.map(async (booking) => {
+    const commissionBreakdown = await Promise.all(revenueItems.map(async ({ booking, revenue: itemRevenue }) => {
       const bookedAt = booking.createdAt || start;
       const policies = await CommissionPolicy.find({
         status: 'ACTIVE',
@@ -336,9 +355,10 @@ export const generatePayout = async (req, res, next) => {
         ] }],
       }).sort({ effectiveFrom: -1 });
       const policy = policies.sort((left, right) => scopePriority[right.scope] - scopePriority[left.scope])[0];
-      const revenue = Number(booking.totalAmount || 0);
+      // Hoa hồng tính trên số tiền còn lại sau khi hoàn cho khách, không vượt quá số tiền đó
+      const revenue = Math.max(0, itemRevenue - refundedOf(booking));
       const amount = policy
-        ? (policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Number(policy.value))
+        ? (policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Math.min(Number(policy.value), revenue))
         : 0;
       return { bookingId: booking._id, policyId: policy?._id || null, rate: Number(policy?.value || 0), amount };
     }));

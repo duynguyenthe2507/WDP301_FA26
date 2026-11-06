@@ -1,0 +1,29 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c401" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c301" },
+    "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c201" },
+    "roomTypeName": "Deluxe Double Room",
+    "quantity": 1,
+    "pricePerNight": 1200000,
+    "totalPrice": 2400000
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c402" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c302" },
+    "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c205" },
+    "roomTypeName": "Ocean Front Deluxe Room",
+    "quantity": 1,
+    "pricePerNight": 1800000,
+    "totalPrice": 5400000
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c403" },
+    "bookingId": { "$oid": "64f1a2b3c4d5e6f7a8b9c303" },
+    "roomTypeId": { "$oid": "64f1a2b3c4d5e6f7a8b9c203" },
+    "roomTypeName": "Mountain View Deluxe",
+    "quantity": 1,
+    "pricePerNight": 1450000,
+    "totalPrice": 1450000
+  }
+]

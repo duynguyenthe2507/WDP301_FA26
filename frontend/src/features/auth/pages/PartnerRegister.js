@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Form, Button, Card, Alert, Row, Col, Container } from 'react-bootstrap';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaHotel, FaEnvelope, FaLock, FaPhone, FaArrowLeft, FaShieldAlt, FaHandshake, FaUserTie } from 'react-icons/fa';
-
+import { AuthContext } from '../../../context/AuthContext';
 const PartnerRegister = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -18,6 +18,7 @@ const PartnerRegister = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -57,11 +58,15 @@ const PartnerRegister = () => {
         phoneNumber: formData.phoneNumber.trim(),
         role: 'HOTEL_PARTNER'
       };
+      
+      const response = await axios.post(
+        "http://localhost:9999/api/auth/register",
+        payload,
+      );
 
-      await axios.post('http://localhost:9999/api/auth/register', payload);
-
-      alert('Đăng ký tài khoản Đối tác thành công! Vui lòng đăng nhập để bắt đầu quản lý cơ sở lưu trú của bạn.');
-      navigate('/login');
+      login(response.data.user, response.data.token, {
+        pathname: "/partner/terms",
+      });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Đăng ký đối tác thất bại. Vui lòng thử lại.');
     } finally {

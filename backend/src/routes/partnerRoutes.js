@@ -1,13 +1,37 @@
 import express from 'express';
 const router = express.Router();
-import { createHotel, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner } from '../controllers/partnerController.js';
+import { createHotel, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
+import { acknowledgeBooking, cancelPartnerBooking, getPartnerBooking, getPartnerBookings } from '../controllers/partnerBookingController.js';
+import { getPartnerReviews } from '../controllers/partnerReviewController.js';
+import { getPayout, getPayouts, getRevenueLines, getRevenueReport, getStatistics } from '../controllers/partnerStatisticsController.js';
 import { authorizeRoles, verifyToken } from '../middlewares/authMiddleware.js';
+import { uploadImages } from '../middlewares/uploadMiddleware.js';
 
 router.get('/ping', verifyToken, authorizeRoles('HOTEL_PARTNER'), pingPartner);
+router.post('/uploads/images', verifyToken, authorizeRoles('HOTEL_PARTNER'), uploadImages, uploadPartnerImages);
 router.post('/hotels', verifyToken, authorizeRoles('HOTEL_PARTNER'), createHotel);
 router.post('/change-requests', verifyToken, authorizeRoles('HOTEL_PARTNER'), createPartnerChangeRequest);
 router.post('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), createSupportTicket);
 router.get('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMySupportTickets);
+router.get('/hotels/me', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMyHotel);
+router.get('/hotel', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMyHotelDetail);
+router.put('/hotel', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateMyHotel);
+router.get('/room-types', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRoomTypes);
+router.post('/room-types', verifyToken, authorizeRoles('HOTEL_PARTNER'), createRoomType);
+router.get('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRoomType);
+router.put('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateRoomType);
+router.patch('/room-types/:id/status', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateRoomTypeStatus);
+router.delete('/room-types/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), deleteRoomType);
+router.get('/bookings', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerBookings);
+router.get('/bookings/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerBooking);
+router.post('/bookings/:id/acknowledge', verifyToken, authorizeRoles('HOTEL_PARTNER'), acknowledgeBooking);
+router.post('/bookings/:id/cancel', verifyToken, authorizeRoles('HOTEL_PARTNER'), cancelPartnerBooking);
+router.get('/reviews', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerReviews);
+router.get('/statistics', verifyToken, authorizeRoles('HOTEL_PARTNER'), getStatistics);
+router.get('/statistics/revenue-lines', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRevenueLines);
+router.get('/statistics/revenue-report', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRevenueReport);
+router.get('/payouts', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPayouts);
+router.get('/payouts/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPayout);
 
 export default router;
 

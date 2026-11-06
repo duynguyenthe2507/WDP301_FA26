@@ -21,7 +21,7 @@ const PartnerPropertyPublish = () => {
     try {
       await createHotel(draft, token);
       clearDraft();
-      navigate("/partner");
+      navigate("/partner/registration-status", { replace: true });
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||

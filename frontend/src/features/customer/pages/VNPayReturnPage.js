@@ -1,27 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { Container, Card, Spinner, Alert, Button, Row, Col } from 'react-bootstrap';
-import { FaCheckCircle, FaTimesCircle, FaArrowLeft, FaRedo, FaFileInvoice, FaShieldAlt, FaHistory } from 'react-icons/fa';
+import { Container, Card, Spinner, Button } from 'react-bootstrap';
+import { FaTimesCircle, FaRedo } from 'react-icons/fa';
 import { verifyVNPayPayment } from '../CustomerApi';
-
-const formatPrice = (price) =>
-  new Intl.NumberFormat('vi-VN').format(price) + ' ₫';
 
 const VNPayReturnPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-  const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState('');
   const [booking, setBooking] = useState(null);
 
   const responseCode = searchParams.get('vnp_ResponseCode');
   // Lần thanh toán lại có dạng <bookingCode>R<timestamp>
   const bookingCode = searchParams.get('vnp_TxnRef')?.split('R')[0];
-  const transactionNo = searchParams.get('vnp_TransactionNo');
-  const bankCode = searchParams.get('vnp_BankCode');
-  const amount = Number(searchParams.get('vnp_Amount')) / 100 || 0;
 
   const [isExpired, setIsExpired] = useState(false);
 
@@ -31,7 +24,6 @@ const VNPayReturnPage = () => {
 
       if (!responseCode || !bookingCode) {
         setLoading(false);
-        setSuccess(false);
         setMessage('Không tìm thấy thông tin giao dịch thanh toán từ VNPAY.');
         return;
       }
@@ -39,10 +31,8 @@ const VNPayReturnPage = () => {
       try {
         const res = await verifyVNPayPayment(params);
         if (res.data?.success && responseCode === '00') {
-          setLoading(false);
-          setSuccess(true);
-          setMessage('Giao dịch thanh toán thành công!');
-          setBooking(res.data.booking);
+          // replace: để nút Back không quay lại trang return và verify lại lần nữa
+          navigate(`/booking/confirmation/${bookingCode}`, { replace: true, state: { booking: res.data.booking } });
           return;
         }
         if (res.data?.booking) {
@@ -60,7 +50,6 @@ const VNPayReturnPage = () => {
         if (res.data?.isExpired) {
           setIsExpired(true);
         }
-        setSuccess(false);
         setMessage(
           res.data?.message ||
             'Giao dịch không thành công hoặc bạn đã hủy thao tác thanh toán trên VNPAY.'
@@ -70,30 +59,15 @@ const VNPayReturnPage = () => {
         console.error('Lỗi kiểm tra kết quả VNPAY:', err);
         setLoading(false);
         if (responseCode === '00') {
-          setSuccess(true);
-          setMessage('Giao dịch thanh toán thành công!');
-        } else {
-          setSuccess(false);
-          setMessage('Giao dịch thanh toán không hoàn tất.');
+          navigate(`/booking/confirmation/${bookingCode}`, { replace: true });
+          return;
         }
+        setMessage('Giao dịch thanh toán không hoàn tất.');
       }
     };
 
     processReturn();
   }, [searchParams, responseCode, bookingCode, navigate]);
-
-  // Thanh toán thành công -> đếm ngược rồi tự chuyển sang phiếu xác nhận
-  const [redirectIn, setRedirectIn] = useState(3);
-  useEffect(() => {
-    if (!success) return;
-    if (redirectIn <= 0) {
-      // replace: để nút Back không quay lại trang return và verify lại lần nữa
-      navigate(`/booking/confirmation/${bookingCode}`, { replace: true, state: { booking } });
-      return;
-    }
-    const t = setTimeout(() => setRedirectIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [success, redirectIn, bookingCode, booking, navigate]);
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '85vh', padding: '3rem 0' }}>
@@ -105,56 +79,6 @@ const VNPayReturnPage = () => {
                 <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
                 <h5 className="mt-3 text-dark fw-bold">Đang xác thực kết quả thanh toán từ VNPAY...</h5>
                 <p className="text-muted small">Vui lòng đợi trong giây lát.</p>
-              </div>
-            ) : success ? (
-              <div>
-                <FaCheckCircle className="text-success mb-3" size={56} />
-                <h3 className="fw-bold text-dark mb-2">Thanh Toán Thành Công!</h3>
-                <p className="text-muted small mb-4">
-                  Cảm ơn bạn. Đơn đặt phòng của bạn đã được xác nhận và thanh toán qua cổng VNPAY.
-                </p>
-
-                {/* BẢNG TÓM TẮT GIAO DỊCH */}
-                <div className="bg-light p-3 p-md-4 rounded-3 text-start small mb-4 border">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-secondary">Mã đặt phòng:</span>
-                    <strong className="text-dark font-monospace">{bookingCode}</strong>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-secondary">Mã giao dịch VNPAY:</span>
-                    <strong className="text-primary font-monospace">{transactionNo || 'N/A'}</strong>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-secondary">Ngân hàng thanh toán:</span>
-                    <strong className="text-dark">{bankCode || 'VNPAY'}</strong>
-                  </div>
-                  <div className="d-flex justify-content-between pt-2 border-top">
-                    <span className="text-secondary fw-semibold">Số tiền đã thanh toán:</span>
-                    <strong className="text-success fs-6">{formatPrice(amount)}</strong>
-                  </div>
-                </div>
-
-                <p className="text-muted small mb-3">
-                  Tự động chuyển sang phiếu xác nhận sau <strong>{redirectIn}s</strong>...
-                </p>
-
-                <div className="d-flex flex-column flex-sm-row justify-content-center gap-2">
-                  <Link
-                    to={`/booking/confirmation/${bookingCode}`}
-                    state={{ booking }}
-                    replace
-                    className="btn btn-primary px-4 py-2 fw-semibold"
-                    style={{ backgroundColor: '#005baa', borderColor: '#005baa' }}
-                  >
-                    <FaFileInvoice className="me-1" /> Xem phiếu xác nhận đặt phòng
-                  </Link>
-                  <Link to="/booking-history" className="btn btn-outline-primary px-4 py-2 fw-semibold">
-                    <FaHistory className="me-1" /> Lịch sử đặt phòng
-                  </Link>
-                  <Link to="/" className="btn btn-outline-secondary px-4 py-2">
-                    Về trang chủ
-                  </Link>
-                </div>
               </div>
             ) : (
               <div>
