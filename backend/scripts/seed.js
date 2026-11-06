@@ -20,7 +20,7 @@ if (!MONGO_URL) {
 // Thư mục chứa dữ liệu JSON
 const DATA_DIR = path.join(__dirname, '../../../database');
 
-// Danh sách 10 collections cần nạp
+// Danh sách 9 collections cần nạp
 const COLLECTIONS = [
   { name: 'users', file: 'users.json' },
   { name: 'hotels', file: 'hotels.json' },
@@ -28,7 +28,6 @@ const COLLECTIONS = [
   { name: 'bookings', file: 'bookings.json' },
   { name: 'bookingdetails', file: 'bookingdetails.json' },
   { name: 'payments', file: 'payments.json' },
-  { name: 'complaints', file: 'complaints.json' },
   { name: 'reviews', file: 'reviews.json' },
   { name: 'auditlogs', file: 'auditlogs.json' },
   { name: 'systemconfigs', file: 'systemconfigs.json' },
