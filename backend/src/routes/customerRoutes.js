@@ -45,8 +45,8 @@ router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), create
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 
-router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), getCancelBookingInfo);
-router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), cancelBooking);
+router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTOMER'), getCancelBookingInfo);
+router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER'), cancelBooking);
 router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
 router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
 router.get('/disputes/booking-info/:idOrCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingDisputeInfo);

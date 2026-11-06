@@ -479,7 +479,7 @@ const SubmitDisputePage = () => {
                         </>
                       ) : (
                         <>
-                          Gửi khiếu nại <FaPaperPlane size={13} />
+                          Gửi khiếu nại
                         </>
                       )}
                     </Button>

@@ -871,15 +871,28 @@ export const cancelBooking = async (req, res) => {
 
     const calculations = calculateCancellationDetails(booking, hotel);
 
+    // Môi trường sandbox: đơn đã thanh toán và có tiền hoàn thì ghi nhận hoàn tiền thành công ngay
+    const refunded = booking.paymentStatus === 'PAID' && calculations.refundAmount > 0;
     booking.bookingStatus = 'CANCELLED';
+    if (refunded) booking.paymentStatus = 'REFUNDED';
     await booking.save();
+    if (refunded) {
+      await Payment.create({
+        bookingId: booking._id,
+        type: 'REFUND',
+        amount: calculations.refundAmount,
+        status: 'SUCCESS',
+        txnRef: `${booking.bookingCode}-REFUND`,
+        payDate: new Date(),
+      });
+    }
     await BookingCancellation.create({
       bookingId: booking._id,
       reason: reason.trim(),
       note: (note || '').trim(),
       cancellationFee: calculations.cancellationFee,
       refundAmount: calculations.refundAmount,
-      refundStatus: booking.paymentStatus === 'PAID' && calculations.refundAmount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+      refundStatus: refunded ? 'PROCESSED' : 'NOT_APPLICABLE',
     });
     await booking.populate('cancellation');
 
