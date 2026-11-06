@@ -47,5 +47,6 @@ export const deleteReview = (id) => api.delete(`/api/customer/reviews/${id}`);
 export const getBookingDisputeInfo = (idOrCode) => api.get(`/api/customer/disputes/booking-info/${idOrCode}`);
 export const getMyDisputes = () => api.get('/api/customer/my-disputes');
 export const createDispute = (payload) => api.post('/api/customer/disputes', payload);
+export const withdrawDispute = (id) => api.patch(`/api/customer/disputes/${id}/withdraw`);
 
 

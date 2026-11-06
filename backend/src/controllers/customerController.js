@@ -650,6 +650,38 @@ export const getMyDisputes = async (req, res) => {
   }
 };
 
+// PATCH /api/customer/disputes/:id/withdraw
+// Khách rút khiếu nại khi chưa có kết luận (SRS 2.8.1 Alt 1)
+export const withdrawDispute = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
+    // Điều kiện status nằm trong filter để không đè lên kết luận Manager vừa ghi
+    const dispute = await Dispute.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        customerId: req.user._id,
+        status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
+      },
+      {
+        $set: { status: 'WITHDRAWN', withdrawnAt: new Date() },
+        $push: { responses: { message: 'Khách hàng đã rút khiếu nại.', respondedBy: req.user._id } },
+      },
+      { new: true },
+    );
+    if (!dispute) {
+      return res.status(409).json({ message: 'Không thể rút khiếu nại này (không tồn tại hoặc đã được xử lý xong).' });
+    }
+    // Yêu cầu hoàn tiền đang chờ gắn với khiếu nại này không còn lý do tồn tại
+    await RefundRequest.updateMany(
+      { disputeId: dispute._id, status: { $in: ['REQUESTED', 'UNDER_REVIEW'] } },
+      { $set: { status: 'REJECTED', reviewNote: 'Khách hàng đã rút khiếu nại.', reviewedAt: new Date() } },
+    );
+    res.status(200).json({ success: true, message: 'Đã rút khiếu nại.', dispute });
+  } catch (error) {
+    res.status(500).json({ message: 'Không thể rút khiếu nại.', error: error.message });
+  }
+};
+
 export const createRefundRequest = async (req, res) => {
   try {
     const { bookingId, disputeId, requestedAmount, reason } = req.body;

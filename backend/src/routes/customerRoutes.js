@@ -12,6 +12,7 @@ import {
   getCancelBookingInfo,
   cancelBooking,
   createDispute,
+  withdrawDispute,
   getBookingDisputeInfo,
   getMyDisputes,
   createRefundRequest,
@@ -52,6 +53,7 @@ router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), ge
 router.get('/disputes/booking-info/:idOrCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingDisputeInfo);
 router.get('/my-disputes', verifyToken, authorizeRoles('CUSTOMER'), getMyDisputes);
 router.post('/disputes', verifyToken, authorizeRoles('CUSTOMER'), createDispute);
+router.patch('/disputes/:id/withdraw', verifyToken, authorizeRoles('CUSTOMER'), withdrawDispute);
 router.post('/refunds', verifyToken, authorizeRoles('CUSTOMER'), createRefundRequest);
 
 // Đánh giá kỳ nghỉ (Customer Reviews)

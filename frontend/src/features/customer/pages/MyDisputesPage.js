@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Spinner, Alert, Badge } from 'react-bootstrap';
 import CustomerSidebar from '../components/CustomerSidebar';
-import { getMyDisputes } from '../CustomerApi';
+import { getMyDisputes, withdrawDispute } from '../CustomerApi';
 
 const STATUS = {
   PENDING: { label: 'Chờ xử lý', bg: 'warning' },
@@ -9,7 +9,10 @@ const STATUS = {
   WAITING_PARTNER: { label: 'Chờ đối tác phản hồi', bg: 'info' },
   RESOLVED: { label: 'Đã giải quyết', bg: 'success' },
   REJECTED: { label: 'Bị từ chối', bg: 'danger' },
+  WITHDRAWN: { label: 'Đã rút', bg: 'secondary' },
 };
+
+const WITHDRAWABLE = ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'];
 
 const CATEGORY = {
   INCORRECT_INFORMATION: 'Thông tin chỗ nghỉ không đúng mô tả',
@@ -30,6 +33,16 @@ const MyDisputesPage = () => {
       .catch((err) => setErrorMsg(err.response?.data?.message || 'Không thể tải danh sách khiếu nại.'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleWithdraw = async (id) => {
+    if (!window.confirm('Bạn chắc chắn muốn rút khiếu nại này? Hành động này không thể hoàn tác.')) return;
+    try {
+      const res = await withdrawDispute(id);
+      setDisputes((list) => list.map((d) => (d._id === id ? { ...d, ...res.data.dispute } : d)));
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Không thể rút khiếu nại.');
+    }
+  };
 
   return (
     <div style={{ backgroundColor: '#f5f7fa', minHeight: '90vh', padding: '2rem 0 4rem' }}>
@@ -74,6 +87,13 @@ const MyDisputesPage = () => {
                     {d.resolution?.message && (
                       <div className="small mt-2 p-2 rounded bg-light">
                         <strong>Phản hồi:</strong> {d.resolution.message}
+                      </div>
+                    )}
+                    {WITHDRAWABLE.includes(d.status) && (
+                      <div className="text-end mt-2">
+                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleWithdraw(d._id)}>
+                          Rút khiếu nại
+                        </button>
                       </div>
                     )}
                   </div>

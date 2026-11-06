@@ -200,7 +200,7 @@ export const updateDispute = async (req, res, next) => {
     const { status, resolution, resolutionMessage, assignedToMe } = req.body;
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: 'Không tìm thấy tranh chấp.' });
-    if (['RESOLVED', 'REJECTED'].includes(dispute.status)) return res.status(409).json({ message: 'Tranh chấp đã được đóng.' });
+    if (['RESOLVED', 'REJECTED', 'WITHDRAWN'].includes(dispute.status)) return res.status(409).json({ message: 'Tranh chấp đã được đóng.' });
     const statuses = ['IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'];
     if (status && !statuses.includes(status)) return res.status(400).json({ message: 'Trạng thái tranh chấp không hợp lệ.' });
     if (['RESOLVED', 'REJECTED'].includes(status) && !resolutionMessage?.trim()) return res.status(400).json({ message: 'Cần nhập nội dung kết luận.' });

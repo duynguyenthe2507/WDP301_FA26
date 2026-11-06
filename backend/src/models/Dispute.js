@@ -30,7 +30,8 @@ const disputeSchema = new mongoose.Schema(
     category: { type: String, enum: ['INCORRECT_INFORMATION', 'SERVICE_QUALITY', 'OVERCHARGE', 'CANCELLATION', 'OTHER'], required: true },
     description: { type: String, required: true, trim: true, maxlength: 4000 },
     attachments: { type: [attachmentSchema], default: [] },
-    status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'], default: 'PENDING', index: true },
+    status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED', 'WITHDRAWN'], default: 'PENDING', index: true },
+    withdrawnAt: { type: Date, default: null },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     responses: { type: [responseSchema], default: [] },
     resolution: {
