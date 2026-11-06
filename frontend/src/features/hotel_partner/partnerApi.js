@@ -65,6 +65,19 @@ export const cancelPartnerBooking = (id, body, token) => axios.post(`http://loca
   headers: { Authorization: `Bearer ${token}` },
 });
 
+export const getPartnerDisputes = (params, token) => axios.get('http://localhost:9999/api/partner/disputes', {
+  params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getPartnerDispute = (id, token) => axios.get(`http://localhost:9999/api/partner/disputes/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const respondPartnerDispute = (id, message, token) => axios.post(`http://localhost:9999/api/partner/disputes/${id}/responses`, { message }, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
 export const getPartnerReviews = (params, token) => axios.get('http://localhost:9999/api/partner/reviews', {
   params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
   headers: { Authorization: `Bearer ${token}` },
