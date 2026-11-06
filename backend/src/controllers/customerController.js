@@ -584,7 +584,7 @@ export const createDispute = async (req, res) => {
     });
     res.status(201).json({
       success: true,
-      message: 'Đã gửi khiếu nại thành công. Yêu cầu đang ở trạng thái chờ duyệt (Pending) để Quản lý vận hành xem xét.',
+      message: 'Đã gửi khiếu nại thành công. Yêu cầu đang ở trạng thái chờ xử lý (Pending) để Quản lý vận hành xem xét.',
       dispute,
     });
   } catch (error) {
@@ -593,7 +593,7 @@ export const createDispute = async (req, res) => {
 };
 
 // GET /api/customer/disputes/booking-info/:idOrCode
-// Lấy thông tin đặt phòng phục vụ màn hình "Gửi khiếu nại về kỳ nghỉ" (Screen 7.1)
+// Lấy thông tin đặt phòng phục vụ màn hình "Gửi khiếu nại về kỳ nghỉ"
 export const getBookingDisputeInfo = async (req, res) => {
   try {
     const { idOrCode } = req.params;

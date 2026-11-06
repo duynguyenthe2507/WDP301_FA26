@@ -30,6 +30,12 @@ const CATEGORY_OPTIONS = [
   { value: 'OTHER', label: 'Lý do khác' },
 ];
 
+const DISPUTE_STATUS_LABEL = {
+  PENDING: 'chờ xử lý',
+  IN_PROGRESS: 'đang xử lý',
+  WAITING_PARTNER: 'chờ đối tác phản hồi',
+};
+
 const SubmitDisputePage = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
@@ -184,8 +190,7 @@ const SubmitDisputePage = () => {
             <Alert variant="warning" className="p-4 rounded-3 border-0 shadow-sm">
               <h5 className="fw-bold mb-2">Đơn đặt phòng này đã có khiếu nại đang xử lý!</h5>
               <p className="mb-2">
-                Mã đặt phòng <strong>{booking?.bookingCode}</strong> hiện đang có khiếu nại ở trạng thái{' '}
-                <span className="badge bg-warning text-dark">{existingDispute.status}</span>.
+                Mã đặt phòng <strong>{booking?.bookingCode}</strong> hiện đang có khiếu nại ở trạng thái <strong>{DISPUTE_STATUS_LABEL[existingDispute.status] || existingDispute.status}</strong>.
               </p>
               <p className="small text-muted mb-3">
                 Bộ phận Quản lý vận hành (Operations Manager) đang xem xét trường hợp của bạn. Vui lòng chờ phản hồi hoặc liên hệ CSKH.
@@ -456,7 +461,7 @@ const SubmitDisputePage = () => {
                       lineHeight: 1.5,
                     }}
                   >
-                    <strong>Lưu ý:</strong> Yêu cầu sẽ ở trạng thái <strong>Pending (Chờ duyệt)</strong> khi gửi và được chuyển đến <strong>Quản lý vận hành (Operations Manager)</strong> xem xét. Gửi khiếu nại không đồng nghĩa được duyệt hoàn tiền.
+                    <strong>Lưu ý:</strong> Yêu cầu sẽ ở trạng thái <strong>Pending (Chờ xử lý)</strong> khi gửi và được chuyển đến <strong>Quản lý vận hành (Operations Manager)</strong> xem xét. Gửi khiếu nại không đồng nghĩa được duyệt hoàn tiền.
                   </div>
 
                   {/* Nút hành động */}
@@ -502,7 +507,7 @@ const SubmitDisputePage = () => {
             Đã gửi khiếu nại thành công!
           </h4>
           <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.6 }} className="mt-2">
-            Khiếu nại cho đơn phòng <strong>{successModal.dispute?.bookingCode}</strong> đã được ghi nhận với trạng thái <strong>chờ duyệt</strong>.
+            Khiếu nại cho đơn phòng <strong>{successModal.dispute?.bookingCode}</strong> đã được ghi nhận với trạng thái <strong>chờ xử lý</strong>.
           </p>
           <p style={{ fontSize: '12.5px', color: '#64748b' }}>
             Quản lý vận hành sẽ kiểm tra hồ sơ chứng cứ và phản hồi giải quyết cho bạn trong thời gian sớm nhất.

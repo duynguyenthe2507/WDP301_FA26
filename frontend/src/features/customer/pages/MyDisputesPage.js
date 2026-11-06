@@ -4,7 +4,7 @@ import CustomerSidebar from '../components/CustomerSidebar';
 import { getMyDisputes } from '../CustomerApi';
 
 const STATUS = {
-  PENDING: { label: 'Chờ duyệt', bg: 'warning' },
+  PENDING: { label: 'Chờ xử lý', bg: 'warning' },
   IN_PROGRESS: { label: 'Đang xử lý', bg: 'info' },
   WAITING_PARTNER: { label: 'Chờ đối tác phản hồi', bg: 'info' },
   RESOLVED: { label: 'Đã giải quyết', bg: 'success' },
