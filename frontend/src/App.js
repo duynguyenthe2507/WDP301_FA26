@@ -27,6 +27,8 @@ import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
 import MyReviewsPage from './features/customer/pages/MyReviewsPage';
 import WriteReviewPage from './features/customer/pages/WriteReviewPage';
 import CancelBookingPage from './features/customer/pages/CancelBookingPage';
+import SubmitDisputePage from './features/customer/pages/SubmitDisputePage';
+import MyDisputesPage from './features/customer/pages/MyDisputesPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
@@ -86,6 +88,9 @@ function App() {
               <Route path="reviews" element={<MyReviewsPage />} />
               <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
               <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
+              <Route path="my-disputes" element={<MyDisputesPage />} />
+              <Route path="submit-dispute/:bookingId" element={<SubmitDisputePage />} />
+              <Route path="disputes/new/:bookingId" element={<SubmitDisputePage />} />
             </Route>
           </Route>
 

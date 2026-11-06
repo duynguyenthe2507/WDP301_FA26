@@ -558,8 +558,6 @@ export const createDispute = async (req, res) => {
     }
     const booking = await Booking.findOne({ _id: bookingId, customerId: req.user._id });
     if (!booking) return res.status(404).json({ message: 'Không tìm thấy booking của bạn.' });
-    const disputeDeadline = new Date(booking.checkOutDate || booking.checkInDate).getTime() + 48 * 60 * 60 * 1000;
-    if (Date.now() > disputeDeadline) return res.status(400).json({ message: 'Chỉ có thể gửi tranh chấp trong 48 giờ sau khi kết thúc lưu trú.' });
     const hotel = await Hotel.findById(booking.hotelId);
     if (!hotel?.ownerId) return res.status(400).json({ message: 'Booking chưa có thông tin đối tác để xử lý tranh chấp.' });
     const validAttachments = Array.isArray(attachments)
@@ -582,10 +580,69 @@ export const createDispute = async (req, res) => {
       category,
       description: description.trim(),
       attachments: validAttachments,
+      status: 'PENDING',
     });
-    res.status(201).json({ message: 'Đã gửi tranh chấp để bộ phận vận hành xem xét.', dispute });
+    res.status(201).json({
+      success: true,
+      message: 'Đã gửi khiếu nại thành công. Yêu cầu đang ở trạng thái chờ duyệt (Pending) để Quản lý vận hành xem xét.',
+      dispute,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Không thể tạo tranh chấp.', error: error.message });
+  }
+};
+
+// GET /api/customer/disputes/booking-info/:idOrCode
+// Lấy thông tin đặt phòng phục vụ màn hình "Gửi khiếu nại về kỳ nghỉ" (Screen 7.1)
+export const getBookingDisputeInfo = async (req, res) => {
+  try {
+    const { idOrCode } = req.params;
+    const isObjectId = mongoose.isValidObjectId(idOrCode);
+    const filter = isObjectId
+      ? { _id: idOrCode, customerId: req.user._id }
+      : { bookingCode: idOrCode, customerId: req.user._id };
+
+    const booking = await Booking.findOne(filter).populate('hotel').populate('details').lean();
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng của bạn.' });
+    }
+
+    const hotel = booking.hotel || (await Hotel.findById(booking.hotelId).lean());
+
+    // Kiểm tra xem đã có dispute đang xử lý chưa
+    const existingDispute = await Dispute.findOne({
+      bookingId: booking._id,
+      status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
+    }).lean();
+
+    res.status(200).json({
+      success: true,
+      booking,
+      hotel,
+      existingDispute: existingDispute || null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi khi tải thông tin kỳ nghỉ để khiếu nại.', error: error.message });
+  }
+};
+
+// GET /api/customer/my-disputes
+// Lấy danh sách khiếu nại của khách hàng
+export const getMyDisputes = async (req, res) => {
+  try {
+    const disputes = await Dispute.find({ customerId: req.user._id })
+      .populate('hotelId', 'name address provinceCity images')
+      .populate('bookingId', 'bookingCode checkInDate checkOutDate totalAmount')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: disputes.length,
+      disputes,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách khiếu nại.', error: error.message });
   }
 };
 

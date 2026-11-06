@@ -1,12 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Modal, Button } from 'react-bootstrap';
 import { AuthContext } from '../../../context/AuthContext';
 
 const CustomerSidebar = ({ activeKey = 'reviews' }) => {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
-  const [showSupportModal, setShowSupportModal] = useState(false);
 
   // Lấy chữ cái viết tắt đại diện Avatar (ví dụ: "Nguyễn Minh Anh" -> "MA")
   const getUserInitials = (name) => {
@@ -27,7 +25,7 @@ const CustomerSidebar = ({ activeKey = 'reviews' }) => {
     {
       key: 'complaints',
       label: 'Khiếu nại của tôi',
-      action: () => setShowSupportModal(true),
+      path: '/my-disputes',
     },
   ];
 
@@ -140,45 +138,6 @@ const CustomerSidebar = ({ activeKey = 'reviews' }) => {
           </div>
         </div>
       </div>
-
-      {/* Modal Khiếu nại / CSKH */}
-      <Modal show={showSupportModal} onHide={() => setShowSupportModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
-            Khiếu nại & Hỗ trợ dịch vụ
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.6 }}>
-            VinaStay luôn cam kết bảo vệ quyền lợi tối đa của khách hàng trong suốt kỳ nghỉ. Nếu bạn có bất kỳ thắc mắc hoặc cần giải quyết sự cố, vui lòng liên hệ ngay với chúng tôi:
-          </p>
-          <div
-            style={{
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              fontSize: '13px',
-              color: '#1e293b',
-            }}
-          >
-            <div className="mb-2">
-              <strong>Hotline 24/7:</strong> <span className="text-primary fw-bold">1900 6868</span>
-            </div>
-            <div className="mb-2">
-              <strong>Email hỗ trợ:</strong> support@vinastay.vn
-            </div>
-            <div>
-              <strong>Thời gian xử lý:</strong> Phản hồi trong vòng 2 giờ làm việc
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" size="sm" onClick={() => setShowSupportModal(false)}>
-            Đóng
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </>
   );
 };

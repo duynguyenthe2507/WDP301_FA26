@@ -12,6 +12,8 @@ import {
   getCancelBookingInfo,
   cancelBooking,
   createDispute,
+  getBookingDisputeInfo,
+  getMyDisputes,
   createRefundRequest,
 } from '../controllers/customerController.js';
 import {
@@ -47,6 +49,8 @@ router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTO
 router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), cancelBooking);
 router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
 router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
+router.get('/disputes/booking-info/:idOrCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingDisputeInfo);
+router.get('/my-disputes', verifyToken, authorizeRoles('CUSTOMER'), getMyDisputes);
 router.post('/disputes', verifyToken, authorizeRoles('CUSTOMER'), createDispute);
 router.post('/refunds', verifyToken, authorizeRoles('CUSTOMER'), createRefundRequest);
 
