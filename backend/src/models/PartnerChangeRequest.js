@@ -1,5 +1,8 @@
 import mongoose from 'mongoose';
 
+// Các trường của khách sạn chỉ được đổi sau khi quản lý vận hành phê duyệt
+export const CHANGE_REQUEST_FIELDS = ['name', 'provinceCity', 'address', 'starRating', 'legalProfile'];
+
 const changeSchema = new mongoose.Schema(
   {
     field: { type: String, required: true },

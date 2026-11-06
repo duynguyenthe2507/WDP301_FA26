@@ -1,31 +1,7 @@
 import { useState } from "react";
-import {
-  FaCarSide,
-  FaConciergeBell,
-  FaDumbbell,
-  FaPaw,
-  FaSmokingBan,
-  FaSnowflake,
-  FaSpa,
-  FaSwimmingPool,
-  FaUtensils,
-  FaWifi,
-} from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
-
-const amenities = [
-  ["Bể bơi", FaSwimmingPool],
-  ["Bãi đỗ xe", FaCarSide],
-  ["Spa", FaSpa],
-  ["Không hút thuốc", FaSmokingBan],
-  ["Wi-Fi miễn phí", FaWifi],
-  ["Được phép đưa thú nuôi vào", FaPaw],
-  ["Phòng tập", FaDumbbell],
-  ["Bàn tiếp tân 24 giờ", FaConciergeBell],
-  ["Máy điều hòa", FaSnowflake],
-  ["Nhà hàng", FaUtensils],
-];
+import { HOTEL_AMENITIES as amenities } from "../data/hotelOptions";
 
 const PartnerPropertyAmenities = () => {
   const { draft, setDraft } = usePropertyDraft();

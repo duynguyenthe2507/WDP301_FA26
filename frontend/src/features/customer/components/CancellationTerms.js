@@ -6,7 +6,7 @@ const formatPrice = (price) =>
 // Cùng hạn với backend (REFUND_TIERS trong customerController): tính đến 14:00 của ngày nhận phòng trừ N ngày
 const REFUND_TIERS = {
   one: [{ days: 1, rate: 1 }],
-  three: [{ days: 3, rate: 1 }],
+  three: [{ days: 3, rate: 1 }, { days: 1, rate: 0.5 }],
   none: [],
 };
 

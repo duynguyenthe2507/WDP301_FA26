@@ -35,9 +35,19 @@ export const register = async (req, res) => {
       role: ['PARTNER', 'HOTEL_PARTNER'].includes(role) ? 'HOTEL_PARTNER' : 'CUSTOMER',
       status: 'ACTIVE',
     });
+    
+    let token;
+    if (newUser.role === "HOTEL_PARTNER") {
+      token = jwt.sign(
+        { id: newUser._id, role: newUser.role },
+        process.env.JWT_SECRET || "secret_key",
+        { expiresIn: "1d" },
+      );
+    }
 
     res.status(201).json({
       message: 'Đăng ký tài khoản thành công',
+      token,
       user: {
         _id: newUser._id,
         email: newUser.email,

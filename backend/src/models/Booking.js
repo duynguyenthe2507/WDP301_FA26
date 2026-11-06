@@ -17,6 +17,8 @@ const bookingSchema = new mongoose.Schema(
     },
     hotelName: { type: String, required: true, trim: true },
     hotelAddress: { type: String, default: "", trim: true },
+    // Chính sách hủy tại thời điểm đặt; partner đổi chính sách sau đó không ảnh hưởng đơn này
+    cancellationPolicy: { type: String, enum: ["one", "three", "none"] },
     bookerFullName: { type: String, required: true, trim: true },
     bookerPhone: { type: String, required: true, trim: true },
     bookerEmail: { type: String, required: true, trim: true },

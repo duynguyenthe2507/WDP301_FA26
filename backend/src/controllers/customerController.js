@@ -304,6 +304,9 @@ export const createPendingBooking = async (req, res) => {
           const rtId = item.roomTypeId?.toString();
           const roomType = (hotelDoc.roomTypes || []).find((rt) => rt._id.toString() === rtId);
           if (roomType) {
+            if (roomType.isDeleted || roomType.status !== 'ACTIVE') {
+              return res.status(400).json({ message: `Loại phòng "${roomType.name}" hiện không còn mở bán.` });
+            }
             const total = Number(roomType.totalRooms) || 1;
             const booked = bookedCounts[rtId] || 0;
             const available = Math.max(0, total - booked);
@@ -330,6 +333,7 @@ export const createPendingBooking = async (req, res) => {
       hotelId,
       hotelName: hotelDoc.name,
       hotelAddress: hotelDoc.address,
+      cancellationPolicy: hotelDoc.cancellationPolicy,
       ...bookerFields,
       specialRequests: (specialRequests || '').trim(),
       checkInDate: checkIn,
@@ -687,15 +691,18 @@ export const createRefundRequest = async (req, res) => {
 // HỦY ĐẶT PHÒNG & TÍNH TOÁN HOÀN TIỀN
 // Hàm tính toán chi tiết chính sách hủy, hạn hủy và số tiền hoàn
 // Hạn hoàn tiền theo chính sách khách sạn (tính đến 14:00 của ngày nhận phòng trừ N ngày):
-// hủy trong hạn thì hoàn 100%, hủy sau hạn thì mất toàn bộ; 'none' = không hoàn tiền
+// 'one': trước 1 ngày hoàn 100%; 'three': trước 3 ngày hoàn 100%, trước 1 ngày hoàn 50%;
+// hủy sau mốc cuối cùng thì mất toàn bộ; 'none' = không hoàn tiền. Mỗi chính sách xếp mốc xa nhất trước.
 const REFUND_TIERS = {
   one: [{ days: 1, rate: 1 }],
-  three: [{ days: 3, rate: 1 }],
+  three: [{ days: 3, rate: 1 }, { days: 1, rate: 0.5 }],
   none: [],
 };
 
 export const calculateCancellationDetails = (booking, hotel) => {
-  const policy = REFUND_TIERS[hotel?.cancellationPolicy] ? hotel.cancellationPolicy : 'three';
+  // Đơn cũ chưa lưu chính sách lúc đặt thì dùng chính sách hiện tại của khách sạn
+  const bookedPolicy = booking.cancellationPolicy || hotel?.cancellationPolicy;
+  const policy = REFUND_TIERS[bookedPolicy] ? bookedPolicy : 'three';
   const tiers = REFUND_TIERS[policy];
   const totalAmount = Number(booking.totalAmount) || 0;
   const checkInDate = booking.checkInDate ? new Date(booking.checkInDate) : new Date();
