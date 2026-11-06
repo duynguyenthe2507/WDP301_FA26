@@ -250,14 +250,11 @@ export const getMyHotelDetail = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const changeRequest = await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
-    res.json({ hotel, changeRequest });
+    res.json({ hotel });
   } catch (error) { next(error); }
 };
 
-// Các trường trên form quản lý cần quản lý vận hành duyệt; những trường còn lại lưu thẳng vào khách sạn
-const FORM_APPROVAL_FIELDS = ['name', 'provinceCity', 'address', 'starRating'];
-
+// Khách sạn tự quyết và tự chịu trách nhiệm về thông tin của mình: mọi trường trên form lưu thẳng, không cần duyệt
 export const updateMyHotel = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
@@ -278,26 +275,18 @@ export const updateMyHotel = async (req, res, next) => {
     const images = imageList(req.body.images);
     if (images.length > MAX_HOTEL_IMAGES) return res.status(400).json({ message: `Khách sạn có tối đa ${MAX_HOTEL_IMAGES} ảnh.` });
 
-    const changes = FORM_APPROVAL_FIELDS
-      .filter((field) => proposed[field] !== hotel[field])
-      .map((field) => ({ field, currentValue: hotel[field], proposedValue: proposed[field] }));
-    if (changes.length && await PartnerChangeRequest.exists({ hotelId: hotel._id, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } })) {
-      return res.status(409).json({ message: 'Khách sạn đang có yêu cầu thay đổi nhạy cảm chờ xử lý.' });
-    }
-
     const previousImages = hotel.images.map(({ publicId }) => ({ publicId }));
-    hotel.set({ description: description?.trim() || '', amenities: stringList(amenities), checkInTime, checkOutTime, cancellationPolicy, images });
+    hotel.set({ ...proposed, description: description?.trim() || '', amenities: stringList(amenities), checkInTime, checkOutTime, cancellationPolicy, images });
     await hotel.save();
     removeDroppedImages(req.user._id, previousImages, images);
 
-    const changeRequest = changes.length
-      ? await PartnerChangeRequest.create({ hotelId: hotel._id, partnerId: req.user._id, changes })
-      : await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
-    res.json({
-      message: changes.length ? 'Đã lưu thay đổi và gửi các thông tin nhạy cảm để quản lý vận hành phê duyệt.' : 'Đã lưu thay đổi thông tin khách sạn.',
-      hotel,
-      changeRequest,
-    });
+    // Yêu cầu thay đổi cũ còn chờ duyệt (từ trước khi bỏ bước duyệt) được hủy để khi quản lý vận hành duyệt
+    // sau này không ghi đè lên thông tin partner vừa tự sửa
+    await PartnerChangeRequest.updateMany(
+      { hotelId: hotel._id, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } },
+      { $set: { status: 'CANCELLED', decisionNote: 'Đối tác đã tự cập nhật thông tin khách sạn.' } },
+    );
+    res.json({ message: 'Đã lưu thay đổi thông tin khách sạn.', hotel });
   } catch (error) {
     if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
     next(error);

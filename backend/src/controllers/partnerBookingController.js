@@ -293,18 +293,32 @@ export const cancelPartnerBooking = async (req, res, next) => {
     );
     if (!updated.modifiedCount) return res.status(409).json({ message: MSG_NOT_CONFIRMED });
 
+    // Hoàn tiền được mô phỏng: hủy xong là coi như đã hoàn, ghi một giao dịch REFUND để lưu vết.
+    // paymentStatus giữ PAID vì màn của khách dựa vào đó để hiện phần hoàn tiền.
+    let cancellationId = null;
     try {
-      await BookingCancellation.create({
+      const cancellation = await BookingCancellation.create({
         bookingId: booking._id,
         reason: `${REASON_PREFIX[initiator]}: ${cleanReason}`,
         note: cleanNote,
         cancelledAt: now,
         cancellationFee,
         refundAmount,
-        // Chỉ ghi nhận số tiền cần hoàn; việc chuyển tiền do luồng hoàn tiền xử lý
-        refundStatus: refundAmount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+        refundStatus: refundAmount > 0 ? 'PROCESSED' : 'NOT_APPLICABLE',
       });
+      cancellationId = cancellation._id;
+      if (refundAmount > 0) {
+        await Payment.create({
+          bookingId: booking._id,
+          amount: refundAmount,
+          type: 'REFUND',
+          status: 'SUCCESS',
+          txnRef: `REF-${booking.bookingCode}-${now.getTime()}`,
+          payDate: now,
+        });
+      }
     } catch (error) {
+      if (cancellationId) await BookingCancellation.deleteOne({ _id: cancellationId });
       await Booking.updateOne({ _id: booking._id, bookingStatus: 'CANCELLED' }, { $set: { bookingStatus: 'CONFIRMED' } });
       throw error;
     }
@@ -325,8 +339,8 @@ export const cancelPartnerBooking = async (req, res, next) => {
       recipientId: booking.customerId,
       title: 'Đặt phòng đã bị hủy',
       message: initiator === 'HOTEL'
-        ? `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} vì: ${cleanReason}. Bạn được hoàn ${formatVnd(refundAmount)}.`
-        : `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} theo yêu cầu của bạn. Số tiền hoàn: ${formatVnd(refundAmount)}.`,
+        ? `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} vì: ${cleanReason}. Bạn đã được hoàn ${formatVnd(refundAmount)}.`
+        : `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} theo yêu cầu của bạn. Số tiền đã hoàn: ${formatVnd(refundAmount)}.`,
       entityType: 'BOOKING',
       entityId: booking._id,
     });

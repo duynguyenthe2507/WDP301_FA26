@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Card } from "react-bootstrap";
-import { FaBed, FaCalendarCheck, FaChartBar, FaHotel, FaStar } from "react-icons/fa";
+import { FaBed, FaCalendarCheck, FaChartBar, FaExclamationTriangle, FaHotel, FaStar } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 const PartnerDashboard = () => (
@@ -22,6 +22,9 @@ const PartnerDashboard = () => (
       </div>
       <div className="col-md-6">
         <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaStar className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Đánh giá của khách</h3><p className="text-muted small">Xem điểm đánh giá và nhận xét của khách về khách sạn.</p><Button as={Link} to="/partner/reviews" variant="outline-dark" size="sm">Xem đánh giá</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaExclamationTriangle className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Khiếu nại của khách</h3><p className="text-muted small">Xem khiếu nại liên quan đến khách sạn và gửi phản hồi cho bộ phận vận hành.</p><Button as={Link} to="/partner/disputes" variant="outline-dark" size="sm">Xem khiếu nại</Button></Card.Body></Card>
       </div>
     </div>
   </div>
