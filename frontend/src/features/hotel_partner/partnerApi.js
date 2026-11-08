@@ -7,6 +7,7 @@ export const createHotel = (draft, token) => axios.post('http://localhost:9999/a
   details: draft.details,
   profile: draft.profile,
   images: draft.photos,
+  termsAccepted: draft.termsAccepted,
 }, { headers: { Authorization: `Bearer ${token}` } });
 
 // type: 'hotel' | 'room' — trả về { images: [{ url, publicId }] }
@@ -75,6 +76,10 @@ export const getPartnerDispute = (id, token) => axios.get(`http://localhost:9999
 });
 
 export const respondPartnerDispute = (id, message, token) => axios.post(`http://localhost:9999/api/partner/disputes/${id}/responses`, { message }, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const editPartnerDisputeResponse = (id, index, message, token) => axios.put(`http://localhost:9999/api/partner/disputes/${id}/responses/${index}`, { message }, {
   headers: { Authorization: `Bearer ${token}` },
 });
 

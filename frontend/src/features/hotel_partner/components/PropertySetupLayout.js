@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { FaCheck } from "react-icons/fa";
-import { Button } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Alert, Button } from "react-bootstrap";
+import { Navigate, useNavigate } from "react-router-dom";
+import { usePropertyDraft } from "../context/PropertyDraftContext";
 
 export const propertySteps = [
   "Vị trí",
@@ -23,8 +25,30 @@ const PropertySetupLayout = ({
   beforeNext,
   onNext,
   isSubmitting = false,
+  invalid = false,
+  onInvalid,
 }) => {
   const navigate = useNavigate();
+  const { draft } = usePropertyDraft();
+  const [blocked, setBlocked] = useState(false);
+
+  // Chưa đồng ý điều khoản ở bước đầu thì không vào được các bước sau
+  if (!draft.termsAccepted) return <Navigate to="/partner/terms" replace />;
+
+  const handleNext = () => {
+    if (invalid) {
+      setBlocked(true);
+      onInvalid?.();
+      return;
+    }
+    if (onNext) {
+      onNext();
+      return;
+    }
+    beforeNext?.();
+    navigate(next);
+  };
+
   return (
     <div
       className="bg-white d-flex flex-column"
@@ -100,6 +124,11 @@ const PropertySetupLayout = ({
             </div>
             <h1 className="fs-2 fw-semibold mb-3">{title}</h1>
             {children}
+            {blocked && invalid && (
+              <Alert variant="danger" className="small py-2 mt-3 mb-0" role="alert">
+                Vui lòng kiểm tra lại các trường được đánh dấu.
+              </Alert>
+            )}
           </main>
         </div>
       </div>
@@ -123,13 +152,7 @@ const PropertySetupLayout = ({
             className="rounded-pill px-4"
             size="sm"
             disabled={disableNext || isSubmitting}
-            onClick={
-              onNext ||
-              (() => {
-                beforeNext?.();
-                navigate(next);
-              })
-            }
+            onClick={handleNext}
           >
             {isSubmitting ? "Đang đăng..." : nextLabel}
           </Button>

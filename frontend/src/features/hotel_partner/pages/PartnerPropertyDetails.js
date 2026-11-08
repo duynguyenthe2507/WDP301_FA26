@@ -4,10 +4,14 @@ import { FaStar } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 import { CANCELLATION_POLICIES } from "../data/hotelOptions";
+import { hasErrors, MAX_HOTEL_NAME, validateDetails } from "../data/propertyValidation";
 
 const PartnerPropertyDetails = () => {
   const { draft, updateSection } = usePropertyDraft();
   const [form, setForm] = useState(draft.details);
+  const [showErrors, setShowErrors] = useState(false);
+  const errors = validateDetails(form);
+  const shown = showErrors ? errors : {};
   const update = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     updateSection("details", { [field]: value });
@@ -19,15 +23,19 @@ const PartnerPropertyDetails = () => {
       previous="/partner/property-photos"
       next="/partner/property-profile"
       beforeNext={() => updateSection("details", form)}
+      invalid={hasErrors(errors)}
+      onInvalid={() => setShowErrors(true)}
     >
       <Form.Group className="mb-4">
         <Form.Label>Tên cơ sở lưu trú</Form.Label>
         <Form.Control
           value={form.name}
-          maxLength={50}
+          maxLength={MAX_HOTEL_NAME}
+          isInvalid={!!shown.name}
           onChange={(e) => update("name", e.target.value)}
         />
-        <Form.Text>{form.name.length}/50</Form.Text>
+        <Form.Control.Feedback type="invalid">{shown.name}</Form.Control.Feedback>
+        <Form.Text>{form.name.length}/{MAX_HOTEL_NAME}</Form.Text>
       </Form.Group>
       <Form.Group className="mb-4">
         <Form.Label>Mô tả khách sạn</Form.Label>
@@ -54,6 +62,7 @@ const PartnerPropertyDetails = () => {
             />
           </button>
         ))}
+        {shown.stars && <div className="text-danger small mt-1">{shown.stars}</div>}
       </section>
       <section className="mb-4">
         <h2 className="h6 fw-semibold">Giờ nhận và trả phòng</h2>
@@ -63,18 +72,20 @@ const PartnerPropertyDetails = () => {
             <Form.Control
               type="time"
               value={form.checkInTime}
+              isInvalid={!!shown.checkInTime}
               onChange={(e) => update("checkInTime", e.target.value)}
-              required
             />
+            <Form.Control.Feedback type="invalid">{shown.checkInTime}</Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="col-md-6">
             <Form.Label>Giờ trả phòng</Form.Label>
             <Form.Control
               type="time"
               value={form.checkOutTime}
+              isInvalid={!!shown.checkOutTime}
               onChange={(e) => update("checkOutTime", e.target.value)}
-              required
             />
+            <Form.Control.Feedback type="invalid">{shown.checkOutTime}</Form.Control.Feedback>
           </Form.Group>
         </div>
       </section>
@@ -92,6 +103,7 @@ const PartnerPropertyDetails = () => {
             className="mb-3"
           />
         ))}
+        {shown.cancellation && <div className="text-danger small">{shown.cancellation}</div>}
       </section>
     </PropertySetupLayout>
   );

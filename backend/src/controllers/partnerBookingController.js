@@ -70,12 +70,13 @@ export const getPartnerBookings = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const { search = '', status, from, to, sort = 'checkIn' } = req.query;
+    const { status, from, to, sort = 'checkIn' } = req.query;
+    const search = typeof req.query.search === 'string' ? req.query.search : '';
     if ((from && !isValidDay(from)) || (to && !isValidDay(to)) || (from && to && rangeError(from, to))) {
       return res.status(400).json({ message: rangeError(from || to, to || from) || rangeError(from, to) });
     }
-    if (status && !STATUS_FILTERS[status]) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
-    if (!SORTS[sort]) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
+    if (status && !Object.hasOwn(STATUS_FILTERS, status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
+    if (!Object.hasOwn(SORTS, sort)) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
 
     const now = new Date();
     const acknowledgedIds = status === 'NEW'
@@ -268,8 +269,9 @@ export const cancelPartnerBooking = async (req, res, next) => {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
     if (!mongoose.isValidObjectId(req.params.id)) return notFound(res);
-    const { initiator, reason, note, waiveFee } = req.body || {};
-    if (!CANCEL_REASONS[initiator]) return res.status(400).json({ message: 'Vui lòng chọn ai muốn hủy đặt phòng.' });
+    const { initiator, reason, note } = req.body || {};
+    const waiveFee = req.body?.waiveFee === true;
+    if (typeof initiator !== 'string' || !Object.hasOwn(CANCEL_REASONS, initiator)) return res.status(400).json({ message: 'Vui lòng chọn ai muốn hủy đặt phòng.' });
     const cleanReason = typeof reason === 'string' ? reason.trim() : '';
     const cleanNote = typeof note === 'string' ? note.trim() : '';
     if (!cleanReason || !cleanNote) return res.status(400).json({ message: MSG_MISSING_REASON });
@@ -333,7 +335,7 @@ export const cancelPartnerBooking = async (req, res, next) => {
       old_status: 'CONFIRMED',
       new_status: 'CANCELLED',
       new_reason: cleanReason,
-      metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id, initiator, note: cleanNote, waiveFee: Boolean(waiveFee), refundAmount, cancellationFee },
+      metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id, initiator, note: cleanNote, waiveFee, refundAmount, cancellationFee },
     });
     await Notification.create({
       recipientId: booking.customerId,

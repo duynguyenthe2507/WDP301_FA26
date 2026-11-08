@@ -11,11 +11,20 @@ const PAGE_SIZE = 10;
 const STATUSES = ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'];
 const CLOSED = ['RESOLVED', 'REJECTED'];
 const MAX_MESSAGE = 2000;
+const CLOSED_EDIT_MESSAGE = 'Khiếu nại đã được đóng nên không thể sửa phản hồi.';
 const notFound = (res) => res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
 const guestNameOf = (booking) => (booking && ((!booking.isSelfGuest && booking.guestFullName) || booking.bookerFullName)) || '—';
 
 const findOwnedDispute = (hotel, id) =>
   mongoose.isValidObjectId(id) ? Dispute.findOne({ _id: id, hotelId: hotel._id }) : null;
+
+const readMessage = (req) => (typeof req.body?.message === 'string' ? req.body.message.trim() : '');
+const messageError = (message) => {
+  if (!message) return 'Vui lòng nhập nội dung phản hồi.';
+  return message.length > MAX_MESSAGE ? `Nội dung phản hồi tối đa ${MAX_MESSAGE} ký tự.` : '';
+};
+const findDetailBooking = (dispute) => Booking.findById(dispute.bookingId)
+  .select('bookerFullName guestFullName isSelfGuest checkInDate checkOutDate totalAmount bookingStatus').lean();
 
 const toDetail = (dispute, booking, partnerId) => ({
   _id: dispute._id,
@@ -35,9 +44,10 @@ const toDetail = (dispute, booking, partnerId) => ({
     totalAmount: booking.totalAmount,
     bookingStatus: booking.bookingStatus,
   },
-  responses: (dispute.responses || []).map(({ message, respondedBy, respondedAt }) => ({
+  responses: (dispute.responses || []).map(({ message, respondedBy, respondedAt, editedAt }) => ({
     message,
     respondedAt,
+    editedAt: editedAt || null,
     from: respondedBy?.equals?.(partnerId) ? 'PARTNER' : 'PLATFORM',
   })),
   resolution: dispute.resolution?.resolvedAt
@@ -98,8 +108,7 @@ export const getPartnerDispute = async (req, res, next) => {
     if (!hotel) return notApproved(res);
     const dispute = await findOwnedDispute(hotel, req.params.id)?.lean();
     if (!dispute) return notFound(res);
-    const booking = await Booking.findById(dispute.bookingId)
-      .select('bookerFullName guestFullName isSelfGuest checkInDate checkOutDate totalAmount bookingStatus').lean();
+    const booking = await findDetailBooking(dispute);
     res.json({ dispute: toDetail(dispute, booking, req.user._id) });
   } catch (error) { next(error); }
 };
@@ -109,9 +118,9 @@ export const respondPartnerDispute = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
-    if (!message) return res.status(400).json({ message: 'Vui lòng nhập nội dung phản hồi.' });
-    if (message.length > MAX_MESSAGE) return res.status(400).json({ message: `Nội dung phản hồi tối đa ${MAX_MESSAGE} ký tự.` });
+    const message = readMessage(req);
+    const invalid = messageError(message);
+    if (invalid) return res.status(400).json({ message: invalid });
 
     const dispute = await findOwnedDispute(hotel, req.params.id);
     if (!dispute) return notFound(res);
@@ -148,8 +157,61 @@ export const respondPartnerDispute = async (req, res, next) => {
       });
     }
 
-    const booking = await Booking.findById(dispute.bookingId)
-      .select('bookerFullName guestFullName isSelfGuest checkInDate checkOutDate totalAmount bookingStatus').lean();
+    const booking = await findDetailBooking(dispute);
     res.status(201).json({ message: 'Đã gửi phản hồi đến bộ phận vận hành.', dispute: toDetail(updated, booking, req.user._id) });
+  } catch (error) { next(error); }
+};
+
+// Sửa phản hồi của chính khách sạn khi khiếu nại chưa đóng; không đổi trạng thái, nội dung cũ được giữ trong audit log
+export const editPartnerDisputeResponse = async (req, res, next) => {
+  try {
+    const hotel = await findApprovedHotel(req.user._id);
+    if (!hotel) return notApproved(res);
+    const message = readMessage(req);
+    const invalid = messageError(message);
+    if (invalid) return res.status(400).json({ message: invalid });
+
+    const dispute = await findOwnedDispute(hotel, req.params.id);
+    if (!dispute) return notFound(res);
+    if (CLOSED.includes(dispute.status)) return res.status(409).json({ message: CLOSED_EDIT_MESSAGE });
+
+    // Mảng phản hồi chỉ được thêm vào cuối nên vị trí của một phản hồi không đổi
+    const index = /^\d+$/.test(req.params.index) ? Number(req.params.index) : -1;
+    const response = dispute.responses[index];
+    if (!response || !response.respondedBy.equals(req.user._id)) return res.status(404).json({ message: 'Không tìm thấy phản hồi.' });
+
+    if (response.message === message) {
+      return res.json({ message: 'Nội dung phản hồi không thay đổi.', dispute: toDetail(dispute, await findDetailBooking(dispute), req.user._id) });
+    }
+
+    const previousMessage = response.message;
+    const path = `responses.${index}`;
+    const updated = await Dispute.findOneAndUpdate(
+      { _id: dispute._id, hotelId: hotel._id, status: { $nin: CLOSED }, [`${path}.respondedBy`]: req.user._id },
+      { $set: { [`${path}.message`]: message, [`${path}.editedAt`]: new Date() } },
+      { returnDocument: 'after' },
+    ).lean();
+    if (!updated) return res.status(409).json({ message: CLOSED_EDIT_MESSAGE });
+
+    await AuditLog.create({
+      admin_id: req.user._id,
+      action: 'DISPUTE_PARTNER_RESPONSE_EDITED',
+      entityType: 'DISPUTE',
+      entityId: dispute._id,
+      old_status: dispute.status,
+      new_status: updated.status,
+      metadata: { bookingCode: dispute.bookingCode, hotelId: hotel._id, responseIndex: index, previousMessage, newMessage: message },
+    });
+    if (dispute.assignedTo) {
+      await Notification.create({
+        recipientId: dispute.assignedTo,
+        title: 'Khách sạn đã sửa phản hồi khiếu nại',
+        message: `${hotel.name} đã sửa phản hồi khiếu nại của đặt phòng ${dispute.bookingCode}.`,
+        entityType: 'DISPUTE',
+        entityId: dispute._id,
+      });
+    }
+
+    res.json({ message: 'Đã cập nhật phản hồi.', dispute: toDetail(updated, await findDetailBooking(dispute), req.user._id) });
   } catch (error) { next(error); }
 };

@@ -1,11 +1,11 @@
 import { useContext, useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Form, Spinner } from "react-bootstrap";
-import { FaArrowLeft, FaPaperclip } from "react-icons/fa";
+import { FaArrowLeft, FaPaperclip, FaPen } from "react-icons/fa";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import { BOOKING_STATUS, formatDate, formatDateTime, formatMoney } from "../data/bookingOptions";
 import { DISPUTE_CATEGORY, DISPUTE_OUTCOME, DISPUTE_STATUS, MAX_RESPONSE_LENGTH } from "../data/disputeOptions";
-import { getPartnerDispute, respondPartnerDispute } from "../partnerApi";
+import { editPartnerDisputeResponse, getPartnerDispute, respondPartnerDispute } from "../partnerApi";
 
 const isImage = (file) => (file.fileType || "").startsWith("image/") || /^data:image\//.test(file.fileUrl);
 
@@ -20,6 +20,9 @@ const PartnerDisputeDetail = () => {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [sending, setSending] = useState(false);
+  const [editing, setEditing] = useState(null); // { index, message } của phản hồi đang sửa
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -49,6 +52,31 @@ const PartnerDisputeDetail = () => {
       }
     }
     setSending(false);
+  };
+
+  const startEdit = (index, currentMessage) => {
+    setEditing({ index, message: currentMessage });
+    setEditError("");
+    setNotice("");
+  };
+
+  const saveEdit = async (event) => {
+    event.preventDefault();
+    if (!editing.message.trim()) { setEditError("Vui lòng nhập nội dung phản hồi."); return; }
+    setSaving(true);
+    try {
+      const { data } = await editPartnerDisputeResponse(dispute._id, editing.index, editing.message.trim(), token);
+      setDispute(data.dispute);
+      setEditing(null);
+      setNotice(data.message);
+    } catch (requestError) {
+      setEditError(requestError.response?.data?.message || "Không thể sửa phản hồi.");
+      if (requestError.response?.status === 409) {
+        setEditing(null);
+        getPartnerDispute(dispute._id, token).then(({ data }) => setDispute(data.dispute)).catch(() => {});
+      }
+    }
+    setSaving(false);
   };
 
   if (loadError) return <Alert variant="danger">{loadError} <Link to="/partner/disputes">Quay lại danh sách</Link></Alert>;
@@ -92,8 +120,31 @@ const PartnerDisputeDetail = () => {
             {!dispute.responses.length && <p className="small text-muted">Chưa có phản hồi nào.</p>}
             {dispute.responses.map((item, index) => (
               <div key={index} className={`border-start border-3 ps-3 mb-3 ${item.from === "PARTNER" ? "border-primary" : "border-secondary"}`}>
-                <div className="small fw-semibold">{item.from === "PARTNER" ? "Khách sạn" : "Bộ phận vận hành"} <span className="text-muted fw-normal">· {formatDateTime(item.respondedAt)}</span></div>
-                <div className="small" style={{ whiteSpace: "pre-line" }}>{item.message}</div>
+                <div className="d-flex justify-content-between align-items-start gap-2">
+                  <div className="small fw-semibold">
+                    {item.from === "PARTNER" ? "Khách sạn" : "Bộ phận vận hành"}{" "}
+                    <span className="text-muted fw-normal">· {formatDateTime(item.respondedAt)}{item.editedAt && ` · đã chỉnh sửa lúc ${formatDateTime(item.editedAt)}`}</span>
+                  </div>
+                  {item.from === "PARTNER" && dispute.canRespond && editing?.index !== index && (
+                    <Button variant="link" size="sm" className="p-0 small text-decoration-none" onClick={() => startEdit(index, item.message)}><FaPen className="me-1" />Sửa</Button>
+                  )}
+                </div>
+                {editing?.index === index ? (
+                  <Form onSubmit={saveEdit} className="mt-2">
+                    <Form.Control as="textarea" rows={3} autoFocus aria-label="Sửa nội dung phản hồi" maxLength={MAX_RESPONSE_LENGTH} value={editing.message}
+                      onChange={(event) => { setEditing({ index, message: event.target.value }); setEditError(""); }} />
+                    <div className="d-flex justify-content-between small mt-1">
+                      <span className="text-danger">{editError}</span>
+                      <span className="text-muted">{editing.message.length}/{MAX_RESPONSE_LENGTH}</span>
+                    </div>
+                    <div className="d-flex justify-content-end gap-2 mt-1">
+                      <Button variant="outline-secondary" size="sm" disabled={saving} onClick={() => setEditing(null)}>Hủy</Button>
+                      <Button type="submit" variant="dark" size="sm" disabled={saving || editing.message.trim() === item.message}>{saving ? "Đang lưu…" : "Lưu"}</Button>
+                    </div>
+                  </Form>
+                ) : (
+                  <div className="small" style={{ whiteSpace: "pre-line" }}>{item.message}</div>
+                )}
               </div>
             ))}
 
