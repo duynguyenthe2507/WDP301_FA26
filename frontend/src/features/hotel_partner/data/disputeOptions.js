@@ -5,6 +5,7 @@ export const DISPUTE_STATUS = {
   WAITING_PARTNER: { label: "Chờ khách sạn phản hồi", bg: "danger" },
   RESOLVED: { label: "Đã giải quyết", bg: "success" },
   REJECTED: { label: "Đã bác bỏ", bg: "secondary" },
+  WITHDRAWN: { label: "Khách hàng đã rút khiếu nại", bg: "secondary" },
 };
 
 export const DISPUTE_CATEGORY = {

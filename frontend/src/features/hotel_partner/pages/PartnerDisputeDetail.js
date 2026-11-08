@@ -122,7 +122,7 @@ const PartnerDisputeDetail = () => {
               <div key={index} className={`border-start border-3 ps-3 mb-3 ${item.from === "PARTNER" ? "border-primary" : "border-secondary"}`}>
                 <div className="d-flex justify-content-between align-items-start gap-2">
                   <div className="small fw-semibold">
-                    {item.from === "PARTNER" ? "Khách sạn" : "Bộ phận vận hành"}{" "}
+                    {{ PARTNER: "Khách sạn", CUSTOMER: "Khách hàng" }[item.from] || "Bộ phận vận hành"}{" "}
                     <span className="text-muted fw-normal">· {formatDateTime(item.respondedAt)}{item.editedAt && ` · đã chỉnh sửa lúc ${formatDateTime(item.editedAt)}`}</span>
                   </div>
                   {item.from === "PARTNER" && dispute.canRespond && editing?.index !== index && (
@@ -166,7 +166,11 @@ const PartnerDisputeDetail = () => {
                 </div>
               </Form>
             ) : (
-              <p className="small text-muted mb-0">Khiếu nại đã được đóng nên không thể phản hồi thêm.</p>
+              <p className="small text-muted mb-0">
+                {dispute.status === "WITHDRAWN"
+                  ? "Khách hàng đã rút khiếu nại nên khách sạn không cần phản hồi thêm."
+                  : "Khiếu nại đã được đóng nên không thể phản hồi thêm."}
+              </p>
             )}
           </Section>
         </div>

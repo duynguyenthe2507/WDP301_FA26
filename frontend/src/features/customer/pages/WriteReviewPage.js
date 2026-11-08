@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaStar, FaCloudUploadAlt, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
-import { getBookingReviewInfo, createReview } from '../CustomerApi';
+import { getBookingReviewInfo, createReview, uploadReviewImages } from '../CustomerApi';
 
 // Format ngày: DD/MM/YYYY
 const formatDateOnly = (dateVal) => {
@@ -60,6 +60,7 @@ const WriteReviewPage = () => {
   const [images, setImages] = useState([]);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Tải thông tin kỳ nghỉ
   useEffect(() => {
