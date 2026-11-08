@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import Hotel from '../models/Hotel.js';
@@ -17,7 +17,7 @@ const updateHotelRatingSummary = async (hotelId) => {
 
   await Hotel.updateOne(
     { _id: hotelId },
-    { $set: { 'ratingSummary.averageRating': average, 'ratingSummary.totalReviews': reviews.length } }
+    { $set: { averageRating: average, totalReviews: reviews.length } }
   ).catch(() => {});
 };
 
@@ -147,6 +147,17 @@ export const createReview = async (req, res) => {
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
+    }
+
+    // Bảo mật: kiểm tra quyền sở hữu và trạng thái booking
+    if (String(booking.customerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Bạn không có quyền đánh giá đơn đặt phòng này.' });
+    }
+    if (booking.paymentStatus !== 'PAID') {
+      return res.status(400).json({ message: 'Chỉ đơn đặt phòng đã thanh toán mới có thể được đánh giá.' });
+    }
+    if (booking.bookingStatus === 'CANCELLED') {
+      return res.status(400).json({ message: 'Không thể đánh giá đơn đặt phòng đã bị hủy.' });
     }
 
     // 2. Ràng buộc: 1 Booking tương ứng tối đa 1 Review
@@ -348,7 +359,12 @@ export const getBookingReviewInfo = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy thông tin kỳ nghỉ này' });
     }
 
-    const existingReview = await Review.findOne({ bookingId: booking._id }).lean();
+    // Bảo mật: chỉ chủ sở hữu mới được xem thông tin đơn để đánh giá
+    if (req.user && String(booking.customerId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Bạn không có quyền xem thông tin đơn này.' });
+    }
+
+        const existingReview = await Review.findOne({ bookingId: booking._id }).lean();
 
     const hotel = await Hotel.findById(booking.hotelId).lean();
 

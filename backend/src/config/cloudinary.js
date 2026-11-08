@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+﻿import { v2 as cloudinary } from 'cloudinary';
 
 // Cấu hình lúc gọi (không phải lúc import) vì index.js gọi dotenv.config() sau khi import các module
 const configure = () => {
@@ -28,4 +28,19 @@ export const uploadImageBuffer = (buffer, folder) => {
 export const deleteImage = (publicId) => {
   configure();
   return cloudinary.uploader.destroy(publicId);
+};
+
+// Upload file bất kỳ (ảnh hoặc PDF) lên Cloudinary với resource_type tự động
+export const uploadFileBuffer = (buffer, folder, resourceType = 'auto') => {
+  configure();
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, resource_type: resourceType },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve({ url: result.secure_url, publicId: result.public_id });
+      },
+    );
+    stream.end(buffer);
+  });
 };

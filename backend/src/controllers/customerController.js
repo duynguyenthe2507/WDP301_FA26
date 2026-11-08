@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
@@ -84,15 +84,22 @@ export const cleanExpiredPendingBookings = async () => {
   try {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-    const deleteResult = await Booking.deleteMany({
+    // Bug 3 fix: tìm đơn hết hạn trước, rồi xóa BookingDetail và Payment liên quan
+    const expiredBookings = await Booking.find({
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
       createdAt: { $lte: fifteenMinutesAgo },
-    });
+    }).select('_id');
 
-    if (deleteResult.deletedCount > 0) {
-      console.log(`[Auto-Clean] Đã tự động xóa ${deleteResult.deletedCount} đơn phòng PENDING_PAYMENT quá hạn 15 phút.`);
+    const expiredIds = expiredBookings.map((b) => b._id);
+
+    if (expiredIds.length > 0) {
+      await BookingDetail.deleteMany({ bookingId: { $in: expiredIds } });
+      await Payment.deleteMany({ bookingId: { $in: expiredIds } });
+      await Booking.deleteMany({ _id: { $in: expiredIds } });
+      console.log(`[Auto-Clean] Đã tự động xóa ${expiredIds.length} đơn phòng PENDING_PAYMENT quá hạn 15 phút (kèm BookingDetail và Payment).`);
     }
+
   } catch (error) {
     console.error('Lỗi khi tự động dọn dẹp đơn phòng quá hạn:', error.message);
   }
@@ -510,7 +517,8 @@ export const getMyBookings = async (req, res) => {
       const now = new Date();
       if (status === 'UPCOMING') {
         filter.bookingStatus = 'CONFIRMED';
-        filter.checkInDate = { $gte: now };
+        // Bug 8 fix: bao gồm cả đơn đang lưu trú (checkIn < now < checkOut)
+        filter.checkOutDate = { $gt: now };
       } else if (status === 'PENDING') {
         filter.bookingStatus = 'PENDING_PAYMENT';
       } else if (status === 'COMPLETED') {
