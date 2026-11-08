@@ -7,6 +7,7 @@ export const createHotel = (draft, token) => axios.post('http://localhost:9999/a
   details: draft.details,
   profile: draft.profile,
   images: draft.photos,
+  termsAccepted: draft.termsAccepted,
 }, { headers: { Authorization: `Bearer ${token}` } });
 
 // type: 'hotel' | 'room' — trả về { images: [{ url, publicId }] }

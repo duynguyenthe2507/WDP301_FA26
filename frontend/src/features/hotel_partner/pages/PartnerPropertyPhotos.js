@@ -3,10 +3,13 @@ import { Button } from "react-bootstrap";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import ImageUploadButton from "../components/ImageUploadButton";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { hasErrors, MAX_HOTEL_IMAGES, validatePhotos } from "../data/propertyValidation";
 
 const PartnerPropertyPhotos = () => {
   const { draft, setDraft } = usePropertyDraft();
   const [photos, setPhotos] = useState(draft.photos || []);
+  const [showErrors, setShowErrors] = useState(false);
+  const errors = validatePhotos(photos);
   return (
     <PropertySetupLayout
       step={3}
@@ -14,18 +17,24 @@ const PartnerPropertyPhotos = () => {
       previous="/partner/property-rooms"
       next="/partner/property-details"
       beforeNext={() => setDraft((current) => ({ ...current, photos }))}
+      invalid={hasErrors(errors)}
+      onInvalid={() => setShowErrors(true)}
     >
       <p className="text-muted">
-        Chọn ảnh từ máy (JPG, PNG, WEBP, tối đa 5MB mỗi ảnh). Ảnh đầu tiên sẽ
-        là ảnh đại diện.
+        Chọn từ 1 đến {MAX_HOTEL_IMAGES} ảnh (JPG, PNG, WEBP, GIF, tối đa 5MB
+        mỗi ảnh). Ảnh đầu tiên sẽ là ảnh đại diện.
       </p>
       <div className="mb-3">
         <ImageUploadButton
           type="hotel"
+          maxFiles={MAX_HOTEL_IMAGES - photos.length}
           onUploaded={(images) =>
             setPhotos((current) => [...current, ...images])
           }
         />
+        {showErrors && errors.photos && (
+          <div className="text-danger small mt-2">{errors.photos}</div>
+        )}
       </div>
       <div className="d-flex flex-wrap gap-3">
         {photos.map((photo, index) => (

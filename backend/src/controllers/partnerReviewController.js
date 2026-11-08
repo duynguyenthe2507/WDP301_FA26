@@ -42,7 +42,7 @@ export const getPartnerReviews = async (req, res, next) => {
       return res.status(400).json({ message: rangeError(from || to, to || from) || rangeError(from, to) });
     }
     if (rating && !['1', '2', '3', '4', '5'].includes(rating)) return res.status(400).json({ message: 'Số sao không hợp lệ.' });
-    if (!SORTS[sort]) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
+    if (!Object.hasOwn(SORTS, sort)) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
 
     const roomTypes = await RoomType.find({ hotelId: hotel._id }).select('name isDeleted').sort({ createdAt: 1 }).lean();
     if (roomTypeId && !mongoose.isValidObjectId(roomTypeId)) return res.status(400).json({ message: 'Loại phòng không hợp lệ.' });

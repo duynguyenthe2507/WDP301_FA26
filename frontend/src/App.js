@@ -116,7 +116,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={['HOTEL_PARTNER']} />}>
             <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
               {/* Chưa có khách sạn: chỉ vào được wizard */}
-              <Route element={<PartnerHotelGate allow="wizard" />}>
+              <Route element={<PartnerHotelGate key="wizard" allow="wizard" />}>
                 <Route path="terms" element={<PartnerTerms />} />
                 <Route path="property-location" element={<PartnerPropertyLocation />} />
                 <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
@@ -128,12 +128,12 @@ function App() {
               </Route>
 
               {/* Đã gửi hồ sơ (mọi trạng thái): xem trạng thái */}
-              <Route element={<PartnerHotelGate allow="status" />}>
+              <Route element={<PartnerHotelGate key="status" allow="status" />}>
                 <Route path="registration-status" element={<PartnerRegistrationStatus />} />
               </Route>
 
               {/* Đã duyệt: dashboard và các trang quản lý */}
-              <Route element={<PartnerHotelGate allow="approved" />}>
+              <Route element={<PartnerHotelGate key="approved" allow="approved" />}>
                 <Route index element={<PartnerDashboard />} />
                 <Route path="hotel-information" element={<PartnerHotelInformation />} />
                 <Route path="room-types" element={<PartnerRoomTypes />} />

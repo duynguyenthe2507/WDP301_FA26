@@ -7,6 +7,7 @@ import { CANCELLATION_POLICIES, HOTEL_AMENITIES } from "../data/hotelOptions";
 import { getHotelDetail, updateHotel } from "../partnerApi";
 
 const MAX_IMAGES = 20;
+const MAX_NAME = 50;
 const MAX_IMAGES_PER_UPLOAD = 10;
 
 const PartnerHotelInformation = () => {
@@ -39,6 +40,7 @@ const PartnerHotelInformation = () => {
   const reset = () => { setForm(hotel); setSaveError(""); setSavedMessage(""); };
   const submit = async (event) => {
     event.preventDefault();
+    if (!form.images.length) { setSavedMessage(""); setSaveError("Vui lòng giữ lại ít nhất 1 ảnh khách sạn."); return; }
     setSaving(true);
     setSaveError("");
     setSavedMessage("");
@@ -70,7 +72,7 @@ const PartnerHotelInformation = () => {
       <Form onSubmit={submit}>
         <Section title="Thông tin cơ bản" description="Mọi thay đổi được áp dụng ngay sau khi lưu. Khách sạn chịu trách nhiệm về tính chính xác của thông tin hiển thị cho khách.">
           <div className="row g-3">
-            <Field className="col-md-8" label="Tên khách sạn" required name="name" value={form.name} onChange={update} />
+            <Field className="col-md-8" label="Tên khách sạn" required maxLength={MAX_NAME} name="name" value={form.name} onChange={update} />
             <Form.Group className="col-md-4"><Form.Label>Hạng sao chính thức <span className="text-danger">*</span></Form.Label><Form.Select name="starRating" value={form.starRating} onChange={updateStars}>{[1, 2, 3, 4, 5].map((star) => <option key={star} value={star}>{star} sao</option>)}</Form.Select></Form.Group>
             <Field className="col-12" label="Mô tả khách sạn" required as="textarea" rows={3} name="description" value={form.description} onChange={update} />
             <Field className="col-md-6" label="Tỉnh / thành phố" required name="provinceCity" value={form.provinceCity} onChange={update} />
