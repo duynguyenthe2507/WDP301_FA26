@@ -1,28 +1,15 @@
 import { createContext, useContext, useState } from "react";
 
 const PropertyDraftContext = createContext(null);
-const blankRoom = () => ({
-  name: "",
-  description: "",
-  bedType: "",
-  roomSize: "0",
-  adultCapacity: 1,
-  childrenCapacity: 0,
-  totalRooms: 1,
-  basePrice: "2000000",
-  amenities: [],
-  images: [],
-});
 const initialDraft = {
+  termsAccepted: false,
   location: {
-    country: "",
     provinceCity: "",
     district: "",
     address: "",
-    zipCode: "",
   },
   amenities: [],
-  rooms: [blankRoom()],
+  rooms: [],
   photos: [],
   details: {
     name: "",
@@ -36,12 +23,12 @@ const initialDraft = {
     business: "",
     address: "",
     postcode: "",
-    country: "",
+    country: "Việt Nam",
     firstName: "",
     lastName: "",
-    nationality: "",
+    nationality: "Việt Nam",
     birthday: "",
-    residenceCountry: "",
+    residenceCountry: "Việt Nam",
     region: "",
     city: "",
     language: "Tiếng Việt",
@@ -57,7 +44,8 @@ export const PropertyDraftProvider = ({ children }) => {
       ...current,
       [section]: { ...current[section], ...values },
     }));
-  const clearDraft = () => setDraft(initialDraft);
+  // Giữ termsAccepted để layout wizard không chuyển về trang điều khoản ngay trước khi sang trang trạng thái
+  const clearDraft = () => setDraft({ ...initialDraft, termsAccepted: true });
   return (
     <PropertyDraftContext.Provider
       value={{ draft, setDraft, updateSection, clearDraft }}
