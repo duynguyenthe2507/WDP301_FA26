@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 const router = express.Router();
 import {
   pingCustomer,
@@ -32,6 +32,8 @@ import {
   deleteReview,
 } from '../controllers/reviewController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { uploadImages, uploadDisputeFiles } from '../middlewares/uploadMiddleware.js';
+import { uploadReviewImages, uploadDisputeAttachments } from '../controllers/uploadController.js';
 
 router.get('/ping', pingCustomer);
 
@@ -64,6 +66,10 @@ router.post('/reviews', verifyToken, authorizeRoles('CUSTOMER'), createReview);
 router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview);
 router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
 
+
+// Upload routes (ảnh đánh giá và tệp khiếu nại)
+router.post('/upload/review-images', verifyToken, authorizeRoles('CUSTOMER'), uploadImages, uploadReviewImages);
+router.post('/upload/dispute-files', verifyToken, authorizeRoles('CUSTOMER'), uploadDisputeFiles, uploadDisputeAttachments);
 
 // Hotel routes (Search, Filter, Detail, Availability, Reviews)
 router.get('/hotels', getHotels);
