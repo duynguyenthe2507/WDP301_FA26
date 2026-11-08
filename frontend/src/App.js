@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PropertyDraftProvider } from './features/hotel_partner/context/PropertyDraftContext';
 
@@ -33,7 +33,7 @@ import MyDisputesPage from './features/customer/pages/MyDisputesPage';
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
-//Partners Pages
+// Partners Pages
 import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
 import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
 import PartnerPropertyAmenities from './features/hotel_partner/pages/PartnerPropertyAmenities';
@@ -53,19 +53,21 @@ import PartnerReviews from './features/hotel_partner/pages/PartnerReviews';
 import PartnerDisputes from './features/hotel_partner/pages/PartnerDisputes';
 import PartnerDisputeDetail from './features/hotel_partner/pages/PartnerDisputeDetail';
 import PartnerHotelGate from './features/hotel_partner/components/PartnerHotelGate';
-// Role Dashboards
+
+// Role Dashboards & OM Pages
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/operation_manager/pages/ManagerDashboard';
 import ManagerQueuePage from './features/operation_manager/pages/ManagerQueuePage';
+import DisputeResolutionPage from './features/operation_manager/pages/DisputeResolutionPage';
+import CompensationManagementPage from './features/operation_manager/pages/CompensationManagementPage';
 import PartnerOperationsPage from './features/operation_manager/pages/PartnerOperationsPage';
 import CommissionPolicyPage from './features/operation_manager/pages/CommissionPolicyPage';
 import PayoutPage from './features/operation_manager/pages/PayoutPage';
 import ManagerAuditLogPage from './features/operation_manager/pages/ManagerAuditLogPage';
 import SystemConfiguration from './features/admin/pages/SystemConfiguration';
 import SystemLog from './features/admin/pages/SystemLog';
-
 
 function App() {
   return (
@@ -149,14 +151,15 @@ function App() {
             </Route>
           </Route>
 
-          {/* Platform Manager Routes */}
+          {/* Platform Operations Manager Routes */}
           <Route element={<ProtectedRoute allowedRoles={['OPERATIONS_MANAGER']} />}>
             <Route path="/manager" element={<ManagerLayout />}>
               <Route index element={<ManagerDashboard />} />
               <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
               <Route path="partner-operations" element={<PartnerOperationsPage />} />
-              <Route path="disputes" element={<ManagerQueuePage type="disputes" />} />
-              <Route path="refunds" element={<ManagerQueuePage type="refunds" />} />
+              <Route path="disputes" element={<DisputeResolutionPage />} />
+              <Route path="compensations" element={<CompensationManagementPage />} />
+              <Route path="refunds" element={<Navigate to="/manager/compensations" replace />} />
               <Route path="commissions" element={<CommissionPolicyPage />} />
               <Route path="payouts" element={<PayoutPage />} />
               <Route path="audit-history" element={<ManagerAuditLogPage />} />
@@ -169,4 +172,3 @@ function App() {
 }
 
 export default App;
-

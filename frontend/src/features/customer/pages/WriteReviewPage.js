@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 import { Container, Row, Col, Form, Button, Spinner, Alert } from 'react-bootstrap';
 import { useParams, useNavigate, Link } from 'react-router-dom';

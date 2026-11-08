@@ -4,12 +4,12 @@ import {
   FiActivity,
   FiAlertCircle,
   FiClipboard,
-  FiCreditCard,
+  FiDollarSign,
   FiFileText,
   FiHome,
   FiLogOut,
   FiMessageSquare,
-  FiSettings,
+  FiPercent,
   FiShield,
 } from 'react-icons/fi';
 import { AuthContext } from '../../../context/AuthContext';
@@ -19,9 +19,9 @@ const navigation = [
   { to: '/manager', label: 'Tổng quan', icon: FiHome, end: true },
   { to: '/manager/verifications', label: 'Xác minh khách sạn', icon: FiShield },
   { to: '/manager/partner-operations', label: 'Yêu cầu đối tác', icon: FiMessageSquare },
-  { to: '/manager/disputes', label: 'Tranh chấp & hỗ trợ', icon: FiAlertCircle },
-  { to: '/manager/refunds', label: 'Phê duyệt hoàn tiền', icon: FiCreditCard },
-  { to: '/manager/commissions', label: 'Chính sách hoa hồng', icon: FiSettings },
+  { to: '/manager/disputes', label: 'Tranh chấp & đối chất', icon: FiAlertCircle },
+  { to: '/manager/compensations', label: 'Bồi thường khách hàng', icon: FiDollarSign },
+  { to: '/manager/commissions', label: 'Chính sách hoa hồng', icon: FiPercent },
   { to: '/manager/payouts', label: 'Phê duyệt chi trả', icon: FiClipboard },
   { to: '/manager/audit-history', label: 'Lịch sử thao tác', icon: FiFileText },
 ];
@@ -30,9 +30,10 @@ const pageTitles = {
   '/manager': 'Tổng quan vận hành',
   '/manager/verifications': 'Xác minh khách sạn',
   '/manager/partner-operations': 'Yêu cầu đối tác',
-  '/manager/disputes': 'Tranh chấp & hỗ trợ',
-  '/manager/refunds': 'Phê duyệt hoàn tiền',
-  '/manager/commissions': 'Chính sách hoa hồng',
+  '/manager/disputes': 'Tranh chấp & đối chất hai bên',
+  '/manager/compensations': 'Bồi thường & đính chính thông tin khách hàng',
+  '/manager/refunds': 'Bồi thường & đính chính thông tin khách hàng',
+  '/manager/commissions': 'Chính sách hoa hồng theo khách sạn',
   '/manager/payouts': 'Phê duyệt chi trả',
   '/manager/audit-history': 'Lịch sử thao tác',
 };
@@ -74,4 +75,3 @@ const ManagerLayout = () => {
 };
 
 export default ManagerLayout;
-
