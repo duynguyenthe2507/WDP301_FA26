@@ -17,6 +17,7 @@ const PartnerPropertyPhotos = () => {
       previous="/partner/property-rooms"
       next="/partner/property-details"
       beforeNext={() => setDraft((current) => ({ ...current, photos }))}
+      draftValues={{ photos }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}
     >

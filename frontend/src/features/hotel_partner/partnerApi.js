@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const createHotel = (draft, token) => axios.post('http://localhost:9999/api/partner/hotels', {
+const registrationPayload = (draft) => ({
   location: draft.location,
   amenities: draft.amenities,
   rooms: draft.rooms,
@@ -8,7 +8,15 @@ export const createHotel = (draft, token) => axios.post('http://localhost:9999/a
   profile: draft.profile,
   images: draft.photos,
   termsAccepted: draft.termsAccepted,
-}, { headers: { Authorization: `Bearer ${token}` } });
+});
+
+export const createHotel = (draft, token) => axios.post('http://localhost:9999/api/partner/hotels', registrationPayload(draft), { headers: { Authorization: `Bearer ${token}` } });
+
+export const resubmitHotel = (draft, token) => axios.put('http://localhost:9999/api/partner/hotels/me/registration', registrationPayload(draft), { headers: { Authorization: `Bearer ${token}` } });
+
+export const getHotelRegistration = (token) => axios.get('http://localhost:9999/api/partner/hotels/me/registration', { headers: { Authorization: `Bearer ${token}` } });
+
+export const saveHotelRegistrationDraft = (draft, step, token) => axios.put('http://localhost:9999/api/partner/hotels/me/registration/draft', { draft, step }, { headers: { Authorization: `Bearer ${token}` } });
 
 // type: 'hotel' | 'room' — trả về { images: [{ url, publicId }] }
 export const uploadImages = (files, type, token) => {

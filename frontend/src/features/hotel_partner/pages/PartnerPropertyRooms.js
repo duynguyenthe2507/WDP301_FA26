@@ -72,6 +72,7 @@ const PartnerPropertyRooms = () => {
       invalid={roomErrors.some(hasErrors)}
       onInvalid={() => setShowErrors(true)}
       beforeNext={() => setDraft((current) => ({ ...current, rooms }))}
+      draftValues={{ rooms }}
     >
       {rooms.map((room, index) => {
         const shown = showErrors ? roomErrors[index] : {};

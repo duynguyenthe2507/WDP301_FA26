@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
+import { getHotelRegistration } from "../partnerApi";
 
 const PropertyDraftContext = createContext(null);
 const initialDraft = {
@@ -37,8 +38,26 @@ const initialDraft = {
   },
 };
 
+// Dữ liệu đã lưu có thể thiếu trường, các trường thiếu lấy giá trị mặc định
+const mergeDraft = (saved) => (saved ? {
+  ...initialDraft,
+  ...saved,
+  location: { ...initialDraft.location, ...saved.location },
+  details: { ...initialDraft.details, ...saved.details },
+  profile: { ...initialDraft.profile, ...saved.profile },
+} : initialDraft);
+
 export const PropertyDraftProvider = ({ children }) => {
   const [draft, setDraft] = useState(initialDraft);
+  const [mode, setMode] = useState("create"); // create: đăng ký mới, resubmit: sửa và gửi lại hồ sơ
+  const [savedStep, setSavedStep] = useState(null);
+  // Các bước của wizard đọc draft lúc mở trang nên phải nạp xong trước khi hiển thị
+  const loadRegistration = useCallback(async (token) => {
+    const { data } = await getHotelRegistration(token);
+    setMode(data.mode);
+    setSavedStep(data.step);
+    setDraft(mergeDraft(data.draft));
+  }, []);
   const updateSection = (section, values) =>
     setDraft((current) => ({
       ...current,
@@ -48,7 +67,7 @@ export const PropertyDraftProvider = ({ children }) => {
   const clearDraft = () => setDraft({ ...initialDraft, termsAccepted: true });
   return (
     <PropertyDraftContext.Provider
-      value={{ draft, setDraft, updateSection, clearDraft }}
+      value={{ draft, setDraft, updateSection, clearDraft, mode, savedStep, loadRegistration }}
     >
       {children}
     </PropertyDraftContext.Provider>

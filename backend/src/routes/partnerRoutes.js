@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { createHotel, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
+import { createHotel, getHotelRegistration, saveHotelRegistrationDraft, resubmitHotelRegistration, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
 import { acknowledgeBooking, cancelPartnerBooking, getPartnerBooking, getPartnerBookings } from '../controllers/partnerBookingController.js';
 import { getPartnerReviews } from '../controllers/partnerReviewController.js';
 import { editPartnerDisputeResponse, getPartnerDispute, getPartnerDisputes, respondPartnerDispute } from '../controllers/partnerDisputeController.js';
@@ -15,6 +15,9 @@ router.post('/change-requests', verifyToken, authorizeRoles('HOTEL_PARTNER'), cr
 router.post('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), createSupportTicket);
 router.get('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMySupportTickets);
 router.get('/hotels/me', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMyHotel);
+router.get('/hotels/me/registration', verifyToken, authorizeRoles('HOTEL_PARTNER'), getHotelRegistration);
+router.put('/hotels/me/registration', verifyToken, authorizeRoles('HOTEL_PARTNER'), resubmitHotelRegistration);
+router.put('/hotels/me/registration/draft', verifyToken, authorizeRoles('HOTEL_PARTNER'), saveHotelRegistrationDraft);
 router.get('/hotel', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMyHotelDetail);
 router.put('/hotel', verifyToken, authorizeRoles('HOTEL_PARTNER'), updateMyHotel);
 router.get('/room-types', verifyToken, authorizeRoles('HOTEL_PARTNER'), getRoomTypes);

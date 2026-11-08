@@ -313,7 +313,7 @@ const PartnerTerms = () => {
   const [accepted, setAccepted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const navigate = useNavigate();
-  const { setDraft } = usePropertyDraft();
+  const { draft, setDraft, mode, savedStep } = usePropertyDraft();
 
   const handleNext = () => {
     if (!accepted) {
@@ -347,6 +347,19 @@ const PartnerTerms = () => {
               </section>
             ))}
           </div>
+
+          {mode === 'resubmit' && !savedStep && (
+            <Alert variant="info" className="border-0">
+              Bạn đang sửa hồ sơ đã nộp. Thông tin cũ đã được điền sẵn ở các bước sau.
+            </Alert>
+          )}
+
+          {savedStep && draft.termsAccepted && (
+            <Alert variant="info" className="border-0 d-flex justify-content-between align-items-center gap-3">
+              <span>Bạn có bản nháp đăng ký đã lưu.</span>
+              <Button size="sm" variant="primary" onClick={() => navigate(savedStep)}>Tiếp tục</Button>
+            </Alert>
+          )}
 
           {showWarning && !accepted && (
             <Alert variant="warning" className="border-0">

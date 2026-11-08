@@ -97,6 +97,7 @@ const PartnerPropertyProfile = () => {
       previous="/partner/property-details"
       next="/partner/property-publish"
       beforeNext={() => updateSection("profile", form)}
+      draftValues={{ profile: form }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}
     >

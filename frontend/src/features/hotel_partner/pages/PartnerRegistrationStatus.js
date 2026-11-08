@@ -1,5 +1,6 @@
 import { Alert, Button, Card } from "react-bootstrap";
 import { Link, useOutletContext } from "react-router-dom";
+import { canResubmit } from "../components/PartnerHotelGate";
 
 const MESSAGES = {
   PENDING: { variant: "warning", text: "Hồ sơ đang chờ Operations Manager xét duyệt." },
@@ -24,6 +25,7 @@ const PartnerRegistrationStatus = () => {
       <Alert variant={message.variant}>{message.text}</Alert>
       {verification?.reviewNote && <p><strong>Ghi chú của quản lý:</strong> {verification.reviewNote}</p>}
       {hotel.status === "ACTIVE" && <Button as={Link} to="/partner">Vào trang quản lý</Button>}
+      {canResubmit(hotel, verification) && <Button as={Link} to="/partner/terms">Sửa và gửi lại</Button>}
     </Card.Body></Card>
   );
 };

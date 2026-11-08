@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { FaCheck } from "react-icons/fa";
 import { Alert, Button } from "react-bootstrap";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { AuthContext } from "../../../context/AuthContext";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { saveHotelRegistrationDraft } from "../partnerApi";
 
 export const propertySteps = [
   "Vị trí",
@@ -27,13 +29,31 @@ const PropertySetupLayout = ({
   isSubmitting = false,
   invalid = false,
   onInvalid,
+  draftValues,
 }) => {
   const navigate = useNavigate();
-  const { draft } = usePropertyDraft();
+  const location = useLocation();
+  const { token } = useContext(AuthContext);
+  const { draft, mode } = usePropertyDraft();
   const [blocked, setBlocked] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftError, setDraftError] = useState("");
 
   // Chưa đồng ý điều khoản ở bước đầu thì không vào được các bước sau
   if (!draft.termsAccepted) return <Navigate to="/partner/terms" replace />;
+
+  // Lưu cả dữ liệu đang nhập ở bước hiện tại; bản nháp chưa cần đủ trường bắt buộc nên không kiểm tra
+  const saveAndExit = async () => {
+    setSavingDraft(true);
+    setDraftError("");
+    try {
+      await saveHotelRegistrationDraft({ ...draft, ...draftValues }, location.pathname, token);
+      navigate(mode === "resubmit" ? "/partner/registration-status" : "/");
+    } catch (requestError) {
+      setDraftError(requestError.response?.data?.message || "Không thể lưu bản nháp. Vui lòng thử lại.");
+      setSavingDraft(false);
+    }
+  };
 
   const handleNext = () => {
     if (invalid) {
@@ -117,13 +137,19 @@ const PropertySetupLayout = ({
                 type="button"
                 className="btn btn-link p-0 text-primary text-decoration-none"
                 style={{ fontSize: 12 }}
-                onClick={() => navigate("/partner")}
+                disabled={savingDraft}
+                onClick={saveAndExit}
               >
-                Lưu và thoát
+                {savingDraft ? "Đang lưu..." : "Lưu và thoát"}
               </button>
             </div>
             <h1 className="fs-2 fw-semibold mb-3">{title}</h1>
             {children}
+            {draftError && (
+              <Alert variant="danger" className="small py-2 mt-3 mb-0" role="alert">
+                {draftError}
+              </Alert>
+            )}
             {blocked && invalid && (
               <Alert variant="danger" className="small py-2 mt-3 mb-0" role="alert">
                 Vui lòng kiểm tra lại các trường được đánh dấu.

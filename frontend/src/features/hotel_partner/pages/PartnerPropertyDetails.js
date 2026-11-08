@@ -23,6 +23,7 @@ const PartnerPropertyDetails = () => {
       previous="/partner/property-photos"
       next="/partner/property-profile"
       beforeNext={() => updateSection("details", form)}
+      draftValues={{ details: form }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}
     >

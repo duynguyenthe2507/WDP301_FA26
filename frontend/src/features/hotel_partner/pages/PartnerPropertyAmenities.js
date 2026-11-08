@@ -22,6 +22,7 @@ const PartnerPropertyAmenities = () => {
       beforeNext={() =>
         setDraft((current) => ({ ...current, amenities: selectedAmenities }))
       }
+      draftValues={{ amenities: selectedAmenities }}
     >
       <h2 className="h6 fw-semibold">Những điều khách yêu thích</h2>
       <p className="text-muted">Chọn các tiện nghi có tại khách sạn.</p>
