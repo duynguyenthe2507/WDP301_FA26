@@ -16,6 +16,7 @@ const responseSchema = new mongoose.Schema(
     attachments: { type: [attachmentSchema], default: [] },
     respondedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     respondedAt: { type: Date, default: Date.now },
+    editedAt: { type: Date, default: null },
   },
   { _id: false },
 );

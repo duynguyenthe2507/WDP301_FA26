@@ -78,6 +78,10 @@ export const respondPartnerDispute = (id, message, token) => axios.post(`http://
   headers: { Authorization: `Bearer ${token}` },
 });
 
+export const editPartnerDisputeResponse = (id, index, message, token) => axios.put(`http://localhost:9999/api/partner/disputes/${id}/responses/${index}`, { message }, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
 export const getPartnerReviews = (params, token) => axios.get('http://localhost:9999/api/partner/reviews', {
   params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
   headers: { Authorization: `Bearer ${token}` },
