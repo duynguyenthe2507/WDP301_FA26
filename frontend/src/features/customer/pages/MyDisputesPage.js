@@ -14,6 +14,15 @@ const STATUS = {
 
 const WITHDRAWABLE = ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'];
 
+// Tiền được chuyển trong ngày phán quyết hoặc ngày kế tiếp; ghi ngày cụ thể để không sai khi xem lại sau này
+const transferWindow = (resolvedAt) => {
+  if (!resolvedAt) return 'Sẽ được chuyển trong hôm nay hoặc ngày mai';
+  const first = new Date(resolvedAt);
+  const second = new Date(first.getTime() + 24 * 60 * 60 * 1000);
+  const fmt = (date) => date.toLocaleDateString('vi-VN');
+  return `Sẽ được chuyển trong ngày ${fmt(first)} hoặc ${fmt(second)}`;
+};
+
 const CATEGORY = {
   INCORRECT_INFORMATION: 'Thông tin chỗ nghỉ không đúng mô tả',
   SERVICE_QUALITY: 'Chất lượng dịch vụ không đúng cam kết',
@@ -93,9 +102,7 @@ const MyDisputesPage = () => {
                       <div className="small mt-2 p-2 rounded border border-success bg-success bg-opacity-10">
                         <strong className="text-success">Khoản bồi thường: {Number(d.compensation.amount).toLocaleString('vi-VN')} VND</strong>
                         {' · '}
-                        {d.compensation.status === 'PROCESSED'
-                          ? `Đã chuyển${d.compensation.processedAt ? ` ngày ${new Date(d.compensation.processedAt).toLocaleDateString('vi-VN')}` : ''}`
-                          : 'Đã duyệt, đang chờ chuyển tiền'}
+                        {transferWindow(d.resolution?.resolvedAt || d.compensation.processedAt)}
                       </div>
                     )}
                     {WITHDRAWABLE.includes(d.status) && (
