@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
 import {
-  FiAlertTriangle,
   FiCheck,
-  FiCheckCircle,
   FiCreditCard,
-  FiDollarSign,
   FiEdit3,
-  FiFilePlus,
-  FiFilter,
   FiPlus,
   FiRefreshCw,
   FiSearch,

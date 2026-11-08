@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import {
-  FiAlertCircle,
-  FiArrowRight,
   FiCheckCircle,
   FiClock,
-  FiCornerDownRight,
   FiDollarSign,
-  FiFileText,
   FiHome,
   FiMessageSquare,
   FiRefreshCw,
   FiSend,
   FiUser,
-  FiXCircle,
 } from 'react-icons/fi';
 import { getDisputes, updateDispute } from '../managerApi';
 
