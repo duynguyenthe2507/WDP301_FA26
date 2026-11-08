@@ -93,6 +93,7 @@ const MyReviewsPage = () => {
     images: [],
   });
   const [saveLoading, setSaveLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Hộp xác nhận xóa đánh giá (hiển thị inline bên dưới thẻ đánh giá)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
