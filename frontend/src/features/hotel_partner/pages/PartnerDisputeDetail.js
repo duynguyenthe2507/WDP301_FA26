@@ -191,6 +191,12 @@ const PartnerDisputeDetail = () => {
               <div className="small">
                 <div className="fw-semibold">{DISPUTE_OUTCOME[dispute.resolution.outcome] || dispute.resolution.outcome}</div>
                 <div className="text-muted mb-2">{formatDateTime(dispute.resolution.resolvedAt)}</div>
+                {dispute.resolution.partnerNotice && (
+                  <div className="p-2 rounded bg-light border mb-2" style={{ whiteSpace: "pre-line" }}>
+                    <div className="fw-semibold mb-1">Thông báo gửi khách sạn</div>
+                    {dispute.resolution.partnerNotice}
+                  </div>
+                )}
                 <div style={{ whiteSpace: "pre-line" }}>{dispute.resolution.message}</div>
               </div>
             ) : <p className="small text-muted mb-0">Chưa có kết luận.</p>}

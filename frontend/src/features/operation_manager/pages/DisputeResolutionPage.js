@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import {
+  FiAlertTriangle,
   FiCheckCircle,
   FiClock,
   FiDollarSign,
@@ -33,8 +34,62 @@ const OUTCOME_OPTIONS = [
   { value: 'UPHELD', label: '1. Chấp nhận khiếu nại của khách hàng (Khách sạn sai sót)' },
   { value: 'PARTIALLY_UPHELD', label: '2. Chấp nhận một phần (Hai bên cùng có thỏa thuận)' },
   { value: 'REJECTED', label: '3. Bác bỏ khiếu nại (Khách sạn thực hiện đúng quy định)' },
+  { value: 'REJECTED_FALSE', label: '3b. Bác bỏ khiếu nại (Khách cung cấp thông tin sai sự thật)' },
   { value: 'NO_ACTION', label: '4. Hòa giải thành công / Không phát sinh bồi thường' },
 ];
+
+// Kết luận không phát sinh tiền bồi thường: bác bỏ khiếu nại (khách sạn đúng) hoặc hòa giải đóng hồ sơ
+const NO_COMPENSATION = ['REJECTED', 'REJECTED_FALSE', 'NO_ACTION'];
+
+// Bồi thường tối đa 10% giá trị đơn (khớp COMPENSATION_MAX_RATE ở managerController)
+const COMPENSATION_MAX_RATE = 0.1;
+
+// Nội dung mẫu theo từng kết luận để thông báo luôn khớp với phán quyết
+const buildResolveTemplate = (outcome, dispute) => {
+  const bCode = dispute.bookingCode;
+  const hotelName = dispute.hotelId?.name || 'Khách sạn';
+  const total = Number(dispute.bookingId?.totalAmount || 0);
+  const basis = `Sau khi đối chiếu chứng cứ khách hàng và giải trình của khách sạn ${hotelName}, bộ phận vận hành VinaStay`;
+  const compensationReason = `Bồi thường cho khách hàng do sai sót thông tin/dịch vụ tại ${hotelName} (Đơn #${bCode})`;
+  const templates = {
+    UPHELD: {
+      resolutionConclusion: `${basis} phán quyết chấp thuận khiếu nại. Khách sạn có trách nhiệm bồi thường theo đúng cam kết dịch vụ.`,
+      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Khiếu nại của bạn được chấp thuận. Khoản bồi thường đã được duyệt và chuyển tới bạn.`,
+      partnerNotice: `Thông báo phán quyết #${bCode}: Bộ phận vận hành xác định khiếu nại của khách có căn cứ. Số tiền bồi thường được khấu trừ trực tiếp vào kỳ đối soát chi trả doanh thu của khách sạn.`,
+      compensationAmount: Math.round(total * COMPENSATION_MAX_RATE),
+      compensationReason,
+    },
+    PARTIALLY_UPHELD: {
+      resolutionConclusion: `${basis} phán quyết chấp thuận một phần khiếu nại. Khách sạn bồi thường một phần theo mức đã nêu.`,
+      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Khiếu nại của bạn được chấp thuận một phần. Khoản bồi thường đã được duyệt theo mức phán quyết.`,
+      partnerNotice: `Thông báo phán quyết #${bCode}: Bộ phận vận hành xác định khiếu nại của khách có căn cứ một phần. Số tiền bồi thường được khấu trừ vào kỳ đối soát chi trả doanh thu của khách sạn.`,
+      compensationAmount: Math.round((total * COMPENSATION_MAX_RATE) / 2),
+      compensationReason,
+    },
+    REJECTED: {
+      resolutionConclusion: `${basis} xác định khiếu nại chưa đủ căn cứ. Khách sạn đã thực hiện đúng quy định và cam kết dịch vụ, không phát sinh bồi thường.`,
+      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Sau khi đối chiếu chứng cứ và giải trình của khách sạn, khiếu nại của bạn chưa đủ căn cứ để chấp thuận nên không phát sinh bồi thường. Nếu cần hỗ trợ thêm, vui lòng liên hệ VinaStay.`,
+      partnerNotice: `Thông báo phán quyết #${bCode}: Bộ phận vận hành xác định khiếu nại của khách không có căn cứ. Khách sạn không phải bồi thường và không bị khấu trừ vào kỳ đối soát.`,
+      compensationAmount: 0,
+      compensationReason: '',
+    },
+    REJECTED_FALSE: {
+      resolutionConclusion: `${basis} xác định thông tin khách hàng nêu trong khiếu nại không đúng sự thật, không khớp với dữ liệu đặt phòng và chứng cứ đã thu thập. Khiếu nại bị bác bỏ, không phát sinh bồi thường.`,
+      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Thông tin trong khiếu nại không khớp với dữ liệu đặt phòng và chứng cứ đã đối chiếu nên khiếu nại bị bác bỏ, không phát sinh bồi thường. Vui lòng cung cấp thông tin chính xác trong các khiếu nại sau; việc lặp lại có thể bị xem xét hạn chế tài khoản.`,
+      partnerNotice: `Thông báo phán quyết #${bCode}: Bộ phận vận hành xác định thông tin khách nêu trong khiếu nại không đúng sự thật. Khiếu nại bị bác bỏ; khách sạn không phải bồi thường và không bị khấu trừ vào kỳ đối soát.`,
+      compensationAmount: 0,
+      compensationReason: '',
+    },
+    NO_ACTION: {
+      resolutionConclusion: `${basis} ghi nhận hai bên đã hòa giải thành công. Hồ sơ được đóng và không phát sinh bồi thường.`,
+      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Hai bên đã hòa giải, hồ sơ được đóng và không phát sinh bồi thường.`,
+      partnerNotice: `Thông báo phán quyết #${bCode}: Hai bên đã hòa giải thành công. Hồ sơ được đóng, khách sạn không bị khấu trừ vào kỳ đối soát.`,
+      compensationAmount: 0,
+      compensationReason: '',
+    },
+  };
+  return templates[outcome] || templates.UPHELD;
+};
 
 const DisputeResolutionPage = () => {
   const [disputes, setDisputes] = useState([]);
@@ -123,22 +178,33 @@ const DisputeResolutionPage = () => {
   };
 
   // Mở màn hình phụ 3: ĐƯA RA PHÁN QUYẾT & BỒI THƯỜNG / THÔNG BÁO CHO HAI BÊN
-  const openResolveModal = (dispute) => {
-    const bCode = dispute.bookingCode;
-    const hotelName = dispute.hotelId?.name || 'Khách sạn';
-    const totalAmount = Number(dispute.bookingId?.totalAmount || 0);
+  const openResolveModal = (dispute, outcome = 'UPHELD') => {
     setModalAction({
       show: true,
       actionType: 'RESOLVE',
       dispute,
       internalMessage: '',
-      outcome: 'UPHELD',
-      resolutionConclusion: `Sau khi đối chiếu chứng cứ khách hàng và giải trình của khách sạn ${hotelName}, bộ phận vận hành VinaStay phán quyết chấp thuận khiếu nại. Khách sạn có trách nhiệm bồi thường theo đúng cam kết dịch vụ.`,
-      customerNotice: `Kính gửi Quý khách: VinaStay đã hoàn tất thẩm định tranh chấp #${bCode}. Khiếu nại của bạn được chấp thuận. Khoản bồi thường đã được duyệt và chuyển tới bạn.`,
-      partnerNotice: `Thông báo phán quyết #${bCode}: Bộ phận vận hành xác định khiếu nại của khách có căn cứ. Số tiền bồi thường được khấu trừ trực tiếp vào kỳ đối soát chi trả doanh thu của khách sạn.`,
-      compensationAmount: totalAmount > 0 ? totalAmount : 500000,
-      compensationReason: `Bồi thường cho khách hàng do sai sót thông tin/dịch vụ tại ${hotelName} (Đơn #${bCode})`,
+      outcome,
+      ...buildResolveTemplate(outcome, dispute),
       processCompensationNow: true,
+    });
+  };
+
+  // Đổi kết luận thì thay luôn nội dung mẫu; ô nào Manager đã tự sửa thì giữ nguyên
+  const changeOutcome = (outcome) => {
+    setModalAction((current) => {
+      const previous = buildResolveTemplate(current.outcome, current.dispute);
+      const next = buildResolveTemplate(outcome, current.dispute);
+      const keepOr = (field) => (String(current[field]) === String(previous[field]) ? next[field] : current[field]);
+      return {
+        ...current,
+        outcome,
+        resolutionConclusion: keepOr('resolutionConclusion'),
+        customerNotice: keepOr('customerNotice'),
+        partnerNotice: keepOr('partnerNotice'),
+        compensationAmount: keepOr('compensationAmount'),
+        compensationReason: keepOr('compensationReason'),
+      };
     });
   };
 
@@ -170,14 +236,16 @@ const DisputeResolutionPage = () => {
           partnerMessage: modalAction.partnerNotice,
         };
       } else if (actionType === 'RESOLVE') {
-        const isReject = modalAction.outcome === 'REJECTED';
+        const isFalseInfo = modalAction.outcome === 'REJECTED_FALSE';
+        const isReject = isFalseInfo || modalAction.outcome === 'REJECTED';
         payload = {
           status: isReject ? 'REJECTED' : 'RESOLVED',
-          resolution: modalAction.outcome,
+          resolution: isFalseInfo ? 'REJECTED' : modalAction.outcome,
+          rejectReason: isFalseInfo ? 'FALSE_INFORMATION' : '',
           resolutionMessage: modalAction.resolutionConclusion,
           customerMessage: modalAction.customerNotice,
           partnerMessage: modalAction.partnerNotice,
-          compensationAmount: isReject ? 0 : Number(modalAction.compensationAmount || 0),
+          compensationAmount: NO_COMPENSATION.includes(modalAction.outcome) ? 0 : Number(modalAction.compensationAmount || 0),
           compensationReason: modalAction.compensationReason,
           processCompensationNow: modalAction.processCompensationNow,
         };
@@ -328,6 +396,14 @@ const DisputeResolutionPage = () => {
                       >
                         <FiDollarSign /> 3. Ra phán quyết & Bồi thường
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        className="d-flex align-items-center gap-1"
+                        onClick={() => openResolveModal(selected, 'REJECTED_FALSE')}
+                      >
+                        <FiAlertTriangle /> 4. Bác bỏ: khách sai thông tin
+                      </Button>
                     </>
                   )}
 
@@ -360,6 +436,11 @@ const DisputeResolutionPage = () => {
                         <strong>Liên hệ:</strong> {selected.customerId?.email || selected.bookingId?.bookerEmail || ''} · {selected.bookingId?.bookerPhone || ''}<br />
                         <strong>Khách lưu trú:</strong> {selected.bookingId?.guestFullName ? `${selected.bookingId.guestFullName} (${selected.bookingId.guestPhone})` : 'Chính chủ đặt'}
                       </div>
+                      {selected.customerFalseClaimCount > 0 && (
+                        <Alert variant="warning" className="small py-2 mb-2">
+                          Khách này đã từng bị bác bỏ khiếu nại vì cung cấp thông tin sai: <strong>{selected.customerFalseClaimCount} lần</strong>.
+                        </Alert>
+                      )}
                       <div className="small p-2 bg-light rounded border mb-2">
                         <strong className="text-secondary d-block mb-1">Nội dung khiếu nại của khách:</strong>
                         <p className="mb-0" style={{ whiteSpace: 'pre-line' }}>{selected.description}</p>
@@ -416,10 +497,6 @@ const DisputeResolutionPage = () => {
                               </div>
                             ))
                         )}
-                      </div>
-
-                      <div className="small text-muted">
-                        Chính sách hủy lúc đặt: <strong>{selected.hotelId?.cancellationPolicy || 'Tiêu chuẩn'}</strong>
                       </div>
                     </div>
                   </Col>
@@ -602,7 +679,7 @@ const DisputeResolutionPage = () => {
                     <Form.Label className="small fw-semibold">Kết luận phán quyết *</Form.Label>
                     <Form.Select
                       value={modalAction.outcome}
-                      onChange={(e) => setModalAction({ ...modalAction, outcome: e.target.value })}
+                      onChange={(e) => changeOutcome(e.target.value)}
                     >
                       {OUTCOME_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -610,7 +687,7 @@ const DisputeResolutionPage = () => {
                     </Form.Select>
                   </Col>
 
-                  {modalAction.outcome !== 'REJECTED' && (
+                  {!NO_COMPENSATION.includes(modalAction.outcome) && (
                     <Col md={6}>
                       <Form.Label className="small fw-semibold text-danger">
                         Số tiền bồi thường cho khách (VND) *
@@ -618,13 +695,14 @@ const DisputeResolutionPage = () => {
                       <Form.Control
                         type="number"
                         min="0"
-                        step="10000"
+                        max={Math.round(Number(modalAction.dispute?.bookingId?.totalAmount || 0) * COMPENSATION_MAX_RATE)}
+                        step="1"
                         required
                         value={modalAction.compensationAmount}
                         onChange={(e) => setModalAction({ ...modalAction, compensationAmount: e.target.value })}
                       />
                       <small className="text-muted">
-                        Tối đa bằng giá trị đơn: {Number(modalAction.dispute?.bookingId?.totalAmount || 0).toLocaleString('vi-VN')} VND
+                        Tối đa {COMPENSATION_MAX_RATE * 100}% giá trị đơn: {Math.round(Number(modalAction.dispute?.bookingId?.totalAmount || 0) * COMPENSATION_MAX_RATE).toLocaleString('vi-VN')} VND
                       </small>
                     </Col>
                   )}
@@ -642,7 +720,7 @@ const DisputeResolutionPage = () => {
                   />
                 </Form.Group>
 
-                {modalAction.outcome !== 'REJECTED' && (
+                {!NO_COMPENSATION.includes(modalAction.outcome) && (
                   <div className="p-3 border rounded-3 bg-light mb-3">
                     <Form.Check
                       type="switch"

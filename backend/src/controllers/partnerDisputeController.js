@@ -51,7 +51,12 @@ const toDetail = (dispute, booking, partnerId) => ({
     from: respondedBy?.equals?.(partnerId) ? 'PARTNER' : respondedBy?.equals?.(dispute.customerId) ? 'CUSTOMER' : 'PLATFORM',
   })),
   resolution: dispute.resolution?.resolvedAt
-    ? { outcome: dispute.resolution.outcome, message: dispute.resolution.message, resolvedAt: dispute.resolution.resolvedAt }
+    ? {
+      outcome: dispute.resolution.outcome,
+      message: dispute.resolution.message,
+      partnerNotice: dispute.resolution.partnerNotice || '',
+      resolvedAt: dispute.resolution.resolvedAt,
+    }
     : null,
   canRespond: !CLOSED.includes(dispute.status),
 });

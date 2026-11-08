@@ -38,6 +38,12 @@ const disputeSchema = new mongoose.Schema(
     resolution: {
       outcome: { type: String, enum: ['UPHELD', 'PARTIALLY_UPHELD', 'REJECTED', 'NO_ACTION'], default: null },
       message: { type: String, default: '', trim: true },
+      // Chỉ có khi bác bỏ: FALSE_INFORMATION = khách cung cấp thông tin sai sự thật; trống = chưa đủ căn cứ
+      rejectReason: { type: String, enum: ['', 'FALSE_INFORMATION'], default: '' },
+      // Nội dung Manager soạn riêng để gửi khách; trống thì khách thấy `message`
+      customerNotice: { type: String, default: '', trim: true },
+      // Nội dung Manager soạn riêng để gửi khách sạn; trống thì khách sạn thấy `message`
+      partnerNotice: { type: String, default: '', trim: true },
       resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
       resolvedAt: { type: Date, default: null },
     },

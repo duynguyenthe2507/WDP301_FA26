@@ -84,9 +84,18 @@ const MyDisputesPage = () => {
                     </div>
                     <div className="small"><strong>Danh mục:</strong> {CATEGORY[d.category] || d.category}</div>
                     <div className="small text-secondary mt-1" style={{ whiteSpace: 'pre-line' }}>{d.description}</div>
-                    {d.resolution?.message && (
+                    {(d.resolution?.customerNotice || d.resolution?.message) && (
                       <div className="small mt-2 p-2 rounded bg-light">
-                        <strong>Phản hồi:</strong> {d.resolution.message}
+                        <strong>Phản hồi:</strong> {d.resolution.customerNotice || d.resolution.message}
+                      </div>
+                    )}
+                    {d.status === 'RESOLVED' && d.compensation?.amount > 0 && (
+                      <div className="small mt-2 p-2 rounded border border-success bg-success bg-opacity-10">
+                        <strong className="text-success">Khoản bồi thường: {Number(d.compensation.amount).toLocaleString('vi-VN')} VND</strong>
+                        {' · '}
+                        {d.compensation.status === 'PROCESSED'
+                          ? `Đã chuyển${d.compensation.processedAt ? ` ngày ${new Date(d.compensation.processedAt).toLocaleDateString('vi-VN')}` : ''}`
+                          : 'Đã duyệt, đang chờ chuyển tiền'}
                       </div>
                     )}
                     {WITHDRAWABLE.includes(d.status) && (

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 import BookingCancellation from '../models/BookingCancellation.js';
@@ -155,11 +156,19 @@ export const getDisputes = async (req, res, next) => {
       ],
     }).sort({ createdAt: -1 }).lean();
 
+    // Số lần mỗi khách đã bị bác bỏ vì cung cấp thông tin sai, để Manager cân nhắc khi phán quyết
+    const customerIds = [...new Set(result.items.map((item) => String(item.customerId?._id || item.customerId)))];
+    const falseClaims = await Dispute.aggregate([
+      { $match: { customerId: { $in: customerIds.map((id) => new mongoose.Types.ObjectId(id)) }, 'resolution.rejectReason': 'FALSE_INFORMATION' } },
+      { $group: { _id: '$customerId', count: { $sum: 1 } } },
+    ]);
+    const falseClaimOf = (customerId) => falseClaims.find((row) => String(row._id) === String(customerId))?.count || 0;
+
     const disputes = result.items.map((doc) => {
       const item = doc.toObject ? doc.toObject() : doc;
       const bId = item.bookingId?._id || item.bookingId;
       const comp = compensations.find((c) => (c.disputeId && String(c.disputeId) === String(item._id)) || (bId && String(c.bookingId) === String(bId)));
-      return { ...item, compensation: comp || null };
+      return { ...item, compensation: comp || null, customerFalseClaimCount: falseClaimOf(item.customerId?._id || item.customerId) };
     });
 
     res.json({ disputes, pagination: result.pagination });
@@ -247,11 +256,15 @@ export const respondToSupportTicket = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// Bồi thường khiếu nại tối đa 10% giá trị đơn (khớp COMPENSATION_MAX_RATE ở DisputeResolutionPage)
+const COMPENSATION_MAX_RATE = 0.1;
+
 export const updateDispute = async (req, res, next) => {
   try {
     const {
       status,
       resolution,
+      rejectReason,
       resolutionMessage,
       assignedToMe,
       message,
@@ -298,6 +311,9 @@ export const updateDispute = async (req, res, next) => {
       dispute.resolution = {
         outcome: finalOutcome,
         message: resolutionMessage.trim(),
+        rejectReason: status === 'REJECTED' && rejectReason === 'FALSE_INFORMATION' ? 'FALSE_INFORMATION' : '',
+        customerNotice: customerMessage?.trim() || '',
+        partnerNotice: partnerMessage?.trim() || '',
         resolvedBy: req.user._id,
         resolvedAt: now,
       };
@@ -307,7 +323,7 @@ export const updateDispute = async (req, res, next) => {
         const outcomeLabel = {
           UPHELD: 'Chấp nhận khiếu nại của khách hàng',
           PARTIALLY_UPHELD: 'Chấp nhận một phần khiếu nại',
-          REJECTED: 'Bác bỏ khiếu nại (Khách sạn đúng)',
+          REJECTED: rejectReason === 'FALSE_INFORMATION' ? 'Bác bỏ khiếu nại (Khách cung cấp thông tin sai sự thật)' : 'Bác bỏ khiếu nại (Khách sạn đúng)',
           NO_ACTION: 'Hòa giải / Đóng hồ sơ',
         }[finalOutcome] || finalOutcome;
 
@@ -320,7 +336,13 @@ export const updateDispute = async (req, res, next) => {
 
       // Tự động khởi tạo / cập nhật khoản bồi thường cho khách hàng nếu có số tiền bồi thường > 0
       const compAmt = Number(compensationAmount);
-      if (Number.isFinite(compAmt) && compAmt > 0 && finalOutcome !== 'REJECTED') {
+      // Chỉ chấp nhận (toàn phần hoặc một phần) mới phát sinh bồi thường; bác bỏ và hòa giải thì không
+      if (Number.isFinite(compAmt) && compAmt > 0 && ['UPHELD', 'PARTIALLY_UPHELD'].includes(finalOutcome)) {
+        const bookingTotal = Number((await Booking.findById(dispute.bookingId).select('totalAmount').lean())?.totalAmount || 0);
+        const maxCompensation = Math.round(bookingTotal * COMPENSATION_MAX_RATE);
+        if (compAmt > maxCompensation) {
+          return res.status(400).json({ message: `Số tiền bồi thường tối đa ${COMPENSATION_MAX_RATE * 100}% giá trị đơn (${maxCompensation.toLocaleString('vi-VN')} VND).` });
+        }
         const compReason = (compensationReason || `[Bồi thường theo phán quyết tranh chấp #${dispute.bookingCode}] ${resolutionMessage}`).trim();
         let refundDoc = await RefundRequest.findOne({
           $or: [{ disputeId: dispute._id }, { bookingId: dispute.bookingId }],
@@ -434,6 +456,7 @@ export const updateDispute = async (req, res, next) => {
       oldStatus,
       newStatus: dispute.status,
       resolution: dispute.resolution?.outcome || null,
+      rejectReason: dispute.resolution?.rejectReason || null,
       resolutionMessage: resolutionMessage || message || '',
       compensationAmount: createdCompensation?.approvedAmount || 0,
     });

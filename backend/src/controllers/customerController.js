@@ -648,10 +648,20 @@ export const getMyDisputes = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Khoản bồi thường Manager đã duyệt gắn với từng khiếu nại (APPROVED = đã duyệt, PROCESSED = đã chuyển)
+    const compensations = await RefundRequest.find({
+      disputeId: { $in: disputes.map((d) => d._id) },
+      status: { $in: ['APPROVED', 'PROCESSED'] },
+    }).select('disputeId approvedAmount status processedAt').lean();
+    const compensationOf = (dispute) => {
+      const found = compensations.find((c) => String(c.disputeId) === String(dispute._id));
+      return found ? { amount: found.approvedAmount, status: found.status, processedAt: found.processedAt } : null;
+    };
+
     res.status(200).json({
       success: true,
       count: disputes.length,
-      disputes,
+      disputes: disputes.map((d) => ({ ...d, compensation: compensationOf(d) })),
     });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi lấy danh sách khiếu nại.', error: error.message });
