@@ -1,0 +1,140 @@
+[
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c201" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "name": "Deluxe Double Room",
+    "description": "Phòng đôi có ban công nhìn ra phố cổ",
+    "bedType": "1 giường đôi lớn",
+    "roomSize": 32,
+    "adultCapacity": 2,
+    "childrenCapacity": 1,
+    "totalRooms": 10,
+    "basePrice": 1200000,
+    "amenities": ["Điều hòa", "TV 55 inch", "Minibar", "Máy sấy tóc"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/room1.jpg",
+        "publicId": "vinastay/rooms/room1"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-01T09:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-01T09:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c202" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c101" },
+    "name": "Family Suite Room",
+    "description": "Phòng gia đình rộng rãi, 2 giường lớn",
+    "bedType": "2 giường đôi lớn",
+    "roomSize": 48,
+    "adultCapacity": 4,
+    "childrenCapacity": 2,
+    "totalRooms": 5,
+    "basePrice": 2200000,
+    "amenities": ["Điều hòa", "TV 65 inch", "Bồn tắm", "Minibar"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/room2.jpg",
+        "publicId": "vinastay/rooms/room2"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-01T09:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-01T09:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c203" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c102" },
+    "name": "Mountain View Deluxe",
+    "description": "Phòng ban công săn mây thung lũng Mường Hoa",
+    "bedType": "1 giường đôi King",
+    "roomSize": 35,
+    "adultCapacity": 2,
+    "childrenCapacity": 1,
+    "totalRooms": 8,
+    "basePrice": 1450000,
+    "amenities": ["Lò sưởi ấm", "Ban công view núi", "Bồn tắm gỗ", "Minibar"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/sapa1.jpg",
+        "publicId": "vinastay/rooms/sapa1"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-02T10:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-02T10:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c204" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c102" },
+    "name": "Cloud Valley Suite",
+    "description": "Căn suite cao cấp nhất ngắm trọn biển mây",
+    "bedType": "1 giường King cực lớn",
+    "roomSize": 52,
+    "adultCapacity": 2,
+    "childrenCapacity": 1,
+    "totalRooms": 4,
+    "basePrice": 2600000,
+    "amenities": ["Lò sưởi", "Kính Panorama", "Bồn tắm sục", "Rượu vang chào mừng"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/sapa2.jpg",
+        "publicId": "vinastay/rooms/sapa2"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-02T10:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-02T10:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c205" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c103" },
+    "name": "Ocean Front Deluxe Room",
+    "description": "Phòng đối diện bãi biển Mỹ Khê tuyệt đẹp",
+    "bedType": "1 giường King hoặc 2 giường đơn",
+    "roomSize": 40,
+    "adultCapacity": 2,
+    "childrenCapacity": 1,
+    "totalRooms": 15,
+    "basePrice": 1800000,
+    "amenities": ["Ban công hướng biển", "Smart TV", "Áo choàng tắm", "Máy pha cà phê"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/danang1.jpg",
+        "publicId": "vinastay/rooms/danang1"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-03T11:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-03T11:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "64f1a2b3c4d5e6f7a8b9c206" },
+    "hotelId": { "$oid": "64f1a2b3c4d5e6f7a8b9c103" },
+    "name": "Beachfront Pool Villa",
+    "description": "Biệt thự riêng có hồ bơi nhìn thẳng ra biển",
+    "bedType": "2 giường King lớn",
+    "roomSize": 85,
+    "adultCapacity": 4,
+    "childrenCapacity": 2,
+    "totalRooms": 6,
+    "basePrice": 4500000,
+    "amenities": ["Bể bơi riêng", "Sân vườn tắm nắng", "Phòng khách riêng", "Bếp nhỏ"],
+    "images": [
+      {
+        "url": "https://res.cloudinary.com/vinastay/rooms/danang2.jpg",
+        "publicId": "vinastay/rooms/danang2"
+      }
+    ],
+    "status": "ACTIVE",
+    "isDeleted": false,
+    "createdAt": { "$date": "2026-10-03T11:00:00.000Z" },
+    "updatedAt": { "$date": "2026-10-03T11:00:00.000Z" }
+  }
+]

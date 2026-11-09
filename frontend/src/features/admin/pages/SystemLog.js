@@ -16,6 +16,7 @@ const SystemLog = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           action: typeFilter,
+          timeRange: timeRange,
           search: search,
         },
       });
@@ -96,7 +97,7 @@ const SystemLog = () => {
             <thead className="table-light">
               <tr>
                 <th style={{ width: "20%" }}>Thời gian</th>
-                <th style={{ width: "15%" }}>Tài khoản</th>
+                <th style={{ width: "15%" }}>Người thực hiện</th>
                 <th style={{ width: "20%" }}>Loại nhật ký</th>
                 <th style={{ width: "45%" }}>Chi tiết</th>
               </tr>
@@ -113,7 +114,11 @@ const SystemLog = () => {
                   const dateStr = log.createdAt
                     ? new Date(log.createdAt).toLocaleString("vi-VN")
                     : "N/A";
-                  const adminName = log.admin_id?.fullName || "Admin";
+                  const adminName = log.admin_id?.fullName;
+                  const targetName =
+                    log.target_user_id?.fullName ||
+                    log.target_user_id?.email ||
+                    "tài khoản";
 
                   return (
                     <tr key={index}>
@@ -128,11 +133,11 @@ const SystemLog = () => {
                       </td>
                       <td>
                         {log.action === "ACCOUNT_SUSPENDED" &&
-                          `Đổi trạng thái "Tạm khóa" do: ${log.new_reason || "Nghi ngờ điều tra"}`}
+                          `Tạm khóa tài khoản ${targetName} do: ${log.new_reason || "Nghi ngờ điều tra"}`}
                         {log.action === "ACCOUNT_DEACTIVATED" &&
-                          `Đổi trạng thái "Bị khóa" do: ${log.new_reason || "Vi phạm hợp đồng"}`}
+                          `Khóa vĩnh viễn tài khoản ${targetName} do: ${log.new_reason || "Vi phạm hợp đồng"}`}
                         {log.action === "ACCOUNT_ACTIVATED" &&
-                          "Mở khóa hoạt động lại cho tài khoản"}
+                          `Mở khóa tài khoản ${targetName}`}
                         {log.action === "SYSTEM_CONFIG_UPDATED" &&
                           (log.new_reason ||
                             "Cập nhật cấu hình bảo trì hệ thống")}
@@ -141,7 +146,11 @@ const SystemLog = () => {
                   );
                 })
               ) : (
-                <p>Không tìm thấy dữ liệu</p>
+                <tr>
+                  <td colSpan="4" className="text-center">
+                    Không tìm thấy dữ liệu
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

@@ -36,11 +36,11 @@ const AdminDashboard = () => {
     };
 
     fetchDashboardData();
-  });
+  }, []);
 
   return (
     <div>
-       <Row className="g-3 mb-4">
+      <Row className="g-3 mb-4">
         <Col md={3}>
           <Card className="text-center p-3 border">
             <Card.Body>
@@ -115,6 +115,10 @@ const AdminDashboard = () => {
                   <li key={index} className="py-2 border-bottom fs-6">
                     <span className="fw-bold">{dateStr}: Admin - </span>
                     <span>
+                      {log.action === "SYSTEM_CONFIG_UPDATED" &&
+                        `Cập nhật cấu hình hệ thống:${
+                          log.new_reason || "Đã cập nhật cấu hình."
+                        } `}
                       {log.action === "ACCOUNT_SUSPENDED" &&
                         `Đổi trạng thái "Tạm khóa" cho ${targetName} vì ${log.new_reason || "nghi ngờ điều tra"}`}
                       {log.action === "ACCOUNT_DEACTIVATED" &&

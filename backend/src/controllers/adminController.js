@@ -53,10 +53,14 @@ export const getUsers = async (req, res) => {
     const filter = {};
 
     if (role) {
-      if (!roles.includes(role)) {
+      let targetRole = role;
+      if (role === 'PARTNER') targetRole = 'HOTEL_PARTNER';
+      if (role === 'STAFF') targetRole = 'OPERATIONS_MANAGER';
+
+      if (!roles.includes(targetRole)) {
         return res.status(400).json({ message: 'Vai trò không hợp lệ' });
       }
-      filter.role = role;
+      filter.role = targetRole;
     }
 
     if (status) {
@@ -154,12 +158,12 @@ export const updateUser = async (req, res) => {
     }
 
     const oldStatus = user.status;
-    const oldReason = user.status_reason || null;
+    const oldReason = user.status_reason || user.statusReason || '';
     let newReason = reason;
 
     // Khi mở lại tài khoản thì xóa lý do khóa cũ.
     if (status === 'ACTIVE') {
-      newReason = null;
+      newReason = '';
     }
 
     if (oldStatus === status && oldReason === newReason) {
@@ -233,7 +237,7 @@ export const updateConfig = async (req, res) => {
 
     // GHI NHẬT KÝ KIỂM TOÁN (Audit Log)
     await AuditLog.create({
-      admin_id: req.user?._id || null,
+      admin_id: req.user?._id,
       target_user_id: req.user?._id || null,
       action: "SYSTEM_CONFIG_UPDATED",
       new_reason: `Cập nhật chế độ bảo trì: ${isMaintenanceMode ? "BẬT" : "TẮT"}. Thông báo: "${config.maintenanceMessage}"`,
@@ -279,6 +283,7 @@ export const getSystemLogs = async (req, res) => {
     // Lấy toàn bộ Log từ DB (mới nhất lên đầu)
     const logs = await AuditLog.find(filter)
       .populate("admin_id", "fullName email")
+      .populate("target_user_id", "fullName email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ logs });

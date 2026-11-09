@@ -82,8 +82,8 @@ const ProfilePage = ({ section = "profile" }) => {
     e.preventDefault();
     setPwMsg({ type: '', text: '' });
 
-    if (pwData.new_password.length < 8) {
-      setPwMsg({ type: 'danger', text: 'Mật khẩu mới phải có ít nhất 8 ký tự' });
+    if (pwData.new_password.length < 6) {
+      setPwMsg({ type: 'danger', text: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
       return;
     }
     if (pwData.new_password !== pwData.confirm_password) {
@@ -305,7 +305,7 @@ const ProfilePage = ({ section = "profile" }) => {
                         setPwData({ ...pwData, new_password: e.target.value })
                       }
                       className="rounded-3 p-3"
-                      placeholder="Tối thiểu 8 ký tự"
+                      placeholder="Tối thiểu 6 ký tự"
                       style={{ borderColor: '#e2e8f0' }}
                       required
                     />
