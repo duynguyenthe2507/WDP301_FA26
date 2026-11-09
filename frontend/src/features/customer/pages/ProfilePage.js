@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import {
   FaUser, FaEnvelope, FaPhone, FaLock, FaEdit, FaSave, FaTimes
@@ -8,7 +8,7 @@ import CustomerSidebar from '../components/CustomerSidebar';
 import { getMyProfile, updateMyProfile, changePassword } from '../CustomerApi';
 
 const ProfilePage = ({ section = "profile" }) => {
-  const { logout } = useContext(AuthContext);
+  const { logout, setUser } = useContext(AuthContext);
 
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -60,6 +60,8 @@ const ProfilePage = ({ section = "profile" }) => {
         phoneNumber: formData.phoneNumber.trim()
       });
       setProfile(res.data.user);
+      setUser(res.data.user);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
       setEditMode(false);
       setUpdateMsg({ type: 'success', text: 'Cập nhật thông tin thành công!' });
     } catch (err) {

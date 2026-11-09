@@ -22,8 +22,8 @@ const formatHotel = (hotel) => {
     primary_image,
     min_price,
     rating_summary: {
-      average_rating: h.ratingSummary?.averageRating || 0,
-      total_reviews: h.ratingSummary?.totalReviews || 0,
+      average_rating: h.averageRating || 0,
+      total_reviews: h.totalReviews || 0,
     },
     room_types: activeRooms.map((rt) => ({
       ...rt,
@@ -66,12 +66,12 @@ export const getHotels = async (req, res) => {
       andConditions.push({
         $or: [
           { starRating: { $gte: ratingVal } },
-          { 'ratingSummary.averageRating': { $gte: ratingVal } },
+          { 'averageRating': { $gte: ratingVal } },
         ],
       });
     }
 
-    const query = {};
+    const query = { status: 'ACTIVE' };
     if (andConditions.length > 0) {
       query.$and = andConditions;
     }
@@ -121,7 +121,7 @@ export const getHotelById = async (req, res) => {
     const { id } = req.params;
     const hotel = await Hotel.findById(id).populate('roomTypes');
 
-    if (!hotel) {
+    if (!hotel || hotel.status !== 'ACTIVE') {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy khách sạn này',

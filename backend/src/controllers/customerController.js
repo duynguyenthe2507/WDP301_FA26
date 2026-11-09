@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
@@ -84,15 +84,22 @@ export const cleanExpiredPendingBookings = async () => {
   try {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-    const deleteResult = await Booking.deleteMany({
+    // Bug 3 fix: tìm đơn hết hạn trước, rồi xóa BookingDetail và Payment liên quan
+    const expiredBookings = await Booking.find({
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
       createdAt: { $lte: fifteenMinutesAgo },
-    });
+    }).select('_id');
 
-    if (deleteResult.deletedCount > 0) {
-      console.log(`[Auto-Clean] Đã tự động xóa ${deleteResult.deletedCount} đơn phòng PENDING_PAYMENT quá hạn 15 phút.`);
+    const expiredIds = expiredBookings.map((b) => b._id);
+
+    if (expiredIds.length > 0) {
+      await BookingDetail.deleteMany({ bookingId: { $in: expiredIds } });
+      await Payment.deleteMany({ bookingId: { $in: expiredIds } });
+      await Booking.deleteMany({ _id: { $in: expiredIds } });
+      console.log(`[Auto-Clean] Đã tự động xóa ${expiredIds.length} đơn phòng PENDING_PAYMENT quá hạn 15 phút (kèm BookingDetail và Payment).`);
     }
+
   } catch (error) {
     console.error('Lỗi khi tự động dọn dẹp đơn phòng quá hạn:', error.message);
   }
@@ -510,7 +517,8 @@ export const getMyBookings = async (req, res) => {
       const now = new Date();
       if (status === 'UPCOMING') {
         filter.bookingStatus = 'CONFIRMED';
-        filter.checkInDate = { $gte: now };
+        // Bug 8 fix: bao gồm cả đơn đang lưu trú (checkIn < now < checkOut)
+        filter.checkOutDate = { $gt: now };
       } else if (status === 'PENDING') {
         filter.bookingStatus = 'PENDING_PAYMENT';
       } else if (status === 'COMPLETED') {
@@ -640,13 +648,55 @@ export const getMyDisputes = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Khoản bồi thường Manager đã duyệt gắn với từng khiếu nại (APPROVED = đã duyệt, PROCESSED = đã chuyển)
+    const compensations = await RefundRequest.find({
+      disputeId: { $in: disputes.map((d) => d._id) },
+      status: { $in: ['APPROVED', 'PROCESSED'] },
+    }).select('disputeId approvedAmount status processedAt').lean();
+    const compensationOf = (dispute) => {
+      const found = compensations.find((c) => String(c.disputeId) === String(dispute._id));
+      return found ? { amount: found.approvedAmount, status: found.status, processedAt: found.processedAt } : null;
+    };
+
     res.status(200).json({
       success: true,
       count: disputes.length,
-      disputes,
+      disputes: disputes.map((d) => ({ ...d, compensation: compensationOf(d) })),
     });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi lấy danh sách khiếu nại.', error: error.message });
+  }
+};
+
+// PATCH /api/customer/disputes/:id/withdraw
+// Khách rút khiếu nại khi chưa có kết luận (SRS 2.8.1 Alt 1)
+export const withdrawDispute = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
+    // Điều kiện status nằm trong filter để không đè lên kết luận Manager vừa ghi
+    const dispute = await Dispute.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        customerId: req.user._id,
+        status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
+      },
+      {
+        $set: { status: 'WITHDRAWN', withdrawnAt: new Date() },
+        $push: { responses: { message: 'Khách hàng đã rút khiếu nại.', respondedBy: req.user._id } },
+      },
+      { new: true },
+    );
+    if (!dispute) {
+      return res.status(409).json({ message: 'Không thể rút khiếu nại này (không tồn tại hoặc đã được xử lý xong).' });
+    }
+    // Yêu cầu hoàn tiền đang chờ gắn với khiếu nại này không còn lý do tồn tại
+    await RefundRequest.updateMany(
+      { disputeId: dispute._id, status: { $in: ['REQUESTED', 'UNDER_REVIEW'] } },
+      { $set: { status: 'REJECTED', reviewNote: 'Khách hàng đã rút khiếu nại.', reviewedAt: new Date() } },
+    );
+    res.status(200).json({ success: true, message: 'Đã rút khiếu nại.', dispute });
+  } catch (error) {
+    res.status(500).json({ message: 'Không thể rút khiếu nại.', error: error.message });
   }
 };
 
@@ -871,15 +921,28 @@ export const cancelBooking = async (req, res) => {
 
     const calculations = calculateCancellationDetails(booking, hotel);
 
+    // Môi trường sandbox: đơn đã thanh toán và có tiền hoàn thì ghi nhận hoàn tiền thành công ngay
+    const refunded = booking.paymentStatus === 'PAID' && calculations.refundAmount > 0;
     booking.bookingStatus = 'CANCELLED';
+    if (refunded) booking.paymentStatus = 'REFUNDED';
     await booking.save();
+    if (refunded) {
+      await Payment.create({
+        bookingId: booking._id,
+        type: 'REFUND',
+        amount: calculations.refundAmount,
+        status: 'SUCCESS',
+        txnRef: `${booking.bookingCode}-REFUND`,
+        payDate: new Date(),
+      });
+    }
     await BookingCancellation.create({
       bookingId: booking._id,
       reason: reason.trim(),
       note: (note || '').trim(),
       cancellationFee: calculations.cancellationFee,
       refundAmount: calculations.refundAmount,
-      refundStatus: booking.paymentStatus === 'PAID' && calculations.refundAmount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+      refundStatus: refunded ? 'PROCESSED' : 'NOT_APPLICABLE',
     });
     await booking.populate('cancellation');
 

@@ -49,9 +49,10 @@ const loadCommissionPolicies = (partnerId, hotelId) =>
     $or: [{ scope: 'GLOBAL' }, { scope: 'PARTNER', partnerId }, { scope: 'HOTEL', hotelId }],
   }).sort({ effectiveFrom: -1 }).lean();
 const commissionFor = (policies, bookedAt, revenue) => {
-  const policy = policies
-    .filter((item) => item.effectiveFrom <= bookedAt && (!item.effectiveTo || item.effectiveTo >= bookedAt))
-    .sort((left, right) => SCOPE_PRIORITY[right.scope] - SCOPE_PRIORITY[left.scope])[0];
+  const validByEnd = policies.filter((item) => !item.effectiveTo || new Date(item.effectiveTo) >= new Date(bookedAt));
+  const strictMatches = validByEnd.filter((item) => new Date(item.effectiveFrom) <= new Date(bookedAt));
+  const pool = strictMatches.length > 0 ? strictMatches : validByEnd;
+  const policy = pool.sort((left, right) => SCOPE_PRIORITY[right.scope] - SCOPE_PRIORITY[left.scope])[0];
   if (!policy) return 0;
   return policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Math.min(policy.value, revenue);
 };

@@ -8,8 +8,8 @@ import { vnDate } from './partnerStatisticsController.js';
 
 // Partner chỉ xem và gửi phản hồi; tiếp nhận, kết luận, hoàn tiền là việc của Operations Manager
 const PAGE_SIZE = 10;
-const STATUSES = ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'];
-const CLOSED = ['RESOLVED', 'REJECTED'];
+const STATUSES = ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
+const CLOSED = ['RESOLVED', 'REJECTED', 'WITHDRAWN'];
 const MAX_MESSAGE = 2000;
 const CLOSED_EDIT_MESSAGE = 'Khiếu nại đã được đóng nên không thể sửa phản hồi.';
 const notFound = (res) => res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
@@ -48,10 +48,15 @@ const toDetail = (dispute, booking, partnerId) => ({
     message,
     respondedAt,
     editedAt: editedAt || null,
-    from: respondedBy?.equals?.(partnerId) ? 'PARTNER' : 'PLATFORM',
+    from: respondedBy?.equals?.(partnerId) ? 'PARTNER' : respondedBy?.equals?.(dispute.customerId) ? 'CUSTOMER' : 'PLATFORM',
   })),
   resolution: dispute.resolution?.resolvedAt
-    ? { outcome: dispute.resolution.outcome, message: dispute.resolution.message, resolvedAt: dispute.resolution.resolvedAt }
+    ? {
+      outcome: dispute.resolution.outcome,
+      message: dispute.resolution.message,
+      partnerNotice: dispute.resolution.partnerNotice || '',
+      resolvedAt: dispute.resolution.resolvedAt,
+    }
     : null,
   canRespond: !CLOSED.includes(dispute.status),
 });

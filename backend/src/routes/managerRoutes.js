@@ -2,12 +2,15 @@ import express from 'express';
 const router = express.Router();
 import {
   createCommissionPolicy,
+  createManagerCompensation,
   generatePayout,
   getCommissionPolicies,
   getDashboard,
   getDisputes,
   getHotelPartners,
   getManagerAuditLogs,
+  getManagerBookings,
+  getManagerHotels,
   getPayouts,
   getPartnerChangeRequests,
   getRefunds,
@@ -38,8 +41,11 @@ router.get('/support-tickets', getSupportTickets);
 router.patch('/support-tickets/:id/respond', respondToSupportTicket);
 router.get('/disputes', getDisputes);
 router.patch('/disputes/:id', updateDispute);
+router.get('/bookings', getManagerBookings);
 router.get('/refunds', getRefunds);
+router.post('/refunds', createManagerCompensation);
 router.patch('/refunds/:id/review', reviewRefund);
+router.get('/hotels', getManagerHotels);
 router.get('/commission-policies', getCommissionPolicies);
 router.get('/partners', getHotelPartners);
 router.post('/commission-policies', createCommissionPolicy);
@@ -50,4 +56,3 @@ router.patch('/payouts/:id/review', reviewPayout);
 router.get('/audit-logs', getManagerAuditLogs);
 
 export default router;
-
