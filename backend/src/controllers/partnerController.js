@@ -17,7 +17,7 @@ const UPLOAD_FOLDERS = { hotel: 'hotels', room: 'rooms' };
 
 export const uploadPartnerImages = async (req, res, next) => {
   try {
-    const folder = UPLOAD_FOLDERS[req.query.type];
+    const folder = Object.hasOwn(UPLOAD_FOLDERS, req.query.type || '') ? UPLOAD_FOLDERS[req.query.type] : null;
     if (!folder) return res.status(400).json({ message: 'Loại ảnh không hợp lệ (hotel hoặc room).' });
     if (!req.files?.length) return res.status(400).json({ message: 'Vui lòng chọn ít nhất một ảnh.' });
     const images = await Promise.all(
@@ -28,6 +28,7 @@ export const uploadPartnerImages = async (req, res, next) => {
 };
 const toNumber = (value) =>
   value === "" || value === null || value === undefined ? NaN : Number(value);
+const text = (value) => (typeof value === "string" ? value.trim() : "");
 const stringList = (value) =>
   Array.isArray(value)
     ? value
@@ -52,11 +53,15 @@ const imageList = (value) =>
       isCover: index === 0,
     }));
 const MAX_HOTEL_IMAGES = 20;
+const MAX_HOTEL_NAME = 50;
+const MAX_TICKET_SUBJECT = 160;
+const MAX_TICKET_DESCRIPTION = 4000;
+const MAX_TICKET_ATTACHMENTS = 5;
 const MAX_ROOM_IMAGES = 10;
 const toRoomType = (room) => ({
-  name: room.name?.trim(),
-  description: room.description?.trim() || "",
-  bedType: room.bedType?.trim(),
+  name: text(room.name),
+  description: text(room.description),
+  bedType: text(room.bedType),
   roomSize: toNumber(room.roomSize),
   adultCapacity: toNumber(room.adultCapacity),
   childrenCapacity: toNumber(room.childrenCapacity),
@@ -65,7 +70,7 @@ const toRoomType = (room) => ({
   amenities: stringList(room.amenities),
   images: imageList(room.images),
 });
-// Khớp ràng buộc của RoomType: tối thiểu 1 người lớn và 1 phòng
+// Tối thiểu 1 người lớn, 1 phòng và giá lớn hơn 0 (BR-41, BR-43)
 const isValidRoomType = (room) =>
   room.name &&
   room.bedType &&
@@ -76,9 +81,9 @@ const isValidRoomType = (room) =>
   room.childrenCapacity >= 0 &&
   Number.isInteger(room.totalRooms) &&
   room.totalRooms >= 1 &&
-  room.basePrice >= 0;
+  room.basePrice > 0;
 const INVALID_ROOM_TYPE_MESSAGE =
-  "Mỗi loại phòng cần có tên, loại giường, diện tích, sức chứa (tối thiểu 1 người lớn), số lượng phòng (tối thiểu 1) và giá hợp lệ.";
+  "Mỗi loại phòng cần có tên, loại giường, diện tích, sức chứa (tối thiểu 1 người lớn), số lượng phòng (tối thiểu 1) và giá lớn hơn 0.";
 // Xoá trên Cloudinary các ảnh partner đã bỏ; chỉ xoá ảnh trong thư mục của chính partner, lỗi không chặn việc lưu
 const removeDroppedImages = (userId, before, after) => {
   const kept = new Set(after.map((image) => image.publicId));
@@ -88,48 +93,110 @@ const removeDroppedImages = (userId, before, after) => {
     .forEach((image) => deleteImage(image.publicId).catch((error) => console.warn('Không xoá được ảnh:', error.message)));
 };
 
+// Các quy tắc đăng ký khách sạn theo màn Register Hotel và BR-66, BR-68 trong SRS
+// Khớp HOTEL_AMENITIES ở frontend
+const HOTEL_AMENITIES = ["Bể bơi", "Bãi đỗ xe", "Spa", "Không hút thuốc", "Wi-Fi miễn phí", "Được phép đưa thú nuôi vào", "Phòng tập", "Bàn tiếp tân 24 giờ", "Máy điều hòa", "Nhà hàng"];
+const DUPLICATE_HOTEL_MESSAGE = "Khách sạn này đã được đăng ký. Vui lòng liên hệ hỗ trợ nếu bạn là chủ sở hữu.";
+const section = (value) => (value && typeof value === "object" && !Array.isArray(value) ? value : {});
+const firstMissing = (rules) => rules.find(([value]) => !value)?.[1];
+
+// Ngày dạng YYYY-MM-DD, có thật và trước hôm nay
+const isPastDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value && value < new Date().toISOString().slice(0, 10);
+};
+const isValidPhone = (countryCode, phone) => {
+  const digits = phone.replace(/[\s.-]/g, "");
+  return countryCode === "+84" ? /^0?[35789]\d{8}$/.test(digits) : /^\d{6,14}$/.test(digits);
+};
+
+const toLegalProfile = (profile) => ({
+  businessName: text(profile.business),
+  legalAddress: text(profile.address),
+  postcode: text(profile.postcode),
+  country: text(profile.country),
+  beneficiary: {
+    firstName: text(profile.firstName),
+    lastName: text(profile.lastName),
+    nationality: text(profile.nationality),
+    birthday: text(profile.birthday),
+    residenceCountry: text(profile.residenceCountry),
+    region: text(profile.region),
+    city: text(profile.city),
+  },
+  contact: {
+    language: text(profile.language),
+    countryCode: text(profile.phoneCountryCode),
+    phone: text(profile.phone),
+  },
+});
+
+const legalProfileError = ({ businessName, legalAddress, country, beneficiary, contact }) => {
+  const missing = firstMissing([
+    [businessName, "Vui lòng nhập tên pháp lý của cơ sở lưu trú."],
+    [legalAddress, "Vui lòng nhập địa chỉ pháp lý."],
+    [country, "Vui lòng chọn quốc gia của địa chỉ pháp lý."],
+    [beneficiary.firstName, "Vui lòng nhập tên người chủ hưởng lợi."],
+    [beneficiary.lastName, "Vui lòng nhập họ người chủ hưởng lợi."],
+    [beneficiary.nationality, "Vui lòng chọn quốc tịch."],
+    [beneficiary.birthday, "Vui lòng nhập ngày sinh."],
+    [beneficiary.residenceCountry, "Vui lòng chọn quốc gia cư trú."],
+    [beneficiary.region, "Vui lòng chọn bang/tỉnh cư trú."],
+    [beneficiary.city, "Vui lòng chọn thành phố cư trú."],
+    [contact.language, "Vui lòng chọn ngôn ngữ liên hệ."],
+    [contact.countryCode, "Vui lòng chọn mã quốc gia."],
+    [contact.phone, "Vui lòng nhập số điện thoại."],
+  ]);
+  if (missing) return missing;
+  if (!isPastDate(beneficiary.birthday)) return "Ngày sinh không hợp lệ.";
+  if (!isValidPhone(contact.countryCode, contact.phone)) return "Số điện thoại không hợp lệ.";
+  return null;
+};
+
+const registrationRoomsError = (roomTypes) => {
+  if (!roomTypes.length) return "Vui lòng thêm ít nhất một loại phòng.";
+  const invalidIndex = roomTypes.findIndex((room) => !isValidRoomType(room));
+  if (invalidIndex !== -1) return `Loại phòng ${invalidIndex + 1} chưa hợp lệ. ${INVALID_ROOM_TYPE_MESSAGE}`;
+  if (roomTypes.some((room) => room.images.length > MAX_ROOM_IMAGES)) return `Mỗi loại phòng có tối đa ${MAX_ROOM_IMAGES} ảnh.`;
+  const names = roomTypes.map((room) => room.name.toLocaleLowerCase("vi"));
+  if (new Set(names).size !== names.length) return "Tên loại phòng không được trùng nhau.";
+  return null;
+};
+
 export const createHotel = async (req, res, next) => {
   try {
-    const {
-      location = {},
-      amenities,
-      rooms = [],
-      details = {},
-      images,
-      profile = {},
-    } = req.body;
+    const location = section(req.body.location);
+    const details = section(req.body.details);
+    const legalProfile = toLegalProfile(section(req.body.profile));
+    const amenities = stringList(req.body.amenities);
+    const images = imageList(req.body.images);
+    const roomTypes = (Array.isArray(req.body.rooms) ? req.body.rooms : []).map((room) => toRoomType(section(room)));
     const starRating = toNumber(details.stars);
-    const name = details.name?.trim();
-    const provinceCity = location.provinceCity?.trim();
-    const fullAddress = [location.district, location.address]
-      .filter(Boolean)
-      .map((value) => value.trim())
-      .join(", ");
+    const name = text(details.name);
+    const provinceCity = text(location.provinceCity);
+    const fullAddress = [text(location.district), text(location.address)].join(", ");
+    const checkInTime = text(details.checkInTime);
+    const checkOutTime = text(details.checkOutTime);
 
-    if (
-      !name ||
-      !fullAddress ||
-      !provinceCity ||
-      !Number.isInteger(starRating) ||
-      starRating < 1 ||
-      starRating > 5
-    ) {
-      return res.status(400).json({
-        message:
-          "Tên, địa chỉ, tỉnh/thành phố và hạng sao từ 1 đến 5 là bắt buộc.",
-      });
-    }
-    if (!["one", "three", "none"].includes(details.cancellation)) {
-      return res.status(400).json({ message: "Chính sách hủy không hợp lệ." });
-    }
-    if (
-      !TIME_PATTERN.test(details.checkInTime) ||
-      !TIME_PATTERN.test(details.checkOutTime)
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Giờ nhận phòng và trả phòng không hợp lệ." });
-    }
+    const fail = (message) => res.status(400).json({ message });
+    if (req.body.termsAccepted !== true) return fail("Vui lòng đồng ý với Điều khoản và Điều kiện.");
+    const missingLocation = firstMissing([
+      [provinceCity, "Vui lòng nhập tỉnh/thành phố."],
+      [text(location.district), "Vui lòng nhập quận/huyện."],
+      [text(location.address), "Vui lòng nhập địa chỉ cụ thể."],
+    ]);
+    if (missingLocation) return fail(missingLocation);
+    if (amenities.some((item) => !HOTEL_AMENITIES.includes(item))) return fail("Tiện nghi khách sạn không hợp lệ.");
+    const roomsError = registrationRoomsError(roomTypes);
+    if (roomsError) return fail(roomsError);
+    if (!images.length || images.length > MAX_HOTEL_IMAGES) return fail(`Khách sạn cần từ 1 đến ${MAX_HOTEL_IMAGES} ảnh.`);
+    if (!name || name.length > MAX_HOTEL_NAME) return fail(`Tên khách sạn là bắt buộc, tối đa ${MAX_HOTEL_NAME} ký tự.`);
+    if (!Number.isInteger(starRating) || starRating < 1 || starRating > 5) return fail("Hạng sao phải từ 1 đến 5.");
+    if (!["one", "three", "none"].includes(details.cancellation)) return fail("Chính sách hủy không hợp lệ.");
+    if (!TIME_PATTERN.test(checkInTime) || !TIME_PATTERN.test(checkOutTime)) return fail("Giờ nhận phòng và trả phòng không hợp lệ.");
+    const profileError = legalProfileError(legalProfile);
+    if (profileError) return fail(profileError);
 
     const existingHotel = await Hotel.exists({ ownerId: req.user._id });
     if (existingHotel) {
@@ -137,46 +204,25 @@ export const createHotel = async (req, res, next) => {
         .status(409)
         .json({ message: "Tài khoản này đã có khách sạn." });
     }
-
-    const roomTypes = rooms.map(toRoomType);
-
-    if (!roomTypes.length || !roomTypes.every(isValidRoomType)) {
-      return res.status(400).json({ message: INVALID_ROOM_TYPE_MESSAGE });
-    }
+    // Khách sạn đã bị từ chối không còn được xem là đã đăng ký
+    const duplicateHotel = await Hotel.exists({ name, provinceCity, address: fullAddress, status: { $ne: "REJECTED" } })
+      .collation({ locale: "vi", strength: 2 });
+    if (duplicateHotel) return res.status(409).json({ message: DUPLICATE_HOTEL_MESSAGE });
 
     const hotel = await Hotel.create({
       ownerId: req.user._id,
       name,
       provinceCity,
       address: fullAddress,
-      description: details.description?.trim() || "",
+      description: text(details.description),
       starRating,
       cancellationPolicy: details.cancellation,
-      checkInTime: details.checkInTime,
-      checkOutTime: details.checkOutTime,
-      amenities: stringList(amenities),
-      images: imageList(images),
+      checkInTime,
+      checkOutTime,
+      amenities,
+      images,
       status: 'PENDING',
-      legalProfile: {
-        businessName: profile.business,
-        legalAddress: profile.address,
-        postcode: profile.postcode,
-        country: profile.country,
-        beneficiary: {
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          nationality: profile.nationality,
-          birthday: profile.birthday,
-          residenceCountry: profile.residenceCountry,
-          region: profile.region,
-          city: profile.city,
-        },
-        contact: {
-          language: profile.language,
-          countryCode: profile.phoneCountryCode,
-          phone: profile.phone,
-        },
-      },
+      legalProfile,
     });
 
     // Loại phòng nằm ở collection riêng; nếu lưu lỗi thì xoá khách sạn vừa tạo để không bị mồ côi
@@ -211,7 +257,7 @@ export const createHotel = async (req, res, next) => {
 export const createPartnerChangeRequest = async (req, res, next) => {
   try {
     const { hotelId, changes, documents = [] } = req.body;
-    if (!hotelId || !Array.isArray(changes) || !changes.length || changes.some((change) => !CHANGE_REQUEST_FIELDS.includes(change.field))) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
+    if (!mongoose.isValidObjectId(hotelId) || !Array.isArray(changes) || !changes.length || changes.some((change) => !CHANGE_REQUEST_FIELDS.includes(change?.field))) return res.status(400).json({ message: 'Yêu cầu thay đổi không hợp lệ.' });
     const hotel = await Hotel.findOne({ _id: hotelId, ownerId: req.user._id, status: 'ACTIVE' });
     if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn đã được phê duyệt của bạn.' });
     const pending = await PartnerChangeRequest.exists({ hotelId, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } });
@@ -223,12 +269,24 @@ export const createPartnerChangeRequest = async (req, res, next) => {
 
 export const createSupportTicket = async (req, res, next) => {
   try {
-    const { hotelId, bookingId, category, subject, description, attachments = [] } = req.body;
-    if (!category || !subject?.trim() || !description?.trim()) return res.status(400).json({ message: 'Danh mục, tiêu đề và nội dung là bắt buộc.' });
-    if (hotelId && !await Hotel.exists({ _id: hotelId, ownerId: req.user._id })) return res.status(403).json({ message: 'Bạn chỉ có thể tạo yêu cầu cho khách sạn của mình.' });
-    const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject: subject.trim(), description: description.trim(), attachments: Array.isArray(attachments) ? attachments.slice(0, 5) : [] });
+    const { hotelId, bookingId, category, attachments = [] } = req.body;
+    const subject = text(req.body.subject);
+    const description = text(req.body.description);
+    if (!category || !subject || !description) return res.status(400).json({ message: 'Danh mục, tiêu đề và nội dung là bắt buộc.' });
+    if (!SupportTicket.schema.path('category').enumValues.includes(category)) return res.status(400).json({ message: 'Danh mục không hợp lệ.' });
+    if (subject.length > MAX_TICKET_SUBJECT) return res.status(400).json({ message: `Tiêu đề tối đa ${MAX_TICKET_SUBJECT} ký tự.` });
+    if (description.length > MAX_TICKET_DESCRIPTION) return res.status(400).json({ message: `Nội dung tối đa ${MAX_TICKET_DESCRIPTION} ký tự.` });
+    if (!Array.isArray(attachments) || attachments.length > MAX_TICKET_ATTACHMENTS) return res.status(400).json({ message: `Tối đa ${MAX_TICKET_ATTACHMENTS} tệp đính kèm.` });
+    // Chỉ được gắn khách sạn và đặt phòng của chính partner (BR-60)
+    const ownedHotelIds = await Hotel.distinct('_id', { ownerId: req.user._id });
+    if (hotelId && !(mongoose.isValidObjectId(hotelId) && ownedHotelIds.some((id) => id.equals(hotelId)))) return res.status(403).json({ message: 'Bạn chỉ có thể tạo yêu cầu cho khách sạn của mình.' });
+    if (bookingId && !(mongoose.isValidObjectId(bookingId) && await Booking.exists({ _id: bookingId, hotelId: { $in: ownedHotelIds } }))) return res.status(403).json({ message: 'Bạn chỉ có thể tạo yêu cầu cho đặt phòng của khách sạn mình.' });
+    const ticket = await SupportTicket.create({ partnerId: req.user._id, hotelId: hotelId || null, bookingId: bookingId || null, category, subject, description, attachments });
     res.status(201).json({ message: 'Đã gửi yêu cầu hỗ trợ.', ticket });
-  } catch (error) { next(error); }
+  } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
+    next(error);
+  }
 };
 
 export const getMyHotel = async (req, res, next) => {
@@ -250,54 +308,48 @@ export const getMyHotelDetail = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const changeRequest = await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
-    res.json({ hotel, changeRequest });
+    res.json({ hotel });
   } catch (error) { next(error); }
 };
 
-// Các trường trên form quản lý cần quản lý vận hành duyệt; những trường còn lại lưu thẳng vào khách sạn
-const FORM_APPROVAL_FIELDS = ['name', 'provinceCity', 'address', 'starRating'];
-
+// Khách sạn tự quyết và tự chịu trách nhiệm về thông tin của mình: mọi trường trên form lưu thẳng, không cần duyệt
 export const updateMyHotel = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
 
-    const { description, amenities, checkInTime, checkOutTime, cancellationPolicy } = req.body;
+    const { amenities, cancellationPolicy } = req.body;
+    const description = text(req.body.description);
+    const checkInTime = text(req.body.checkInTime);
+    const checkOutTime = text(req.body.checkOutTime);
     const proposed = {
-      name: req.body.name?.trim(),
-      provinceCity: req.body.provinceCity?.trim(),
-      address: req.body.address?.trim(),
+      name: text(req.body.name),
+      provinceCity: text(req.body.provinceCity),
+      address: text(req.body.address),
       starRating: toNumber(req.body.starRating),
     };
     if (!proposed.name || !proposed.provinceCity || !proposed.address || !Number.isInteger(proposed.starRating) || proposed.starRating < 1 || proposed.starRating > 5) {
       return res.status(400).json({ message: 'Tên, địa chỉ, tỉnh/thành phố và hạng sao từ 1 đến 5 là bắt buộc.' });
     }
+    if (proposed.name.length > MAX_HOTEL_NAME) return res.status(400).json({ message: `Tên khách sạn tối đa ${MAX_HOTEL_NAME} ký tự.` });
+    if (!description) return res.status(400).json({ message: 'Vui lòng nhập mô tả khách sạn.' });
     if (!['one', 'three', 'none'].includes(cancellationPolicy)) return res.status(400).json({ message: 'Chính sách hủy không hợp lệ.' });
     if (!TIME_PATTERN.test(checkInTime) || !TIME_PATTERN.test(checkOutTime)) return res.status(400).json({ message: 'Giờ nhận phòng và trả phòng không hợp lệ.' });
     const images = imageList(req.body.images);
-    if (images.length > MAX_HOTEL_IMAGES) return res.status(400).json({ message: `Khách sạn có tối đa ${MAX_HOTEL_IMAGES} ảnh.` });
-
-    const changes = FORM_APPROVAL_FIELDS
-      .filter((field) => proposed[field] !== hotel[field])
-      .map((field) => ({ field, currentValue: hotel[field], proposedValue: proposed[field] }));
-    if (changes.length && await PartnerChangeRequest.exists({ hotelId: hotel._id, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } })) {
-      return res.status(409).json({ message: 'Khách sạn đang có yêu cầu thay đổi nhạy cảm chờ xử lý.' });
-    }
+    if (!images.length || images.length > MAX_HOTEL_IMAGES) return res.status(400).json({ message: `Khách sạn cần từ 1 đến ${MAX_HOTEL_IMAGES} ảnh.` });
 
     const previousImages = hotel.images.map(({ publicId }) => ({ publicId }));
-    hotel.set({ description: description?.trim() || '', amenities: stringList(amenities), checkInTime, checkOutTime, cancellationPolicy, images });
+    hotel.set({ ...proposed, description, amenities: stringList(amenities), checkInTime, checkOutTime, cancellationPolicy, images });
     await hotel.save();
     removeDroppedImages(req.user._id, previousImages, images);
 
-    const changeRequest = changes.length
-      ? await PartnerChangeRequest.create({ hotelId: hotel._id, partnerId: req.user._id, changes })
-      : await PartnerChangeRequest.findOne({ hotelId: hotel._id }).sort({ createdAt: -1 });
-    res.json({
-      message: changes.length ? 'Đã lưu thay đổi và gửi các thông tin nhạy cảm để quản lý vận hành phê duyệt.' : 'Đã lưu thay đổi thông tin khách sạn.',
-      hotel,
-      changeRequest,
-    });
+    // Yêu cầu thay đổi cũ còn chờ duyệt (từ trước khi bỏ bước duyệt) được hủy để khi quản lý vận hành duyệt
+    // sau này không ghi đè lên thông tin partner vừa tự sửa
+    await PartnerChangeRequest.updateMany(
+      { hotelId: hotel._id, status: { $in: ['PENDING', 'ADDITIONAL_INFO_REQUIRED'] } },
+      { $set: { status: 'CANCELLED', decisionNote: 'Đối tác đã tự cập nhật thông tin khách sạn.' } },
+    );
+    res.json({ message: 'Đã lưu thay đổi thông tin khách sạn.', hotel });
   } catch (error) {
     if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
     next(error);
@@ -343,7 +395,7 @@ const isRoomNameTaken = (hotelId, name, exceptId) =>
 const roomTypeFormError = async (hotelId, room, exceptId) => {
   if (!isValidRoomType(room)) return INVALID_ROOM_TYPE_MESSAGE;
   if (!room.images.length || room.images.length > MAX_ROOM_IMAGES) return `Mỗi loại phòng cần từ 1 đến ${MAX_ROOM_IMAGES} ảnh.`;
-  if (await isRoomNameTaken(hotelId, room.name, exceptId)) return 'Tên loại phòng đã tồn tại trong khách sạn.';
+  if (await isRoomNameTaken(hotelId, room.name, exceptId)) return 'Tên loại phòng đã tồn tại.'; // MSG09
   return null;
 };
 
@@ -427,6 +479,7 @@ export const updateRoomTypeStatus = async (req, res, next) => {
     if (!['ACTIVE', 'INACTIVE'].includes(req.body.status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
     const roomType = await findOwnedRoomType(hotel._id, req.params.id);
     if (!roomType) return roomTypeNotFound(res);
+    if (req.body.status === 'ACTIVE' && !(roomType.basePrice > 0 && roomType.totalRooms >= 1)) return res.status(400).json({ message: 'Loại phòng cần có giá lớn hơn 0 và ít nhất 1 phòng trước khi mở bán.' });
     roomType.status = req.body.status;
     await roomType.save();
     res.json({ roomType });

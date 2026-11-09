@@ -7,16 +7,14 @@ import { CANCELLATION_POLICIES, HOTEL_AMENITIES } from "../data/hotelOptions";
 import { getHotelDetail, updateHotel } from "../partnerApi";
 
 const MAX_IMAGES = 20;
+const MAX_NAME = 50;
 const MAX_IMAGES_PER_UPLOAD = 10;
-const CHANGE_FIELD_LABEL = { name: "Tên khách sạn", provinceCity: "Tỉnh / thành phố", address: "Địa chỉ", starRating: "Hạng sao", legalProfile: "Hồ sơ pháp lý" };
-const OPEN_REQUEST_STATUSES = ["PENDING", "ADDITIONAL_INFO_REQUIRED"];
 
 const PartnerHotelInformation = () => {
   const { user, token } = useContext(AuthContext);
   // Toàn bộ form lấy từ GET /api/partner/hotel để chỉ có một nguồn dữ liệu
   const [hotel, setHotel] = useState(null);
   const [form, setForm] = useState(null);
-  const [changeRequest, setChangeRequest] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
@@ -24,7 +22,7 @@ const PartnerHotelInformation = () => {
 
   useEffect(() => {
     getHotelDetail(token)
-      .then(({ data }) => { setHotel(data.hotel); setForm(data.hotel); setChangeRequest(data.changeRequest); })
+      .then(({ data }) => { setHotel(data.hotel); setForm(data.hotel); })
       .catch((requestError) => setLoadError(requestError.response?.data?.message || "Không thể tải thông tin khách sạn."));
   }, [token]);
   const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -42,6 +40,7 @@ const PartnerHotelInformation = () => {
   const reset = () => { setForm(hotel); setSaveError(""); setSavedMessage(""); };
   const submit = async (event) => {
     event.preventDefault();
+    if (!form.images.length) { setSavedMessage(""); setSaveError("Vui lòng giữ lại ít nhất 1 ảnh khách sạn."); return; }
     setSaving(true);
     setSaveError("");
     setSavedMessage("");
@@ -49,7 +48,6 @@ const PartnerHotelInformation = () => {
       const { data } = await updateHotel(form, token);
       setHotel(data.hotel);
       setForm(data.hotel);
-      setChangeRequest(data.changeRequest);
       setSavedMessage(data.message);
     } catch (requestError) {
       setSaveError(requestError.response?.data?.message || "Không thể lưu thông tin khách sạn.");
@@ -65,24 +63,20 @@ const PartnerHotelInformation = () => {
   // Số điện thoại lấy từ hồ sơ pháp lý, email lấy từ tài khoản; cả hai chỉ đọc ở màn này
   const contact = form.legalProfile?.contact;
   const contactPhone = [contact?.countryCode, contact?.phone].filter(Boolean).join(" ");
-  // Đang có yêu cầu chờ duyệt thì khóa các trường nhạy cảm vì chỉ được gửi một yêu cầu mỗi lần
-  const requestOpen = OPEN_REQUEST_STATUSES.includes(changeRequest?.status);
   const amenityOptions = [...HOTEL_AMENITIES.map(([item]) => item), ...form.amenities.filter((item) => !HOTEL_AMENITIES.some(([option]) => option === item))];
 
   return (
     <div className="container-fluid px-0" style={{ maxWidth: 1280 }}>
       <div className="text-muted small mb-3">Khách sạn của tôi / Thông tin khách sạn</div>
       <h1 className="h3 fw-bold mb-4">Quản lý thông tin khách sạn</h1>
-      {requestOpen && <Alert variant="warning"><strong>{changeRequest.status === "PENDING" ? "Đang chờ quản lý vận hành phê duyệt" : "Quản lý vận hành yêu cầu bổ sung thông tin"}</strong><ul className="mb-0 mt-1">{changeRequest.changes.map((change) => <li key={change.field}>{CHANGE_FIELD_LABEL[change.field] || change.field}: {typeof change.proposedValue === "object" ? "đã cập nhật" : String(change.proposedValue)}</li>)}</ul>{changeRequest.decisionNote && <div className="mt-1">Ghi chú: {changeRequest.decisionNote}</div>}</Alert>}
-      {changeRequest?.status === "REJECTED" && <Alert variant="danger"><strong>Yêu cầu thay đổi gần nhất đã bị từ chối.</strong>{changeRequest.decisionNote && ` Lý do: ${changeRequest.decisionNote}`}</Alert>}
       <Form onSubmit={submit}>
-        <Section title="Thông tin cơ bản" description="Tên, hạng sao, tỉnh / thành phố và địa chỉ cần quản lý vận hành phê duyệt trước khi áp dụng.">
+        <Section title="Thông tin cơ bản" description="Mọi thay đổi được áp dụng ngay sau khi lưu. Khách sạn chịu trách nhiệm về tính chính xác của thông tin hiển thị cho khách.">
           <div className="row g-3">
-            <Field className="col-md-8" label="Tên khách sạn" required disabled={requestOpen} name="name" value={form.name} onChange={update} />
-            <Form.Group className="col-md-4"><Form.Label>Hạng sao chính thức <span className="text-danger">*</span></Form.Label><Form.Select disabled={requestOpen} name="starRating" value={form.starRating} onChange={updateStars}>{[1, 2, 3, 4, 5].map((star) => <option key={star} value={star}>{star} sao</option>)}</Form.Select></Form.Group>
+            <Field className="col-md-8" label="Tên khách sạn" required maxLength={MAX_NAME} name="name" value={form.name} onChange={update} />
+            <Form.Group className="col-md-4"><Form.Label>Hạng sao chính thức <span className="text-danger">*</span></Form.Label><Form.Select name="starRating" value={form.starRating} onChange={updateStars}>{[1, 2, 3, 4, 5].map((star) => <option key={star} value={star}>{star} sao</option>)}</Form.Select></Form.Group>
             <Field className="col-12" label="Mô tả khách sạn" required as="textarea" rows={3} name="description" value={form.description} onChange={update} />
-            <Field className="col-md-6" label="Tỉnh / thành phố" required disabled={requestOpen} name="provinceCity" value={form.provinceCity} onChange={update} />
-            <Field className="col-md-6" label="Địa chỉ" required disabled={requestOpen} name="address" value={form.address} onChange={update} />
+            <Field className="col-md-6" label="Tỉnh / thành phố" required name="provinceCity" value={form.provinceCity} onChange={update} />
+            <Field className="col-md-6" label="Địa chỉ" required name="address" value={form.address} onChange={update} />
             <Field className="col-md-6" label="Số điện thoại liên hệ" value={contactPhone} readOnly />
             <Field className="col-md-6" label="Email liên hệ" type="email" value={user?.email || ""} readOnly />
           </div>

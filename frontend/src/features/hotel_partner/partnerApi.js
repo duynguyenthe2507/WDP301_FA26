@@ -7,6 +7,7 @@ export const createHotel = (draft, token) => axios.post('http://localhost:9999/a
   details: draft.details,
   profile: draft.profile,
   images: draft.photos,
+  termsAccepted: draft.termsAccepted,
 }, { headers: { Authorization: `Bearer ${token}` } });
 
 // type: 'hotel' | 'room' — trả về { images: [{ url, publicId }] }
@@ -62,6 +63,23 @@ export const acknowledgeBooking = (id, token) => axios.post(`http://localhost:99
 
 // body: { initiator: 'CUSTOMER' | 'HOTEL', reason, note, waiveFee }
 export const cancelPartnerBooking = (id, body, token) => axios.post(`http://localhost:9999/api/partner/bookings/${id}/cancel`, body, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getPartnerDisputes = (params, token) => axios.get('http://localhost:9999/api/partner/disputes', {
+  params: Object.fromEntries(Object.entries(params).filter(([, value]) => value)),
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const getPartnerDispute = (id, token) => axios.get(`http://localhost:9999/api/partner/disputes/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const respondPartnerDispute = (id, message, token) => axios.post(`http://localhost:9999/api/partner/disputes/${id}/responses`, { message }, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+export const editPartnerDisputeResponse = (id, index, message, token) => axios.put(`http://localhost:9999/api/partner/disputes/${id}/responses/${index}`, { message }, {
   headers: { Authorization: `Bearer ${token}` },
 });
 

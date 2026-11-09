@@ -70,12 +70,13 @@ export const getPartnerBookings = async (req, res, next) => {
   try {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
-    const { search = '', status, from, to, sort = 'checkIn' } = req.query;
+    const { status, from, to, sort = 'checkIn' } = req.query;
+    const search = typeof req.query.search === 'string' ? req.query.search : '';
     if ((from && !isValidDay(from)) || (to && !isValidDay(to)) || (from && to && rangeError(from, to))) {
       return res.status(400).json({ message: rangeError(from || to, to || from) || rangeError(from, to) });
     }
-    if (status && !STATUS_FILTERS[status]) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
-    if (!SORTS[sort]) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
+    if (status && !Object.hasOwn(STATUS_FILTERS, status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
+    if (!Object.hasOwn(SORTS, sort)) return res.status(400).json({ message: 'Cách sắp xếp không hợp lệ.' });
 
     const now = new Date();
     const acknowledgedIds = status === 'NEW'
@@ -268,8 +269,9 @@ export const cancelPartnerBooking = async (req, res, next) => {
     const hotel = await findApprovedHotel(req.user._id);
     if (!hotel) return notApproved(res);
     if (!mongoose.isValidObjectId(req.params.id)) return notFound(res);
-    const { initiator, reason, note, waiveFee } = req.body || {};
-    if (!CANCEL_REASONS[initiator]) return res.status(400).json({ message: 'Vui lòng chọn ai muốn hủy đặt phòng.' });
+    const { initiator, reason, note } = req.body || {};
+    const waiveFee = req.body?.waiveFee === true;
+    if (typeof initiator !== 'string' || !Object.hasOwn(CANCEL_REASONS, initiator)) return res.status(400).json({ message: 'Vui lòng chọn ai muốn hủy đặt phòng.' });
     const cleanReason = typeof reason === 'string' ? reason.trim() : '';
     const cleanNote = typeof note === 'string' ? note.trim() : '';
     if (!cleanReason || !cleanNote) return res.status(400).json({ message: MSG_MISSING_REASON });
@@ -293,18 +295,32 @@ export const cancelPartnerBooking = async (req, res, next) => {
     );
     if (!updated.modifiedCount) return res.status(409).json({ message: MSG_NOT_CONFIRMED });
 
+    // Hoàn tiền được mô phỏng: hủy xong là coi như đã hoàn, ghi một giao dịch REFUND để lưu vết.
+    // paymentStatus giữ PAID vì màn của khách dựa vào đó để hiện phần hoàn tiền.
+    let cancellationId = null;
     try {
-      await BookingCancellation.create({
+      const cancellation = await BookingCancellation.create({
         bookingId: booking._id,
         reason: `${REASON_PREFIX[initiator]}: ${cleanReason}`,
         note: cleanNote,
         cancelledAt: now,
         cancellationFee,
         refundAmount,
-        // Chỉ ghi nhận số tiền cần hoàn; việc chuyển tiền do luồng hoàn tiền xử lý
-        refundStatus: refundAmount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+        refundStatus: refundAmount > 0 ? 'PROCESSED' : 'NOT_APPLICABLE',
       });
+      cancellationId = cancellation._id;
+      if (refundAmount > 0) {
+        await Payment.create({
+          bookingId: booking._id,
+          amount: refundAmount,
+          type: 'REFUND',
+          status: 'SUCCESS',
+          txnRef: `REF-${booking.bookingCode}-${now.getTime()}`,
+          payDate: now,
+        });
+      }
     } catch (error) {
+      if (cancellationId) await BookingCancellation.deleteOne({ _id: cancellationId });
       await Booking.updateOne({ _id: booking._id, bookingStatus: 'CANCELLED' }, { $set: { bookingStatus: 'CONFIRMED' } });
       throw error;
     }
@@ -319,14 +335,14 @@ export const cancelPartnerBooking = async (req, res, next) => {
       old_status: 'CONFIRMED',
       new_status: 'CANCELLED',
       new_reason: cleanReason,
-      metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id, initiator, note: cleanNote, waiveFee: Boolean(waiveFee), refundAmount, cancellationFee },
+      metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id, initiator, note: cleanNote, waiveFee, refundAmount, cancellationFee },
     });
     await Notification.create({
       recipientId: booking.customerId,
       title: 'Đặt phòng đã bị hủy',
       message: initiator === 'HOTEL'
-        ? `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} vì: ${cleanReason}. Bạn được hoàn ${formatVnd(refundAmount)}.`
-        : `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} theo yêu cầu của bạn. Số tiền hoàn: ${formatVnd(refundAmount)}.`,
+        ? `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} vì: ${cleanReason}. Bạn đã được hoàn ${formatVnd(refundAmount)}.`
+        : `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} theo yêu cầu của bạn. Số tiền đã hoàn: ${formatVnd(refundAmount)}.`,
       entityType: 'BOOKING',
       entityId: booking._id,
     });

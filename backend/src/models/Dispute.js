@@ -16,6 +16,7 @@ const responseSchema = new mongoose.Schema(
     attachments: { type: [attachmentSchema], default: [] },
     respondedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     respondedAt: { type: Date, default: Date.now },
+    editedAt: { type: Date, default: null },
   },
   { _id: false },
 );
@@ -30,12 +31,19 @@ const disputeSchema = new mongoose.Schema(
     category: { type: String, enum: ['INCORRECT_INFORMATION', 'SERVICE_QUALITY', 'OVERCHARGE', 'CANCELLATION', 'OTHER'], required: true },
     description: { type: String, required: true, trim: true, maxlength: 4000 },
     attachments: { type: [attachmentSchema], default: [] },
-    status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'], default: 'PENDING', index: true },
+    status: { type: String, enum: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED', 'WITHDRAWN'], default: 'PENDING', index: true },
+    withdrawnAt: { type: Date, default: null },
     assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     responses: { type: [responseSchema], default: [] },
     resolution: {
       outcome: { type: String, enum: ['UPHELD', 'PARTIALLY_UPHELD', 'REJECTED', 'NO_ACTION'], default: null },
       message: { type: String, default: '', trim: true },
+      // Chỉ có khi bác bỏ: FALSE_INFORMATION = khách cung cấp thông tin sai sự thật; trống = chưa đủ căn cứ
+      rejectReason: { type: String, enum: ['', 'FALSE_INFORMATION'], default: '' },
+      // Nội dung Manager soạn riêng để gửi khách; trống thì khách thấy `message`
+      customerNotice: { type: String, default: '', trim: true },
+      // Nội dung Manager soạn riêng để gửi khách sạn; trống thì khách sạn thấy `message`
+      partnerNotice: { type: String, default: '', trim: true },
       resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
       resolvedAt: { type: Date, default: null },
     },

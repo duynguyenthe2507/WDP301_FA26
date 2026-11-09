@@ -17,6 +17,7 @@ import {
   getPendingReviewBookings,
   updateReview,
   deleteReview,
+  uploadReviewImages,
 } from '../CustomerApi';
 
 // Định dạng ngày giờ: HH:mm ngày DD/MM/YYYY
@@ -92,6 +93,7 @@ const MyReviewsPage = () => {
     images: [],
   });
   const [saveLoading, setSaveLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Hộp xác nhận xóa đánh giá (hiển thị inline bên dưới thẻ đánh giá)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -207,20 +209,35 @@ const MyReviewsPage = () => {
     }));
   };
 
-  // Upload ảnh từ máy tính (base64)
-  const handleFileUpload = (e) => {
+  // Upload ảnh lên Cloudinary
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setEditForm((prev) => ({
-        ...prev,
-        images: [...prev.images, { url: reader.result, publicId: file.name }],
-      }));
-    };
-    reader.readAsDataURL(file);
-    e.target.value = null;
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg(`Tệp "${file.name}" vượt quá dung lượng tối đa 10 MB`);
+      e.target.value = null;
+      return;
+    }
+
+    setImageUploading(true);
+    setErrorMsg('');
+    try {
+      const formData = new FormData();
+      formData.append('images', file);
+      const res = await uploadReviewImages(formData);
+      if (res.data?.images?.[0]) {
+        setEditForm((prev) => ({
+          ...prev,
+          images: [...prev.images, res.data.images[0]],
+        }));
+      }
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Tải ảnh lên thất bại. Vui lòng thử lại.');
+    } finally {
+      setImageUploading(false);
+      e.target.value = null;
+    }
   };
 
   return (
@@ -604,19 +621,24 @@ const MyReviewsPage = () => {
                                     borderRadius: '8px',
                                     padding: '12px 16px',
                                     fontSize: '12px',
-                                    color: '#475569',
-                                    cursor: 'pointer',
+                                    color: imageUploading ? '#94a3b8' : '#475569',
+                                    cursor: imageUploading ? 'not-allowed' : 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '6px',
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: imageUploading ? '#f1f5f9' : '#ffffff',
                                   }}
                                 >
-                                  <FaPlus size={11} /> Tải ảnh từ máy
+                                  {imageUploading ? (
+                                    <><Spinner size="sm" animation="border" /> Đang tải ảnh...</>
+                                  ) : (
+                                    <><FaPlus size={11} /> Tải ảnh từ máy</>
+                                  )}
                                   <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/jpeg,image/png,image/webp"
                                     onChange={handleFileUpload}
+                                    disabled={imageUploading}
                                     style={{ display: 'none' }}
                                   />
                                 </label>

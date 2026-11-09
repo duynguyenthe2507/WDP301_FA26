@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaStar, FaCloudUploadAlt, FaTimes, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
-import { getBookingReviewInfo, createReview } from '../CustomerApi';
+import { getBookingReviewInfo, createReview, uploadReviewImages } from '../CustomerApi';
 
 // Format ngày: DD/MM/YYYY
 const formatDateOnly = (dateVal) => {
@@ -60,6 +60,7 @@ const WriteReviewPage = () => {
   const [images, setImages] = useState([]);
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Tải thông tin kỳ nghỉ
   useEffect(() => {
@@ -90,23 +91,33 @@ const WriteReviewPage = () => {
     }
   }, [bookingId]);
 
-  // Xử lý upload ảnh từ máy (base64)
-  const handleFileUpload = (e) => {
+  // Xử lý upload ảnh lên Cloudinary (thay vì base64)
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    files.forEach((file) => {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} vượt quá dung lượng tối đa 10 MB`);
-        return;
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const oversized = files.find((f) => f.size > MAX_SIZE);
+    if (oversized) {
+      alert(`Tệp "${oversized.name}" vượt quá dung lượng tối đa 10 MB`);
+      e.target.value = null;
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append('images', file));
+      const res = await uploadReviewImages(formData);
+      if (res.data?.images) {
+        setImages((prev) => [...prev, ...res.data.images]);
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImages((prev) => [...prev, { url: reader.result, publicId: file.name }]);
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = null;
+    } catch (err) {
+      alert(err.response?.data?.message || 'Tải ảnh lên thất bại. Vui lòng thử lại.');
+    } finally {
+      setImageUploading(false);
+      e.target.value = null;
+    }
   };
 
   // Xóa ảnh
@@ -522,21 +533,28 @@ const WriteReviewPage = () => {
                           style={{
                             border: '1px solid #cbd5e1',
                             borderRadius: '6px',
-                            backgroundColor: '#ffffff',
+                            backgroundColor: imageUploading ? '#f1f5f9' : '#ffffff',
                             padding: '6px 18px',
                             fontSize: '12.5px',
                             fontWeight: 500,
-                            color: '#1e293b',
-                            cursor: 'pointer',
-                            display: 'inline-block',
+                            color: imageUploading ? '#94a3b8' : '#1e293b',
+                            cursor: imageUploading ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
                           }}
                         >
-                          Chọn tệp
+                          {imageUploading ? (
+                            <><Spinner size="sm" animation="border" /> Đang tải lên...</>
+                          ) : (
+                            'Chọn tệp'
+                          )}
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,image/webp"
                             multiple
                             onChange={handleFileUpload}
+                            disabled={imageUploading}
                             style={{ display: 'none' }}
                           />
                         </label>

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext } from 'react';
 import { Container, Row, Col, Form, Button, Spinner, Alert, Modal } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaLock, FaCloudUploadAlt, FaTimes, FaPaperPlane, FaFilePdf, FaStar, FaInfoCircle, FaCheckCircle } from 'react-icons/fa';
 import { AuthContext } from '../../../context/AuthContext';
 import CustomerSidebar from '../components/CustomerSidebar';
-import { getBookingDisputeInfo, createDispute } from '../CustomerApi';
+import { getBookingDisputeInfo, createDispute, uploadDisputeFiles } from '../CustomerApi';
 import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 
 const formatStayDates = (checkInDate, checkOutDate) => {
@@ -53,6 +53,7 @@ const SubmitDisputePage = () => {
   const [attachments, setAttachments] = useState([]);
   const [agreeTruth, setAgreeTruth] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
   const [successModal, setSuccessModal] = useState({ show: false, dispute: null });
 
   useEffect(() => {
@@ -82,39 +83,40 @@ const SubmitDisputePage = () => {
   }, [bookingId]);
 
   // Xử lý đính kèm file (ảnh hoặc PDF)
-  const handleFileUpload = (e) => {
+  // Xử lý đính kèm file (ảnh hoặc PDF) qua Cloudinary
+  const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     if (attachments.length + files.length > 5) {
       alert('Tối đa 5 tài liệu/ảnh chứng cứ cho mỗi khiếu nại.');
+      e.target.value = null;
       return;
     }
 
-    files.forEach((file) => {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`Tệp "${file.name}" vượt quá dung lượng tối đa 10 MB.`);
-        return;
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const oversized = files.find((f) => f.size > MAX_SIZE);
+    if (oversized) {
+      alert(`Tệp "${oversized.name}" vượt quá dung lượng tối đa 10 MB.`);
+      e.target.value = null;
+      return;
+    }
+
+    setFileUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      const res = await uploadDisputeFiles(formData);
+      if (res.data?.attachments) {
+        setAttachments((prev) => [...prev, ...res.data.attachments]);
       }
-
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        setAttachments((prev) => [
-          ...prev,
-          {
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            fileUrl: uploadEvent.target.result, // base64 payload
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = null;
+    } catch (err) {
+      alert(err.response?.data?.message || 'Tải tệp lên thất bại. Vui lòng thử lại.');
+    } finally {
+      setFileUploading(false);
+      e.target.value = null;
+    }
   };
-
   const removeAttachment = (index) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
@@ -380,14 +382,14 @@ const SubmitDisputePage = () => {
                         backgroundColor: '#f8fafc',
                         cursor: 'pointer',
                       }}
-                      onClick={() => document.getElementById('dispute-file-input').click()}
+                      onClick={() => !fileUploading && document.getElementById('dispute-file-input').click()}
                     >
                       <FaCloudUploadAlt size={36} color="#64748b" className="mb-2" />
                       <p style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
                         Kéo thả hoặc chọn tệp · JPG, PNG, PDF · Tối đa 10 MB/tệp (Tối đa 5 tệp)
                       </p>
-                      <Button variant="outline-primary" size="sm" style={{ pointerEvents: 'none' }}>
-                        Chọn tệp
+                      <Button variant="outline-primary" size="sm" style={{ pointerEvents: 'none' }} disabled={fileUploading}>
+                        {fileUploading ? <><Spinner size="sm" animation="border" className="me-1" /> Đang tải tệp lên...</> : 'Chọn tệp'}
                       </Button>
                       <input
                         id="dispute-file-input"
@@ -479,7 +481,7 @@ const SubmitDisputePage = () => {
                         </>
                       ) : (
                         <>
-                          Gửi khiếu nại <FaPaperPlane size={13} />
+                          Gửi khiếu nại
                         </>
                       )}
                     </Button>

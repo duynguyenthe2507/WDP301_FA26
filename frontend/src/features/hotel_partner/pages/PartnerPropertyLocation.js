@@ -2,10 +2,14 @@ import { useState } from "react";
 import { Form } from "react-bootstrap";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { hasErrors, validateLocation } from "../data/propertyValidation";
 
 const PartnerPropertyLocation = () => {
   const { draft, updateSection } = usePropertyDraft();
   const [form, setForm] = useState(draft.location);
+  const [showErrors, setShowErrors] = useState(false);
+  const errors = validateLocation(form);
+  const shown = showErrors ? errors : {};
   const update = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
@@ -19,23 +23,20 @@ const PartnerPropertyLocation = () => {
       previous="/partner/terms"
       next="/partner/property-amenities"
       beforeNext={() => updateSection("location", form)}
+      invalid={hasErrors(errors)}
+      onInvalid={() => setShowErrors(true)}
     >
       <h2 className="h6 fw-semibold mb-3">Vị trí cơ sở lưu trú</h2>
-      <Form>
-        <Form.Group className="mb-3">
-          <Form.Label>Quốc gia/Vùng</Form.Label>
-          <Form.Select name="country" value={form.country} onChange={update}>
-            <option>Việt Nam</option>
-          </Form.Select>
-        </Form.Group>
-        <Form.Group className="mt-3">
+      <Form noValidate>
+        <Form.Group>
           <Form.Label>Tỉnh/Thành phố</Form.Label>
           <Form.Control
             name="provinceCity"
             value={form.provinceCity}
             onChange={update}
-            required
+            isInvalid={!!shown.provinceCity}
           />
+          <Form.Control.Feedback type="invalid">{shown.provinceCity}</Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mt-3">
           <Form.Label>Quận/Huyện</Form.Label>
@@ -43,8 +44,9 @@ const PartnerPropertyLocation = () => {
             name="district"
             value={form.district}
             onChange={update}
-            required
+            isInvalid={!!shown.district}
           />
+          <Form.Control.Feedback type="invalid">{shown.district}</Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mt-3">
           <Form.Label>Địa chỉ cụ thể</Form.Label>
@@ -53,12 +55,9 @@ const PartnerPropertyLocation = () => {
             value={form.address}
             placeholder="Số nhà, tên đường"
             onChange={update}
-            required
+            isInvalid={!!shown.address}
           />
-        </Form.Group>
-        <Form.Group className="mt-3">
-          <Form.Label>Mã ZIP/Mã bưu điện</Form.Label>
-          <Form.Control name="zipCode" value={form.zipCode} onChange={update} />
+          <Form.Control.Feedback type="invalid">{shown.address}</Form.Control.Feedback>
         </Form.Group>
       </Form>
     </PropertySetupLayout>

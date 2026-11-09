@@ -27,7 +27,8 @@ const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from))
 const addDays = (day, days) => new Date(Date.parse(day) + days * DAY_MS).toISOString().slice(0, 10);
 const sumBy = (items, read) => items.reduce((total, item) => total + read(item), 0);
 
-export const isValidDay = (day) => DATE_PATTERN.test(day || '') && !Number.isNaN(Date.parse(day));
+// Date.parse chấp nhận cả ngày không có thật như 2026-02-31 nên phải đối chiếu lại
+export const isValidDay = (day) => typeof day === 'string' && DATE_PATTERN.test(day) && !Number.isNaN(Date.parse(day)) && new Date(Date.parse(day)).toISOString().slice(0, 10) === day;
 export const rangeError = (from, to) => {
   if (isValidDay(from) && isValidDay(to) && to >= from && daysBetween(from, to) <= MAX_RANGE_DAYS) return null;
   return `Khoảng thời gian không hợp lệ. Ngày kết thúc phải sau ngày bắt đầu và không vượt quá ${MAX_RANGE_DAYS} ngày.`;
@@ -48,9 +49,10 @@ const loadCommissionPolicies = (partnerId, hotelId) =>
     $or: [{ scope: 'GLOBAL' }, { scope: 'PARTNER', partnerId }, { scope: 'HOTEL', hotelId }],
   }).sort({ effectiveFrom: -1 }).lean();
 const commissionFor = (policies, bookedAt, revenue) => {
-  const policy = policies
-    .filter((item) => item.effectiveFrom <= bookedAt && (!item.effectiveTo || item.effectiveTo >= bookedAt))
-    .sort((left, right) => SCOPE_PRIORITY[right.scope] - SCOPE_PRIORITY[left.scope])[0];
+  const validByEnd = policies.filter((item) => !item.effectiveTo || new Date(item.effectiveTo) >= new Date(bookedAt));
+  const strictMatches = validByEnd.filter((item) => new Date(item.effectiveFrom) <= new Date(bookedAt));
+  const pool = strictMatches.length > 0 ? strictMatches : validByEnd;
+  const policy = pool.sort((left, right) => SCOPE_PRIORITY[right.scope] - SCOPE_PRIORITY[left.scope])[0];
   if (!policy) return 0;
   return policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Math.min(policy.value, revenue);
 };
@@ -356,7 +358,7 @@ export const getPayouts = async (req, res, next) => {
     if ((from || to) && rangeError(from, to)) return res.status(400).json({ message: rangeError(from, to) });
     const filter = { partnerId: req.user._id };
     if (status) {
-      if (!PAYOUT_STATUS_GROUPS[status]) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
+      if (!Object.hasOwn(PAYOUT_STATUS_GROUPS, status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
       filter.status = { $in: PAYOUT_STATUS_GROUPS[status] };
     }
     if (from && to) {
