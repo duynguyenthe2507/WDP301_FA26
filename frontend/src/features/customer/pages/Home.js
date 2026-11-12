@@ -167,7 +167,7 @@ const Home = () => {
 
                 return (
                   <Col lg={4} md={6} key={hotel._id}>
-                    <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden hover-lift transition-all">
+                    <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
                       <div className="position-relative">
                         <Card.Img
                           variant="top"

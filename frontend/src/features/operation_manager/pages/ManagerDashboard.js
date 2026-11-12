@@ -13,6 +13,7 @@ const actionLabels = {
   REFUND_PROCESSED: 'Đã giải ngân bồi thường khách hàng',
   PAYOUT_APPROVED: 'Đã duyệt chi trả',
   PAYOUT_PAID: 'Đã xác nhận chi trả',
+  ACCOUNT_DEACTIVATED: 'Đã khóa tài khoản vĩnh viễn',
 };
 
 const ManagerDashboard = () => {

@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
@@ -271,6 +271,12 @@ export const createPendingBooking = async (req, res) => {
     const hotelDoc = await Hotel.findById(hotelId).populate('roomTypes');
     if (!hotelDoc) {
       return res.status(404).json({ message: 'Không tìm thấy khách sạn' });
+    }
+    if (hotelDoc.ownerId) {
+      const owner = await User.findById(hotelDoc.ownerId).select('status').lean();
+      if (owner && owner.status !== 'ACTIVE') {
+        return res.status(400).json({ message: 'Khách sạn hiện tạm ngừng hoạt động do tài khoản đối tác đã bị khóa.' });
+      }
     }
     // Lỗi trong lúc kiểm tra phòng trống không chặn việc đặt phòng (chỉ log cảnh báo ở catch bên dưới)
     try {

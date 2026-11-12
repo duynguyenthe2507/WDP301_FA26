@@ -310,6 +310,8 @@ const DisputeResolutionPage = () => {
                 disputes.map((item) => {
                   const isCur = selected?._id === item._id;
                   const st = STATUS_MAP[item.status] || { label: item.status, badge: 'secondary' };
+                  const partnerReports = item.partnerValidReportCount || 0;
+                  const partnerBlocked = item.partnerId?.status === 'BLOCKED';
                   return (
                     <div
                       key={item._id}
@@ -327,6 +329,17 @@ const DisputeResolutionPage = () => {
                       <div className={`small ${isCur ? 'text-white-50' : 'text-muted'} mb-1`}>
                         <FiHome className="me-1" />
                         {item.hotelId?.name || 'Khách sạn'}
+                      </div>
+                      <div className="d-flex flex-wrap gap-1 mb-1">
+                        <Badge
+                          bg={isCur ? 'light' : partnerReports > 5 ? 'danger' : partnerReports >= 4 ? 'warning' : 'secondary'}
+                          text={isCur || (partnerReports >= 4 && partnerReports <= 5) ? 'dark' : undefined}
+                        >
+                          KS bị report đúng: {partnerReports} lần
+                        </Badge>
+                        {partnerBlocked && (
+                          <Badge bg="danger">Đối tác đã khóa</Badge>
+                        )}
                       </div>
                       <div className="small fw-semibold mb-1" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                         {CATEGORY_MAP[item.category] || item.category}
@@ -479,7 +492,32 @@ const DisputeResolutionPage = () => {
                         <strong>Khách sạn:</strong> {selected.hotelId?.name || 'Khách sạn'}<br />
                         <strong>Địa chỉ:</strong> {selected.hotelId?.address || ''}, {selected.hotelId?.provinceCity || ''}<br />
                         <strong>Chủ cơ sở:</strong> {selected.partnerId?.fullName || 'Đối tác'} ({selected.partnerId?.email || ''} - {selected.partnerId?.phoneNumber || ''})
+                        {selected.partnerId?.status === 'BLOCKED' && (
+                          <Badge bg="danger" className="ms-2">Đã khóa vĩnh viễn</Badge>
+                        )}
+                        <br />
+                        <strong>Số lần bị report đúng (khách sạn sai):</strong>{' '}
+                        <Badge
+                          bg={(selected.partnerValidReportCount || 0) > 5 ? 'danger' : (selected.partnerValidReportCount || 0) >= 4 ? 'warning' : 'secondary'}
+                          text={(selected.partnerValidReportCount || 0) >= 4 && (selected.partnerValidReportCount || 0) <= 5 ? 'dark' : undefined}
+                        >
+                          {selected.partnerValidReportCount || 0} lần
+                        </Badge>
                       </div>
+                      {(selected.partnerId?.status === 'BLOCKED' || (selected.partnerValidReportCount || 0) > 5) ? (
+                        <Alert variant="danger" className="small py-2 mb-2">
+                          Đối tác khách sạn này đã bị report đúng (khách sạn sai) <strong>{selected.partnerValidReportCount || 0} lần</strong> (vượt quá 5 lần). Tài khoản đối tác đã bị <strong>khóa vĩnh viễn (BLOCKED)</strong>
+                          {selected.partnerId?.status_reason ? ` — ${selected.partnerId.status_reason}` : '.'}
+                        </Alert>
+                      ) : (selected.partnerValidReportCount || 0) === 5 ? (
+                        <Alert variant="danger" className="small py-2 mb-2">
+                          <strong>Cảnh báo ngưỡng khóa:</strong> Đối tác đã bị report đúng <strong>5 lần</strong>. Nếu thêm 1 lần phán quyết khách sạn sai (quá 5 lần), tài khoản đối tác sẽ tự động bị <strong>khóa vĩnh viễn</strong>!
+                        </Alert>
+                      ) : (selected.partnerValidReportCount || 0) > 0 ? (
+                        <Alert variant="warning" className="small py-2 mb-2">
+                          Đối tác này đã từng bị report đúng (khách sạn sai): <strong>{selected.partnerValidReportCount} lần</strong> (quá 5 lần sẽ bị khóa tài khoản vĩnh viễn).
+                        </Alert>
+                      ) : null}
 
                       <div className="small p-2 bg-light rounded border mb-2">
                         <strong className="text-secondary d-block mb-1">Phản hồi / Giải trình của khách sạn:</strong>
@@ -673,6 +711,20 @@ const DisputeResolutionPage = () => {
                   Ban hành <strong>Phán quyết có hiệu lực bắt buộc</strong>. Nếu phán quyết chấp nhận khiếu nại,
                   hệ thống sẽ tự động lập hồ sơ bồi thường cho khách hàng và khấu trừ vào kỳ đối soát doanh thu của khách sạn.
                 </Alert>
+                {modalAction.dispute?.partnerId?.status === 'BLOCKED' ? (
+                  <Alert variant="secondary" className="small">
+                    Lưu ý: Tài khoản đối tác của khách sạn này hiện đã bị <strong>khóa vĩnh viễn (BLOCKED)</strong>.
+                  </Alert>
+                ) : ['UPHELD', 'PARTIALLY_UPHELD'].includes(modalAction.outcome)
+                  && (modalAction.dispute?.partnerValidReportCount || 0) >= 5
+                  && !(modalAction.dispute?.status === 'RESOLVED' && ['UPHELD', 'PARTIALLY_UPHELD'].includes(modalAction.dispute?.resolution?.outcome)) && (
+                    <Alert variant="danger" className="small">
+                      <strong>Cảnh báo khóa vĩnh viễn:</strong> Đối tác hiện đã bị report đúng{' '}
+                      <strong>{modalAction.dispute.partnerValidReportCount} lần</strong>. Ban hành phán quyết này sẽ nâng tổng số lên{' '}
+                      <strong>{modalAction.dispute.partnerValidReportCount + 1} lần</strong> (vượt quá 5 lần) và hệ thống sẽ{' '}
+                      <strong>tự động khóa vĩnh viễn</strong> tài khoản đối tác!
+                    </Alert>
+                )}
 
                 <Row className="g-3 mb-3">
                   <Col md={6}>

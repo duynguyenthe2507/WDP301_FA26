@@ -64,11 +64,6 @@ h6,
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.hover-lift:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
-}
-
 .hover-warning:hover {
   background-color: var(--premium-gold) !important;
   border-color: var(--premium-gold) !important;

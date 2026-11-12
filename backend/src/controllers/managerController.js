@@ -43,6 +43,35 @@ const notify = async (recipientId, title, message, entityType, entityId) => {
   }
 };
 
+const PARTNER_FAULT_OUTCOMES = ['UPHELD', 'PARTIALLY_UPHELD'];
+const PARTNER_MAX_VALID_REPORTS = 5;
+
+const countDisputesByField = async (field, ids, extraMatch) => {
+  const objectIds = [...new Set(ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map(String))]
+    .map((id) => new mongoose.Types.ObjectId(id));
+  if (!objectIds.length) return new Map();
+  const rows = await Dispute.aggregate([
+    { $match: { [field]: { $in: objectIds }, ...extraMatch } },
+    { $group: { _id: `$${field}`, count: { $sum: 1 } } },
+  ]);
+  return new Map(rows.map((row) => [String(row._id), row.count]));
+};
+
+const autoBlockAccount = async ({ adminId, userId, role, reason, disputeId, extraAudit = {} }) => {
+  if (!userId) return null;
+  const blockedUser = await User.findOneAndUpdate(
+    { _id: userId, role, status: { $ne: 'BLOCKED' } },
+    { status: 'BLOCKED', status_reason: reason },
+    { new: true },
+  );
+  if (!blockedUser) return null;
+  await Promise.all([
+    audit(adminId, 'ACCOUNT_DEACTIVATED', 'USER', blockedUser._id, { reason, disputeId, ...extraAudit }),
+    notify(blockedUser._id, 'Tài khoản bị khóa vĩnh viễn', reason, 'DISPUTE', disputeId),
+  ]);
+  return blockedUser;
+};
+
 const paged = async (model, filter, query, populates = []) => {
   const { page, limit, skip } = getPaging(query);
   let records = model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
@@ -138,10 +167,10 @@ export const getDisputes = async (req, res, next) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.assigned === 'me') filter.assignedTo = req.user._id;
     const result = await paged(Dispute, filter, req.query, [
-      { path: 'customerId', select: 'fullName email phoneNumber avatarUrl' },
+      { path: 'customerId', select: 'fullName email phoneNumber avatarUrl status status_reason' },
       { path: 'bookingId', select: 'bookingCode bookerFullName bookerPhone bookerEmail guestFullName guestPhone isSelfGuest checkInDate checkOutDate totalNights totalAmount bookingStatus paymentStatus specialRequests' },
       { path: 'hotelId', select: 'name address provinceCity starRating images cancellationPolicy' },
-      { path: 'partnerId', select: 'fullName email phoneNumber' },
+      { path: 'partnerId', select: 'fullName email phoneNumber status status_reason' },
       { path: 'assignedTo', select: 'fullName email' },
       { path: 'responses.respondedBy', select: 'fullName email role' },
       { path: 'resolution.resolvedBy', select: 'fullName email' },
@@ -149,26 +178,38 @@ export const getDisputes = async (req, res, next) => {
 
     const disputeIds = result.items.map((item) => item._id);
     const bookingIds = result.items.map((item) => item.bookingId?._id || item.bookingId).filter(Boolean);
-    const compensations = await RefundRequest.find({
-      $or: [
-        { disputeId: { $in: disputeIds } },
-        { bookingId: { $in: bookingIds } },
-      ],
-    }).sort({ createdAt: -1 }).lean();
-
-    // Số lần mỗi khách đã bị bác bỏ vì cung cấp thông tin sai, để Manager cân nhắc khi phán quyết
-    const customerIds = [...new Set(result.items.map((item) => String(item.customerId?._id || item.customerId)))];
-    const falseClaims = await Dispute.aggregate([
-      { $match: { customerId: { $in: customerIds.map((id) => new mongoose.Types.ObjectId(id)) }, 'resolution.rejectReason': 'FALSE_INFORMATION' } },
-      { $group: { _id: '$customerId', count: { $sum: 1 } } },
+    const [compensations, falseClaimCounts, partnerValidReportCounts] = await Promise.all([
+      RefundRequest.find({
+        $or: [
+          { disputeId: { $in: disputeIds } },
+          { bookingId: { $in: bookingIds } },
+        ],
+      }).sort({ createdAt: -1 }).lean(),
+      // Số lần mỗi khách bị bác bỏ vì cung cấp thông tin sai và số lần khách sạn bị báo cáo đúng
+      countDisputesByField(
+        'customerId',
+        result.items.map((item) => item.customerId?._id || item.customerId),
+        { 'resolution.rejectReason': 'FALSE_INFORMATION' },
+      ),
+      countDisputesByField(
+        'partnerId',
+        result.items.map((item) => item.partnerId?._id || item.partnerId),
+        { status: 'RESOLVED', 'resolution.outcome': { $in: PARTNER_FAULT_OUTCOMES } },
+      ),
     ]);
-    const falseClaimOf = (customerId) => falseClaims.find((row) => String(row._id) === String(customerId))?.count || 0;
 
     const disputes = result.items.map((doc) => {
       const item = doc.toObject ? doc.toObject() : doc;
       const bId = item.bookingId?._id || item.bookingId;
+      const cId = String(item.customerId?._id || item.customerId || '');
+      const pId = String(item.partnerId?._id || item.partnerId || '');
       const comp = compensations.find((c) => (c.disputeId && String(c.disputeId) === String(item._id)) || (bId && String(c.bookingId) === String(bId)));
-      return { ...item, compensation: comp || null, customerFalseClaimCount: falseClaimOf(item.customerId?._id || item.customerId) };
+      return {
+        ...item,
+        compensation: comp || null,
+        customerFalseClaimCount: falseClaimCounts.get(cId) || 0,
+        partnerValidReportCount: partnerValidReportCounts.get(pId) || 0,
+      };
     });
 
     res.json({ disputes, pagination: result.pagination });
@@ -395,6 +436,46 @@ export const updateDispute = async (req, res, next) => {
 
     await dispute.save();
 
+    let customerAutoBlocked = false;
+    let partnerAutoBlocked = false;
+    let partnerValidReportCount = null;
+
+    // Khách bị bác bỏ vì thông tin sai sự thật đủ 3 lần thì khóa vĩnh viễn (BLOCKED không thể mở lại)
+    if (dispute.customerId && dispute.resolution?.rejectReason === 'FALSE_INFORMATION') {
+      const strikes = await Dispute.countDocuments({ customerId: dispute.customerId, 'resolution.rejectReason': 'FALSE_INFORMATION' });
+      if (strikes >= 3) {
+        const reason = `Tự động khóa: ${strikes} lần khiếu nại bị bác bỏ do cung cấp thông tin sai sự thật.`;
+        customerAutoBlocked = Boolean(await autoBlockAccount({
+          adminId: req.user._id,
+          userId: dispute.customerId,
+          role: 'CUSTOMER',
+          reason,
+          disputeId: dispute._id,
+          extraAudit: { strikeCount: strikes },
+        }));
+      }
+    }
+
+    // Hotel Partner bị report đúng (khách sạn sai sót) quá 5 lần (> 5) thì khóa tài khoản vĩnh viễn (BLOCKED)
+    if (dispute.partnerId && dispute.status === 'RESOLVED' && PARTNER_FAULT_OUTCOMES.includes(dispute.resolution?.outcome)) {
+      partnerValidReportCount = await Dispute.countDocuments({
+        partnerId: dispute.partnerId,
+        status: 'RESOLVED',
+        'resolution.outcome': { $in: PARTNER_FAULT_OUTCOMES },
+      });
+      if (partnerValidReportCount > PARTNER_MAX_VALID_REPORTS) {
+        const reason = `Tự động khóa: Đối tác khách sạn bị báo cáo đúng ${partnerValidReportCount} lần (vượt quá ${PARTNER_MAX_VALID_REPORTS} lần cho phép).`;
+        partnerAutoBlocked = Boolean(await autoBlockAccount({
+          adminId: req.user._id,
+          userId: dispute.partnerId,
+          role: 'HOTEL_PARTNER',
+          reason,
+          disputeId: dispute._id,
+          extraAudit: { validReportCount: partnerValidReportCount },
+        }));
+      }
+    }
+
     // Gửi Notification tới hai bên (Customer & Hotel Partner)
     if (status === 'IN_PROGRESS') {
       await Promise.all([
@@ -459,12 +540,26 @@ export const updateDispute = async (req, res, next) => {
       rejectReason: dispute.resolution?.rejectReason || null,
       resolutionMessage: resolutionMessage || message || '',
       compensationAmount: createdCompensation?.approvedAmount || 0,
+      partnerValidReportCount,
+      partnerAutoBlocked,
+      customerAutoBlocked,
     });
 
+    let responseMessage = 'Đã cập nhật tranh chấp và gửi phản hồi cho hai bên.';
+    if (partnerAutoBlocked) {
+      responseMessage += ` Tài khoản đối tác đã bị khóa vĩnh viễn do bị báo cáo đúng ${partnerValidReportCount} lần (vượt quá ${PARTNER_MAX_VALID_REPORTS} lần).`;
+    }
+    if (customerAutoBlocked) {
+      responseMessage += ' Tài khoản khách hàng đã bị khóa vĩnh viễn do cung cấp thông tin sai sự thật từ 3 lần trở lên.';
+    }
+
     res.json({
-      message: 'Đã cập nhật tranh chấp và gửi phản hồi cho hai bên.',
+      message: responseMessage,
       dispute,
       compensation: createdCompensation,
+      partnerValidReportCount,
+      partnerAutoBlocked,
+      customerAutoBlocked,
     });
   } catch (error) { next(error); }
 };
