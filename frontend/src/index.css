@@ -10,6 +10,12 @@
   --premium-dark: #1a202c;
 }
 
+/* Phóng to toàn giao diện (cả chữ px lẫn rem) cho dễ đọc; chỉnh số này để to/nhỏ hơn.
+   shortcut: zoom không hỗ trợ Firefox < 126, khi đó cần đổi sang font-size gốc. */
+html {
+  zoom: 1.2;
+}
+
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;

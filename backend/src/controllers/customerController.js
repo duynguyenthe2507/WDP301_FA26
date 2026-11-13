@@ -5,7 +5,7 @@ import Payment from '../models/Payment.js';
 import BookingDetail from '../models/BookingDetail.js';
 import BookingCancellation from '../models/BookingCancellation.js';
 import Hotel from '../models/Hotel.js';
-import Dispute from '../models/Dispute.js';
+import Dispute, { CUSTOMER_MAX_FALSE_CLAIMS } from '../models/Dispute.js';
 import RefundRequest from '../models/RefundRequest.js';
 import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
@@ -633,11 +633,18 @@ export const getBookingDisputeInfo = async (req, res) => {
       status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
     }).lean();
 
+    const falseClaimCount = await Dispute.countDocuments({
+      customerId: req.user._id,
+      'resolution.rejectReason': 'FALSE_INFORMATION',
+    });
+
     res.status(200).json({
       success: true,
       booking,
       hotel,
       existingDispute: existingDispute || null,
+      falseClaimCount,
+      falseClaimLimit: CUSTOMER_MAX_FALSE_CLAIMS,
     });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi tải thông tin kỳ nghỉ để khiếu nại.', error: error.message });

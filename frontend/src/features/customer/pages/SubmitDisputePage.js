@@ -46,6 +46,7 @@ const SubmitDisputePage = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [existingDispute, setExistingDispute] = useState(null);
+  const [falseClaim, setFalseClaim] = useState({ count: 0, limit: 3 });
 
   // Form states
   const [category, setCategory] = useState('INCORRECT_INFORMATION');
@@ -66,6 +67,7 @@ const SubmitDisputePage = () => {
           setBooking(res.data.booking);
           setHotel(res.data.hotel);
           setExistingDispute(res.data.existingDispute);
+          setFalseClaim({ count: res.data.falseClaimCount || 0, limit: res.data.falseClaimLimit || 3 });
         }
       } catch (err) {
         console.error('Lỗi khi tải thông tin kỳ nghỉ để khiếu nại:', err);
@@ -180,6 +182,16 @@ const SubmitDisputePage = () => {
               Khiếu nại được gắn với đặt phòng thuộc tài khoản của bạn để đối chiếu thông tin.
             </p>
           </div>
+
+          {!loading && !errorMsg && (
+            <Alert variant={falseClaim.count > 0 ? 'danger' : 'warning'} className="rounded-3 border-0 shadow-sm">
+              <strong>Cảnh báo:</strong> khiếu nại phải đúng sự thật và có chứng cứ. Bạn chỉ được phép khiếu nại sai
+              tối đa <strong>{falseClaim.limit} lần</strong>; đến lần thứ <strong>{falseClaim.limit + 1}</strong> tài khoản
+              sẽ bị <strong>khóa vĩnh viễn</strong>.
+              {' '}Hiện tại bạn đã bị bác bỏ <strong>{falseClaim.count}/{falseClaim.limit} lần</strong>
+              {falseClaim.count >= falseClaim.limit ? ' — lần sai tiếp theo sẽ bị khóa tài khoản.' : '.'}
+            </Alert>
+          )}
 
           {loading ? (
             <div className="text-center py-5">

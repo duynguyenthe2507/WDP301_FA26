@@ -3,7 +3,7 @@ import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 import BookingCancellation from '../models/BookingCancellation.js';
 import CommissionPolicy from '../models/CommissionPolicy.js';
-import Dispute from '../models/Dispute.js';
+import Dispute, { CUSTOMER_MAX_FALSE_CLAIMS } from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
 import Notification from '../models/Notification.js';
@@ -443,7 +443,7 @@ export const updateDispute = async (req, res, next) => {
     // Khách bị bác bỏ vì thông tin sai sự thật đủ 3 lần thì khóa vĩnh viễn (BLOCKED không thể mở lại)
     if (dispute.customerId && dispute.resolution?.rejectReason === 'FALSE_INFORMATION') {
       const strikes = await Dispute.countDocuments({ customerId: dispute.customerId, 'resolution.rejectReason': 'FALSE_INFORMATION' });
-      if (strikes >= 3) {
+      if (strikes > CUSTOMER_MAX_FALSE_CLAIMS) {
         const reason = `Tự động khóa: ${strikes} lần khiếu nại bị bác bỏ do cung cấp thông tin sai sự thật.`;
         customerAutoBlocked = Boolean(await autoBlockAccount({
           adminId: req.user._id,
