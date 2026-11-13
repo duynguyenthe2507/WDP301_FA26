@@ -48,7 +48,7 @@ const PropertySetupLayout = ({
     setDraftError("");
     try {
       await saveHotelRegistrationDraft({ ...draft, ...draftValues }, location.pathname, token);
-      navigate(hotel ? "/partner/registration-status" : "/");
+      navigate(hotel ? "/partner/registration-status" : "/partner/terms");
     } catch (requestError) {
       setDraftError(requestError.response?.data?.message || "Không thể lưu bản nháp. Vui lòng thử lại.");
       setSavingDraft(false);
