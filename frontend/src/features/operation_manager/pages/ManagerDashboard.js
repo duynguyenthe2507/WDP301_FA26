@@ -41,7 +41,12 @@ const ManagerDashboard = () => {
 
   const total = queues.reduce((sum, queue) => sum + queue.value, 0);
   const max = Math.max(...queues.map((queue) => queue.value), 1);
-  const linePoints = queues.map((queue, index) => `${80 + index * 170},${168 - (queue.value / max) * 102}`).join(' ');
+  const linePoints = queues
+    .map(
+      (queue, index) =>
+        `${80 + index * 170},${168 - (queue.value / max) * 102}`,
+    )
+    .join(" ");
   const donut = queues.reduce((segments, queue) => {
     const previous = segments[segments.length - 1];
     const start = previous ? previous.offset + previous.length : 0;
@@ -49,7 +54,6 @@ const ManagerDashboard = () => {
     segments.push({ ...queue, length, offset: start });
     return segments;
   }, []);
-
   return (
     <div>
       <div className="om-page-heading">

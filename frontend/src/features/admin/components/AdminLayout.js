@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { Outlet, Link, Navigate } from 'react-router-dom';
-import { Navbar, Container, Nav } from 'react-bootstrap';
+import { Navbar, Container, Nav, Button } from 'react-bootstrap';
+import {FaHotel} from "react-icons/fa"
 import { AuthContext } from '../../../context/AuthContext';
 
 const AdminLayout = () => {
@@ -13,7 +14,7 @@ const AdminLayout = () => {
       <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm">
         <Container fluid>
           <Navbar.Brand as={Link} to="/admin" className="fw-bold">
-            VinaStay Admin Panel
+            <FaHotel className="me-2 text-warning" /> VinaStay Admin Panel
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="admin-navbar-nav" />
           <Navbar.Collapse id="admin-navbar-nav">
@@ -30,9 +31,13 @@ const AdminLayout = () => {
               <Nav.Link as={Link} to="/admin/logs">
                 Nhật ký hệ thống
               </Nav.Link>
-              <Nav.Link className="text-danger" onClick={logout}>
+              <Button
+                onClick={logout}
+                variant="outline-light"
+                className="ms-lg-3 mt-3 mt-lg-0 rounded-pill px-4"
+              >
                 Đăng xuất
-              </Nav.Link>
+              </Button>
             </Nav>
           </Navbar.Collapse>
         </Container>

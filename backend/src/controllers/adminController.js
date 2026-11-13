@@ -237,7 +237,7 @@ export const updateConfig = async (req, res) => {
 
     // GHI NHẬT KÝ KIỂM TOÁN (Audit Log)
     await AuditLog.create({
-      admin_id: req.user?._id || null,
+      admin_id: req.user?._id,
       target_user_id: req.user?._id || null,
       action: "SYSTEM_CONFIG_UPDATED",
       new_reason: `Cập nhật chế độ bảo trì: ${isMaintenanceMode ? "BẬT" : "TẮT"}. Thông báo: "${config.maintenanceMessage}"`,
@@ -283,6 +283,7 @@ export const getSystemLogs = async (req, res) => {
     // Lấy toàn bộ Log từ DB (mới nhất lên đầu)
     const logs = await AuditLog.find(filter)
       .populate("admin_id", "fullName email")
+      .populate("target_user_id", "fullName email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ logs });
