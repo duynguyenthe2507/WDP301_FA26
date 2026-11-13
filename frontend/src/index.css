@@ -10,10 +10,22 @@
   --premium-dark: #1a202c;
 }
 
-/* Phóng to toàn giao diện (cả chữ px lẫn rem) cho dễ đọc; chỉnh số này để to/nhỏ hơn.
+/* Thu/phóng toàn giao diện (cả chữ px lẫn rem); chỉnh --ui-zoom để to/nhỏ hơn.
    shortcut: zoom không hỗ trợ Firefox < 126, khi đó cần đổi sang font-size gốc. */
+:root {
+  --ui-zoom: 0.9;
+}
+
 html {
-  zoom: 1.2;
+  zoom: var(--ui-zoom);
+}
+
+/* vh không bị zoom nhân theo nên phải chia lại, nếu không trang full-màn hình bị hụt phần dưới.
+   shortcut: chỉ sửa các lớp dùng chung; vài trang đặt minHeight vh trực tiếp thì vẫn hụt nhẹ. */
+.min-vh-100,
+.auth-page,
+.om-shell {
+  min-height: calc(100vh / var(--ui-zoom)) !important;
 }
 
 body {

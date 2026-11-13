@@ -317,7 +317,9 @@ export const getHotelReviews = async (req, res) => {
       rating: r.rating,
       comment: r.comment,
       images: r.images || [],
-      partnerReply: r.partnerReply,
+      partnerReply: r.partnerReplyContent
+        ? { content: r.partnerReplyContent, repliedAt: r.partnerRepliedAt }
+        : null,
       createdAt: r.createdAt,
       customer: {
         fullName: r.customerId?.fullName || 'Khách hàng ẩn danh',

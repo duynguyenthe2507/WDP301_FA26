@@ -517,9 +517,9 @@ const BookingHistoryPage = () => {
                         <div
                           style={{
                             fontWeight: 700,
-                            fontSize: '14px',
-                            color: '#0f172a',
-                            letterSpacing: '0.02em',
+                            fontSize: '15px',
+                            color: '#475569',
+                            letterSpacing: '0.04em',
                           }}
                         >
                           {booking.bookingCode}
@@ -527,10 +527,10 @@ const BookingHistoryPage = () => {
                         <div
                           style={{
                             ...badgeConfig.style,
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '13.5px',
+                            fontWeight: 700,
+                            padding: '5px 14px',
                             lineHeight: '1.4',
                           }}
                         >
@@ -548,61 +548,64 @@ const BookingHistoryPage = () => {
                             onError={onImgError}
                             style={{
                               ...imgBg,
-                              width: '135px',
-                              height: '92px',
-                              borderRadius: '8px',
+                              width: '210px',
+                              maxWidth: '34%',
+                              height: '145px',
+                              borderRadius: '12px',
                               objectFit: 'cover',
                               flexShrink: 0,
+                              boxShadow: '0 4px 12px rgba(15,23,42,0.12)',
                             }}
                           />
                           <div style={{ minWidth: 0 }}>
                             <div
                               style={{
-                                fontSize: '15.5px',
-                                fontWeight: 700,
+                                fontSize: '17.5px',
+                                fontWeight: 800,
                                 color: '#0f172a',
-                                marginBottom: '3px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
+                                marginBottom: '4px',
+                                lineHeight: 1.25,
                               }}
                             >
                               {hotelName}
                             </div>
-                            <div
-                              style={{
-                                fontSize: '13px',
-                                color: '#475569',
-                                marginBottom: '4px',
-                              }}
-                            >
-                              {roomName} · {stayDateStr}
+                            <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                              {roomName}
                             </div>
+                            {/* Ngày lưu trú: thông tin quan trọng nhất nên làm nổi bật */}
                             <div
                               style={{
-                                fontSize: '12.5px',
-                                color: '#64748b',
-                                marginBottom: '3px',
+                                display: 'inline-block',
+                                backgroundColor: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#1d4ed8',
+                                borderRadius: '8px',
+                                fontSize: '13.5px',
+                                fontWeight: 700,
+                                padding: '3px 10px',
+                                marginBottom: '6px',
                               }}
                             >
+                              📅 {stayDateStr}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
                               {detailLine}
                             </div>
                             <div
                               style={{
-                                fontSize: '12.5px',
-                                color: '#64748b',
+                                display: 'inline-block',
+                                backgroundColor: paymentLine.includes('Chưa') ? '#fefce8' : paymentLine.includes('Hoàn tiền') || paymentLine.includes('hủy') ? '#fef2f2' : '#ecfdf5',
+                                color: paymentLine.includes('Chưa') ? '#a16207' : paymentLine.includes('Hoàn tiền') || paymentLine.includes('hủy') ? '#b91c1c' : '#15803d',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                padding: '2px 9px',
                                 marginBottom: '6px',
                               }}
                             >
                               {paymentLine}
                             </div>
-                            <div
-                              style={{
-                                fontSize: '15.5px',
-                                fontWeight: 700,
-                                color: '#0f172a',
-                              }}
-                            >
+                            <div style={{ fontSize: '20px', fontWeight: 800, color: '#b45309', letterSpacing: '-0.01em' }}>
                               {formatPrice(booking.totalAmount)}
                             </div>
                           </div>
