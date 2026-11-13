@@ -3,7 +3,7 @@ import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 import BookingCancellation from '../models/BookingCancellation.js';
 import CommissionPolicy from '../models/CommissionPolicy.js';
-import Dispute, { CUSTOMER_MAX_FALSE_CLAIMS } from '../models/Dispute.js';
+import Dispute, { CUSTOMER_MAX_FALSE_CLAIMS, PARTNER_FAULT_OUTCOMES, PARTNER_MAX_VALID_REPORTS } from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
 import Notification from '../models/Notification.js';
@@ -43,8 +43,6 @@ const notify = async (recipientId, title, message, entityType, entityId) => {
   }
 };
 
-const PARTNER_FAULT_OUTCOMES = ['UPHELD', 'PARTIALLY_UPHELD'];
-const PARTNER_MAX_VALID_REPORTS = 5;
 
 const countDisputesByField = async (field, ids, extraMatch) => {
   const objectIds = [...new Set(ids.filter((id) => mongoose.Types.ObjectId.isValid(id)).map(String))]

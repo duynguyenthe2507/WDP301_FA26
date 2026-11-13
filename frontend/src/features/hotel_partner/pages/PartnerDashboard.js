@@ -1,12 +1,29 @@
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Button, Card } from "react-bootstrap";
 import { FaBed, FaCalendarCheck, FaChartBar, FaExclamationTriangle, FaHotel, FaStar } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { AuthContext } from "../../../context/AuthContext";
+import ValidReportWarning from "../components/ValidReportWarning";
+import { getValidReportSummary } from "../partnerApi";
 
-const PartnerDashboard = () => (
+const PartnerDashboard = () => {
+  const { token } = useContext(AuthContext);
+  const [reports, setReports] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    // Cảnh báo chỉ là phần phụ: lỗi tải thì bỏ qua, không làm hỏng trang chính
+    getValidReportSummary(token)
+      .then(({ data }) => { if (active) setReports({ count: data.validReportCount, limit: data.validReportLimit }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [token]);
+
+  return (
   <div>
     <h2 className="mb-2">Bảng điều khiển Đối tác Khách sạn</h2>
     <p className="text-muted mb-4">Quản lý thông tin khách sạn, loại phòng và hoạt động kinh doanh của bạn.</p>
+    {reports && <ValidReportWarning count={reports.count} limit={reports.limit} />}
     <div className="row g-3">
       <div className="col-md-6">
         <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaHotel className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Thông tin khách sạn</h3><p className="text-muted small">Cập nhật thông tin cơ bản, tiện nghi, chính sách và hình ảnh khách sạn.</p><Button as={Link} to="/partner/hotel-information" variant="outline-dark" size="sm">Quản lý thông tin</Button></Card.Body></Card>
@@ -28,6 +45,7 @@ const PartnerDashboard = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default PartnerDashboard;

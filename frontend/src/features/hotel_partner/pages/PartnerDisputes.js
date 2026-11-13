@@ -3,6 +3,7 @@ import { Alert, Badge, Button, Card, Form, Spinner, Table } from "react-bootstra
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import TablePagination from "../components/TablePagination";
+import ValidReportWarning from "../components/ValidReportWarning";
 import { formatDate, formatDateTime } from "../data/bookingOptions";
 import { DISPUTE_CATEGORY, DISPUTE_STATUS } from "../data/disputeOptions";
 import { getPartnerDisputes } from "../partnerApi";
@@ -44,6 +45,8 @@ const PartnerDisputes = () => {
       <div className="text-muted small mb-3">Khách sạn của tôi / Khiếu nại</div>
       <h1 className="h3 fw-bold mb-1">Khiếu nại của khách</h1>
       <p className="text-muted mb-4">Bộ phận vận hành xử lý và kết luận khiếu nại. Khách sạn xem nội dung và gửi phản hồi để giải trình.</p>
+
+      {result && <ValidReportWarning count={result.validReportCount} limit={result.validReportLimit} />}
 
       {result?.waitingCount > 0 && (
         <Alert variant="warning" className="d-flex justify-content-between align-items-center">
