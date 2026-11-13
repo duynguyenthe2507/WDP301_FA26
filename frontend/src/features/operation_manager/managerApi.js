@@ -1,21 +1,21 @@
-import axios from 'axios';
+import axios from "axios";
 
-const api = axios.create({ baseURL: process.env.REACT_APP_API_URL || 'http://localhost:9999/api/manager' });
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:9999/api/manager",
+});
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-export const getManagerDashboard = () => api.get('/dashboard');
-export const getVerifications = (params) => api.get('/verifications', { params });
-export const reviewVerification = (id, data) => api.patch(`/verifications/${id}/review`, data);
-export const getPartnerChangeRequests = (params) => api.get('/partner-change-requests', { params });
-export const reviewPartnerChangeRequest = (id, data) => api.patch(`/partner-change-requests/${id}/review`, data);
-export const getSupportTickets = (params) => api.get('/support-tickets', { params });
-export const respondToSupportTicket = (id, data) => api.patch(`/support-tickets/${id}/respond`, data);
-export const getDisputes = (params) => api.get('/disputes', { params });
+export const getManagerDashboard = () => api.get("/dashboard");
+export const getVerifications = (params) =>
+  api.get("/verifications", { params });
+export const reviewVerification = (id, data) =>
+  api.patch(`/verifications/${id}/review`, data);
+export const getDisputes = (params) => api.get("/disputes", { params });
 export const updateDispute = (id, data) => api.patch(`/disputes/${id}`, data);
 export const getManagerBookings = (params) => api.get('/bookings', { params });
 export const getRefunds = (params) => api.get('/refunds', { params });

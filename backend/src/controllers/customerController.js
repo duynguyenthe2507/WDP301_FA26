@@ -1,11 +1,11 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
 import BookingDetail from '../models/BookingDetail.js';
 import BookingCancellation from '../models/BookingCancellation.js';
 import Hotel from '../models/Hotel.js';
-import Dispute from '../models/Dispute.js';
+import Dispute, { CUSTOMER_MAX_FALSE_CLAIMS } from '../models/Dispute.js';
 import RefundRequest from '../models/RefundRequest.js';
 import { createPaymentUrl, verifyReturnData } from '../config/vnpay.js';
 
@@ -271,6 +271,12 @@ export const createPendingBooking = async (req, res) => {
     const hotelDoc = await Hotel.findById(hotelId).populate('roomTypes');
     if (!hotelDoc) {
       return res.status(404).json({ message: 'Không tìm thấy khách sạn' });
+    }
+    if (hotelDoc.ownerId) {
+      const owner = await User.findById(hotelDoc.ownerId).select('status').lean();
+      if (owner && owner.status !== 'ACTIVE') {
+        return res.status(400).json({ message: 'Khách sạn hiện tạm ngừng hoạt động do tài khoản đối tác đã bị khóa.' });
+      }
     }
     // Lỗi trong lúc kiểm tra phòng trống không chặn việc đặt phòng (chỉ log cảnh báo ở catch bên dưới)
     try {
@@ -627,11 +633,18 @@ export const getBookingDisputeInfo = async (req, res) => {
       status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
     }).lean();
 
+    const falseClaimCount = await Dispute.countDocuments({
+      customerId: req.user._id,
+      'resolution.rejectReason': 'FALSE_INFORMATION',
+    });
+
     res.status(200).json({
       success: true,
       booking,
       hotel,
       existingDispute: existingDispute || null,
+      falseClaimCount,
+      falseClaimLimit: CUSTOMER_MAX_FALSE_CLAIMS,
     });
   } catch (error) {
     res.status(500).json({ message: 'Lỗi khi tải thông tin kỳ nghỉ để khiếu nại.', error: error.message });

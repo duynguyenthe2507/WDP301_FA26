@@ -10,6 +10,24 @@
   --premium-dark: #1a202c;
 }
 
+/* Thu/phóng toàn giao diện (cả chữ px lẫn rem); chỉnh --ui-zoom để to/nhỏ hơn.
+   shortcut: zoom không hỗ trợ Firefox < 126, khi đó cần đổi sang font-size gốc. */
+:root {
+  --ui-zoom: 0.9;
+}
+
+html {
+  zoom: var(--ui-zoom);
+}
+
+/* vh không bị zoom nhân theo nên phải chia lại, nếu không trang full-màn hình bị hụt phần dưới.
+   shortcut: chỉ sửa các lớp dùng chung; vài trang đặt minHeight vh trực tiếp thì vẫn hụt nhẹ. */
+.min-vh-100,
+.auth-page,
+.om-shell {
+  min-height: calc(100vh / var(--ui-zoom)) !important;
+}
+
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
@@ -62,11 +80,6 @@ h6,
 /* Custom Utilities */
 .hover-lift {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 1rem 3rem rgba(0, 0, 0, .175) !important;
 }
 
 .hover-warning:hover {

@@ -8,7 +8,6 @@ import {
   FiFileText,
   FiHome,
   FiLogOut,
-  FiMessageSquare,
   FiPercent,
   FiShield,
 } from 'react-icons/fi';
@@ -18,7 +17,6 @@ import '../manager.css';
 const navigation = [
   { to: '/manager', label: 'Tổng quan', icon: FiHome, end: true },
   { to: '/manager/verifications', label: 'Xác minh khách sạn', icon: FiShield },
-  { to: '/manager/partner-operations', label: 'Yêu cầu đối tác', icon: FiMessageSquare },
   { to: '/manager/disputes', label: 'Tranh chấp & đối chất', icon: FiAlertCircle },
   { to: '/manager/compensations', label: 'Bồi thường khách hàng', icon: FiDollarSign },
   { to: '/manager/commissions', label: 'Chính sách hoa hồng', icon: FiPercent },
@@ -29,7 +27,6 @@ const navigation = [
 const pageTitles = {
   '/manager': 'Tổng quan vận hành',
   '/manager/verifications': 'Xác minh khách sạn',
-  '/manager/partner-operations': 'Yêu cầu đối tác',
   '/manager/disputes': 'Tranh chấp & đối chất hai bên',
   '/manager/compensations': 'Bồi thường & đính chính thông tin khách hàng',
   '/manager/refunds': 'Bồi thường & đính chính thông tin khách hàng',

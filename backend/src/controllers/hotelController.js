@@ -3,7 +3,14 @@ import RoomType from '../models/RoomType.js';
 import '../models/BookingDetail.js'; // đăng ký model cho populate('details')
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
+import User from '../models/User.js';
 import mongoose from 'mongoose';
+
+const isHotelOwnerActive = async (ownerId) => {
+  if (!ownerId) return true;
+  const owner = await User.findById(ownerId).select('status').lean();
+  return !owner || owner.status === 'ACTIVE';
+};
 
 const formatHotel = (hotel) => {
   const h = hotel.toObject ? hotel.toObject() : hotel;
@@ -71,7 +78,11 @@ export const getHotels = async (req, res) => {
       });
     }
 
-    const query = { status: 'ACTIVE' };
+    const inactiveOwnerIds = await User.distinct('_id', { role: 'HOTEL_PARTNER', status: { $ne: 'ACTIVE' } });
+    const query = {
+      status: 'ACTIVE',
+      ...(inactiveOwnerIds.length ? { ownerId: { $nin: inactiveOwnerIds } } : {}),
+    };
     if (andConditions.length > 0) {
       query.$and = andConditions;
     }
@@ -121,7 +132,7 @@ export const getHotelById = async (req, res) => {
     const { id } = req.params;
     const hotel = await Hotel.findById(id).populate('roomTypes');
 
-    if (!hotel || hotel.status !== 'ACTIVE') {
+    if (!hotel || hotel.status !== 'ACTIVE' || !(await isHotelOwnerActive(hotel.ownerId))) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy khách sạn này',
@@ -148,7 +159,7 @@ export const checkRoomAvailability = async (req, res) => {
     const { checkIn, checkOut } = req.query;
 
     const hotel = await Hotel.findById(id).populate('roomTypes');
-    if (!hotel) {
+    if (!hotel || hotel.status !== 'ACTIVE' || !(await isHotelOwnerActive(hotel.ownerId))) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy khách sạn',
@@ -306,7 +317,9 @@ export const getHotelReviews = async (req, res) => {
       rating: r.rating,
       comment: r.comment,
       images: r.images || [],
-      partnerReply: r.partnerReply,
+      partnerReply: r.partnerReplyContent
+        ? { content: r.partnerReplyContent, repliedAt: r.partnerRepliedAt }
+        : null,
       createdAt: r.createdAt,
       customer: {
         fullName: r.customerId?.fullName || 'Khách hàng ẩn danh',

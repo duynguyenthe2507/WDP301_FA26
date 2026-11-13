@@ -62,7 +62,6 @@ import ManagerDashboard from './features/operation_manager/pages/ManagerDashboar
 import ManagerQueuePage from './features/operation_manager/pages/ManagerQueuePage';
 import DisputeResolutionPage from './features/operation_manager/pages/DisputeResolutionPage';
 import CompensationManagementPage from './features/operation_manager/pages/CompensationManagementPage';
-import PartnerOperationsPage from './features/operation_manager/pages/PartnerOperationsPage';
 import CommissionPolicyPage from './features/operation_manager/pages/CommissionPolicyPage';
 import PayoutPage from './features/operation_manager/pages/PayoutPage';
 import ManagerAuditLogPage from './features/operation_manager/pages/ManagerAuditLogPage';
@@ -156,7 +155,6 @@ function App() {
             <Route path="/manager" element={<ManagerLayout />}>
               <Route index element={<ManagerDashboard />} />
               <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
-              <Route path="partner-operations" element={<PartnerOperationsPage />} />
               <Route path="disputes" element={<DisputeResolutionPage />} />
               <Route path="compensations" element={<CompensationManagementPage />} />
               <Route path="refunds" element={<Navigate to="/manager/compensations" replace />} />

@@ -51,4 +51,7 @@ const disputeSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Số lần khiếu nại sai sự thật được phép; vượt quá (lần thứ MAX + 1) thì khóa vĩnh viễn
+export const CUSTOMER_MAX_FALSE_CLAIMS = 3;
+
 export default mongoose.model('Dispute', disputeSchema);

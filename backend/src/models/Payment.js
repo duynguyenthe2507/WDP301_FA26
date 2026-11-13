@@ -29,7 +29,7 @@ const paymentSchema = new mongoose.Schema(
     responseCode: { type: String, default: "" },
     payDate: { type: Date, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Payment = mongoose.model("Payment", paymentSchema);

@@ -13,6 +13,7 @@ const actionLabels = {
   REFUND_PROCESSED: 'Đã giải ngân bồi thường khách hàng',
   PAYOUT_APPROVED: 'Đã duyệt chi trả',
   PAYOUT_PAID: 'Đã xác nhận chi trả',
+  ACCOUNT_DEACTIVATED: 'Đã khóa tài khoản vĩnh viễn',
 };
 
 const ManagerDashboard = () => {
@@ -40,7 +41,12 @@ const ManagerDashboard = () => {
 
   const total = queues.reduce((sum, queue) => sum + queue.value, 0);
   const max = Math.max(...queues.map((queue) => queue.value), 1);
-  const linePoints = queues.map((queue, index) => `${80 + index * 170},${168 - (queue.value / max) * 102}`).join(' ');
+  const linePoints = queues
+    .map(
+      (queue, index) =>
+        `${80 + index * 170},${168 - (queue.value / max) * 102}`,
+    )
+    .join(" ");
   const donut = queues.reduce((segments, queue) => {
     const previous = segments[segments.length - 1];
     const start = previous ? previous.offset + previous.length : 0;
@@ -48,7 +54,6 @@ const ManagerDashboard = () => {
     segments.push({ ...queue, length, offset: start });
     return segments;
   }, []);
-
   return (
     <div>
       <div className="om-page-heading">
