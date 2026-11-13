@@ -71,6 +71,10 @@ export const getPartnerDisputes = (params, token) => axios.get('http://localhost
   headers: { Authorization: `Bearer ${token}` },
 });
 
+export const getValidReportSummary = (token) => axios.get('http://localhost:9999/api/partner/disputes/valid-report-summary', {
+  headers: { Authorization: `Bearer ${token}` },
+});
+
 export const getPartnerDispute = (id, token) => axios.get(`http://localhost:9999/api/partner/disputes/${id}`, {
   headers: { Authorization: `Bearer ${token}` },
 });

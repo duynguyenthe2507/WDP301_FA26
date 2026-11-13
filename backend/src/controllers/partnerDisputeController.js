@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
-import Dispute from '../models/Dispute.js';
+import Dispute, { PARTNER_FAULT_OUTCOMES, PARTNER_MAX_VALID_REPORTS } from '../models/Dispute.js';
 import Notification from '../models/Notification.js';
 import { findApprovedHotel, notApproved } from './partnerController.js';
 import { vnDate } from './partnerStatisticsController.js';
@@ -69,9 +69,11 @@ export const getPartnerDisputes = async (req, res, next) => {
     if (status && !STATUSES.includes(status)) return res.status(400).json({ message: 'Trạng thái không hợp lệ.' });
 
     const filter = { hotelId: hotel._id, ...(status && { status }) };
-    const [total, waitingCount] = await Promise.all([
+    const [total, waitingCount, validReportCount] = await Promise.all([
       Dispute.countDocuments(filter),
       Dispute.countDocuments({ hotelId: hotel._id, status: 'WAITING_PARTNER' }),
+      // Đếm theo tài khoản partner (cùng cách OM dùng để khóa), không phụ thuộc bộ lọc trạng thái
+      Dispute.countDocuments({ partnerId: req.user._id, status: 'RESOLVED', 'resolution.outcome': { $in: PARTNER_FAULT_OUTCOMES } }),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const page = Math.min(Math.max(1, Number(req.query.page) || 1), totalPages);
@@ -102,8 +104,22 @@ export const getPartnerDisputes = async (req, res, next) => {
         };
       }),
       waitingCount,
+      validReportCount,
+      validReportLimit: PARTNER_MAX_VALID_REPORTS,
       pagination: { page, totalPages, total },
     });
+  } catch (error) { next(error); }
+};
+
+// Chỉ một câu count, dùng cho cảnh báo ở trang chính (không tải cả danh sách khiếu nại)
+export const getValidReportSummary = async (req, res, next) => {
+  try {
+    const validReportCount = await Dispute.countDocuments({
+      partnerId: req.user._id,
+      status: 'RESOLVED',
+      'resolution.outcome': { $in: PARTNER_FAULT_OUTCOMES },
+    });
+    res.json({ validReportCount, validReportLimit: PARTNER_MAX_VALID_REPORTS });
   } catch (error) { next(error); }
 };
 

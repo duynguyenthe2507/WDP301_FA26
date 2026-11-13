@@ -3,7 +3,7 @@ const router = express.Router();
 import { createHotel, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
 import { acknowledgeBooking, cancelPartnerBooking, getPartnerBooking, getPartnerBookings } from '../controllers/partnerBookingController.js';
 import { getPartnerReviews } from '../controllers/partnerReviewController.js';
-import { editPartnerDisputeResponse, getPartnerDispute, getPartnerDisputes, respondPartnerDispute } from '../controllers/partnerDisputeController.js';
+import { editPartnerDisputeResponse, getPartnerDispute, getPartnerDisputes, getValidReportSummary, respondPartnerDispute } from '../controllers/partnerDisputeController.js';
 import { getPayout, getPayouts, getRevenueLines, getRevenueReport, getStatistics } from '../controllers/partnerStatisticsController.js';
 import { authorizeRoles, verifyToken } from '../middlewares/authMiddleware.js';
 import { uploadImages } from '../middlewares/uploadMiddleware.js';
@@ -29,6 +29,7 @@ router.post('/bookings/:id/acknowledge', verifyToken, authorizeRoles('HOTEL_PART
 router.post('/bookings/:id/cancel', verifyToken, authorizeRoles('HOTEL_PARTNER'), cancelPartnerBooking);
 router.get('/reviews', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerReviews);
 router.get('/disputes', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerDisputes);
+router.get('/disputes/valid-report-summary', verifyToken, authorizeRoles('HOTEL_PARTNER'), getValidReportSummary);
 router.get('/disputes/:id', verifyToken, authorizeRoles('HOTEL_PARTNER'), getPartnerDispute);
 router.post('/disputes/:id/responses', verifyToken, authorizeRoles('HOTEL_PARTNER'), respondPartnerDispute);
 router.put('/disputes/:id/responses/:index', verifyToken, authorizeRoles('HOTEL_PARTNER'), editPartnerDisputeResponse);

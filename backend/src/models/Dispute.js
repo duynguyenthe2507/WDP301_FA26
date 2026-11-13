@@ -54,4 +54,9 @@ const disputeSchema = new mongoose.Schema(
 // Số lần khiếu nại sai sự thật được phép; vượt quá (lần thứ MAX + 1) thì khóa vĩnh viễn
 export const CUSTOMER_MAX_FALSE_CLAIMS = 3;
 
+// Khiếu nại được tính là "report đúng" với partner khi OM chấp nhận (toàn phần/một phần);
+// vượt PARTNER_MAX_VALID_REPORTS lần thì khóa vĩnh viễn tài khoản partner
+export const PARTNER_FAULT_OUTCOMES = ['UPHELD', 'PARTIALLY_UPHELD'];
+export const PARTNER_MAX_VALID_REPORTS = 5;
+
 export default mongoose.model('Dispute', disputeSchema);
