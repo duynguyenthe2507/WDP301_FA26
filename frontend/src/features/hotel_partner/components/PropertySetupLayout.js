@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { FaCheck } from "react-icons/fa";
 import { Alert, Button } from "react-bootstrap";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 import { saveHotelRegistrationDraft } from "../partnerApi";
@@ -24,7 +24,6 @@ const PropertySetupLayout = ({
   next,
   nextLabel = "Tiếp theo",
   disableNext = false,
-  beforeNext,
   onNext,
   isSubmitting = false,
   invalid = false,
@@ -34,7 +33,8 @@ const PropertySetupLayout = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useContext(AuthContext);
-  const { draft, mode } = usePropertyDraft();
+  const { hotel } = useOutletContext();
+  const { draft, setDraft } = usePropertyDraft();
   const [blocked, setBlocked] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftError, setDraftError] = useState("");
@@ -48,7 +48,7 @@ const PropertySetupLayout = ({
     setDraftError("");
     try {
       await saveHotelRegistrationDraft({ ...draft, ...draftValues }, location.pathname, token);
-      navigate(mode === "resubmit" ? "/partner/registration-status" : "/");
+      navigate(hotel ? "/partner/registration-status" : "/");
     } catch (requestError) {
       setDraftError(requestError.response?.data?.message || "Không thể lưu bản nháp. Vui lòng thử lại.");
       setSavingDraft(false);
@@ -65,7 +65,7 @@ const PropertySetupLayout = ({
       onNext();
       return;
     }
-    beforeNext?.();
+    setDraft((current) => ({ ...current, ...draftValues }));
     navigate(next);
   };
 

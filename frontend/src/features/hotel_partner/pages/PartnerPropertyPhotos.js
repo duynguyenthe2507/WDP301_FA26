@@ -6,7 +6,7 @@ import { usePropertyDraft } from "../context/PropertyDraftContext";
 import { hasErrors, MAX_HOTEL_IMAGES, validatePhotos } from "../data/propertyValidation";
 
 const PartnerPropertyPhotos = () => {
-  const { draft, setDraft } = usePropertyDraft();
+  const { draft } = usePropertyDraft();
   const [photos, setPhotos] = useState(draft.photos || []);
   const [showErrors, setShowErrors] = useState(false);
   const errors = validatePhotos(photos);
@@ -16,7 +16,6 @@ const PartnerPropertyPhotos = () => {
       title="Ảnh khách sạn"
       previous="/partner/property-rooms"
       next="/partner/property-details"
-      beforeNext={() => setDraft((current) => ({ ...current, photos }))}
       draftValues={{ photos }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}

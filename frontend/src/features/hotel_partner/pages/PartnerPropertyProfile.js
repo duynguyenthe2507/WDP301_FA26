@@ -71,7 +71,7 @@ const Field = ({
   </Form.Group>
 );
 const PartnerPropertyProfile = () => {
-  const { draft, updateSection } = usePropertyDraft();
+  const { draft } = usePropertyDraft();
   const [form, setForm] = useState(draft.profile);
   const [showErrors, setShowErrors] = useState(false);
   const errors = validateProfile(form);
@@ -96,7 +96,6 @@ const PartnerPropertyProfile = () => {
       title="Hồ sơ"
       previous="/partner/property-details"
       next="/partner/property-publish"
-      beforeNext={() => updateSection("profile", form)}
       draftValues={{ profile: form }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}

@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { createHotel, getHotelRegistration, saveHotelRegistrationDraft, resubmitHotelRegistration, createPartnerChangeRequest, createSupportTicket, getMySupportTickets, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
+import { createHotel, getHotelRegistration, saveHotelRegistrationDraft, resubmitHotelRegistration, pingPartner, getMyHotel, getMyHotelDetail, updateMyHotel, getRoomTypes, getRoomType, createRoomType, updateRoomType, updateRoomTypeStatus, deleteRoomType, uploadPartnerImages } from '../controllers/partnerController.js';
 import { acknowledgeBooking, cancelPartnerBooking, getPartnerBooking, getPartnerBookings } from '../controllers/partnerBookingController.js';
 import { getPartnerReviews } from '../controllers/partnerReviewController.js';
 import { editPartnerDisputeResponse, getPartnerDispute, getPartnerDisputes, respondPartnerDispute } from '../controllers/partnerDisputeController.js';
@@ -11,9 +11,6 @@ import { uploadImages } from '../middlewares/uploadMiddleware.js';
 router.get('/ping', verifyToken, authorizeRoles('HOTEL_PARTNER'), pingPartner);
 router.post('/uploads/images', verifyToken, authorizeRoles('HOTEL_PARTNER'), uploadImages, uploadPartnerImages);
 router.post('/hotels', verifyToken, authorizeRoles('HOTEL_PARTNER'), createHotel);
-router.post('/change-requests', verifyToken, authorizeRoles('HOTEL_PARTNER'), createPartnerChangeRequest);
-router.post('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), createSupportTicket);
-router.get('/support-tickets', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMySupportTickets);
 router.get('/hotels/me', verifyToken, authorizeRoles('HOTEL_PARTNER'), getMyHotel);
 router.get('/hotels/me/registration', verifyToken, authorizeRoles('HOTEL_PARTNER'), getHotelRegistration);
 router.put('/hotels/me/registration', verifyToken, authorizeRoles('HOTEL_PARTNER'), resubmitHotelRegistration);

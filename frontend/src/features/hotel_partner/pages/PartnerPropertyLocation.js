@@ -22,7 +22,6 @@ const PartnerPropertyLocation = () => {
       title="Vị trí"
       previous="/partner/terms"
       next="/partner/property-amenities"
-      beforeNext={() => updateSection("location", form)}
       draftValues={{ location: form }}
       invalid={hasErrors(errors)}
       onInvalid={() => setShowErrors(true)}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Button, Card, Form } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { usePropertyDraft } from '../context/PropertyDraftContext';
 
 const partnerTerms = {
@@ -313,7 +313,8 @@ const PartnerTerms = () => {
   const [accepted, setAccepted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const navigate = useNavigate();
-  const { draft, setDraft, mode, savedStep } = usePropertyDraft();
+  const { hotel } = useOutletContext();
+  const { draft, setDraft, savedStep } = usePropertyDraft();
 
   const handleNext = () => {
     if (!accepted) {
@@ -348,7 +349,7 @@ const PartnerTerms = () => {
             ))}
           </div>
 
-          {mode === 'resubmit' && !savedStep && (
+          {hotel && !savedStep && (
             <Alert variant="info" className="border-0">
               Bạn đang sửa hồ sơ đã nộp. Thông tin cũ đã được điền sẵn ở các bước sau.
             </Alert>

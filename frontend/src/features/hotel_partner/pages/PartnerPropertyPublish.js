@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { Form } from "react-bootstrap";
 import { FaMapMarkerAlt } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 import { createHotel, resubmitHotel } from "../partnerApi";
 import PropertySetupLayout from "../components/PropertySetupLayout";
@@ -11,7 +11,8 @@ const PartnerPropertyPublish = () => {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { draft, clearDraft, mode } = usePropertyDraft();
+  const { hotel } = useOutletContext();
+  const { draft, clearDraft } = usePropertyDraft();
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -19,7 +20,7 @@ const PartnerPropertyPublish = () => {
     setError("");
     setIsSubmitting(true);
     try {
-      await (mode === "resubmit" ? resubmitHotel : createHotel)(draft, token);
+      await (hotel ? resubmitHotel : createHotel)(draft, token);
       clearDraft();
       navigate("/partner/registration-status", { replace: true });
     } catch (requestError) {
@@ -37,7 +38,7 @@ const PartnerPropertyPublish = () => {
       step={6}
       title="Đăng tải"
       previous="/partner/property-profile"
-      nextLabel={mode === "resubmit" ? "Gửi lại" : "Đăng tải"}
+      nextLabel={hotel ? "Gửi lại" : "Đăng tải"}
       disableNext={!accepted}
       onNext={publish}
       isSubmitting={isSubmitting}

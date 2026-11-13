@@ -6,12 +6,9 @@ import CommissionPolicy from '../models/CommissionPolicy.js';
 import Dispute from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
-import Notification from '../models/Notification.js';
 import Payment from '../models/Payment.js';
 import Payout from '../models/Payout.js';
-import PartnerChangeRequest, { CHANGE_REQUEST_FIELDS } from '../models/PartnerChangeRequest.js';
 import RefundRequest from '../models/RefundRequest.js';
-import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
 
 const getPaging = (query) => {
@@ -27,21 +24,6 @@ const audit = (userId, action, entityType, entityId, metadata = {}) => AuditLog.
   entityId,
   metadata,
 });
-
-const notify = async (recipientId, title, message, entityType, entityId) => {
-  if (!recipientId) return null;
-  try {
-    return await Notification.create({
-      recipientId,
-      title,
-      message,
-      entityType,
-      entityId,
-    });
-  } catch {
-    return null;
-  }
-};
 
 const paged = async (model, filter, query, populates = []) => {
   const { page, limit, skip } = getPaging(query);
@@ -114,19 +96,6 @@ export const reviewVerification = async (req, res, next) => {
     if (outcome[1]) hotel.status = outcome[1];
     await Promise.all([verification.save(), hotel.save()]);
 
-    const notifyTitles = {
-      APPROVE: 'Hồ sơ khách sạn đã được phê duyệt',
-      REJECT: 'Hồ sơ khách sạn bị từ chối',
-      REQUEST_INFO: 'Yêu cầu bổ sung hồ sơ khách sạn',
-    };
-    await notify(
-      verification.partnerId,
-      notifyTitles[decision],
-      `Khách sạn "${hotel.name}": ${note.trim() || 'Đã được bộ phận vận hành phê duyệt và kích hoạt kinh doanh.'}`,
-      'HOTEL_VERIFICATION',
-      verification._id,
-    );
-
     await audit(req.user._id, outcome[2], 'HOTEL_VERIFICATION', verification._id, { note: note.trim(), hotelName: hotel.name });
     res.json({ message: 'Đã cập nhật kết quả xác minh.', verification });
   } catch (error) { next(error); }
@@ -172,87 +141,6 @@ export const getDisputes = async (req, res, next) => {
     });
 
     res.json({ disputes, pagination: result.pagination });
-  } catch (error) { next(error); }
-};
-
-export const getPartnerChangeRequests = async (req, res, next) => {
-  try {
-    const filter = req.query.status ? { status: req.query.status } : {};
-    const result = await paged(PartnerChangeRequest, filter, req.query, [
-      { path: 'hotelId', select: 'name address provinceCity status' },
-      { path: 'partnerId', select: 'fullName email phoneNumber' },
-      { path: 'reviewedBy', select: 'fullName email' },
-    ]);
-    res.json({ requests: result.items, pagination: result.pagination });
-  } catch (error) { next(error); }
-};
-
-export const reviewPartnerChangeRequest = async (req, res, next) => {
-  try {
-    const { decision, note = '' } = req.body;
-    const outcomes = { APPROVE: 'APPROVED', REJECT: 'REJECTED', REQUEST_INFO: 'ADDITIONAL_INFO_REQUIRED' };
-    const status = outcomes[decision];
-    if (!status) return res.status(400).json({ message: 'Quyết định xử lý không hợp lệ.' });
-    if (decision !== 'APPROVE' && !note.trim()) return res.status(400).json({ message: 'Vui lòng nhập ghi chú xử lý.' });
-
-    const request = await PartnerChangeRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ message: 'Không tìm thấy yêu cầu thay đổi.' });
-    if (!['PENDING', 'ADDITIONAL_INFO_REQUIRED'].includes(request.status)) return res.status(409).json({ message: 'Yêu cầu này đã có quyết định cuối cùng.' });
-
-    if (decision === 'APPROVE') {
-      const hotel = await Hotel.findById(request.hotelId);
-      if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn của yêu cầu.' });
-      request.changes.forEach((change) => {
-        if (CHANGE_REQUEST_FIELDS.includes(change.field)) hotel[change.field] = change.proposedValue;
-      });
-      await hotel.save();
-    }
-
-    request.status = status;
-    request.decisionNote = note.trim();
-    request.reviewedBy = req.user._id;
-    request.reviewedAt = new Date();
-    await request.save();
-    await audit(req.user._id, `PARTNER_CHANGE_REQUEST_${status}`, 'PARTNER_CHANGE_REQUEST', request._id, { note: note.trim() });
-    res.json({ message: 'Đã cập nhật yêu cầu thay đổi của đối tác.', request });
-  } catch (error) { next(error); }
-};
-
-export const getSupportTickets = async (req, res, next) => {
-  try {
-    const filter = req.query.status ? { status: req.query.status } : {};
-    const result = await paged(SupportTicket, filter, req.query, [
-      { path: 'partnerId', select: 'fullName email phoneNumber' },
-      { path: 'hotelId', select: 'name' },
-      { path: 'assignedTo', select: 'fullName email' },
-      { path: 'responses.authorId', select: 'fullName email' },
-    ]);
-    const now = Date.now();
-    const tickets = result.items.map((ticket) => ({
-      ...ticket.toObject(),
-      isOverdue: !ticket.firstRespondedAt && now - new Date(ticket.createdAt).getTime() > 24 * 60 * 60 * 1000,
-    }));
-    res.json({ tickets, pagination: result.pagination });
-  } catch (error) { next(error); }
-};
-
-export const respondToSupportTicket = async (req, res, next) => {
-  try {
-    const { message, status = 'RESOLVED', escalate = false } = req.body;
-    if (!message?.trim()) return res.status(400).json({ message: 'Vui lòng nhập nội dung phản hồi.' });
-    const allowedStatuses = ['IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED'];
-    if (!allowedStatuses.includes(status)) return res.status(400).json({ message: 'Trạng thái ticket không hợp lệ.' });
-    const ticket = await SupportTicket.findById(req.params.id);
-    if (!ticket) return res.status(404).json({ message: 'Không tìm thấy ticket hỗ trợ.' });
-    if (ticket.status === 'RESOLVED') return res.status(409).json({ message: 'Ticket đã được giải quyết.' });
-
-    ticket.responses.push({ message: message.trim(), authorId: req.user._id });
-    ticket.assignedTo = req.user._id;
-    ticket.firstRespondedAt = ticket.firstRespondedAt || new Date();
-    ticket.status = escalate ? 'ESCALATED' : status;
-    await ticket.save();
-    await audit(req.user._id, `SUPPORT_TICKET_${ticket.status}`, 'SUPPORT_TICKET', ticket._id, { escalate });
-    res.json({ message: 'Đã phản hồi ticket hỗ trợ.', ticket });
   } catch (error) { next(error); }
 };
 
@@ -394,63 +282,6 @@ export const updateDispute = async (req, res, next) => {
     }
 
     await dispute.save();
-
-    // Gửi Notification tới hai bên (Customer & Hotel Partner)
-    if (status === 'IN_PROGRESS') {
-      await Promise.all([
-        notify(
-          dispute.customerId,
-          `Đã tiếp nhận khiếu nại #${dispute.bookingCode}`,
-          customerMessage?.trim() || message?.trim() || `Bộ phận vận hành VinaStay đã tiếp nhận khiếu nại của bạn về đơn ${dispute.bookingCode} và đang tiến hành xác minh với khách sạn.`,
-          'DISPUTE',
-          dispute._id,
-        ),
-        notify(
-          dispute.partnerId,
-          `Thông báo khiếu nại mới #${dispute.bookingCode}`,
-          partnerMessage?.trim() || message?.trim() || `Bộ phận vận hành đang thẩm định khiếu nại của khách hàng đối với đơn đặt phòng ${dispute.bookingCode}.`,
-          'DISPUTE',
-          dispute._id,
-        ),
-      ]);
-    } else if (status === 'WAITING_PARTNER') {
-      await Promise.all([
-        notify(
-          dispute.partnerId,
-          `Yêu cầu giải trình khiếu nại #${dispute.bookingCode}`,
-          partnerMessage?.trim() || message?.trim() || `Bộ phận vận hành yêu cầu khách sạn cung cấp thông tin giải trình và bằng chứng cho đơn ${dispute.bookingCode}.`,
-          'DISPUTE',
-          dispute._id,
-        ),
-        notify(
-          dispute.customerId,
-          `Đang đối chất với khách sạn #${dispute.bookingCode}`,
-          customerMessage?.trim() || `Bộ phận vận hành đã gửi yêu cầu giải trình tới khách sạn cho khiếu nại đơn ${dispute.bookingCode}.`,
-          'DISPUTE',
-          dispute._id,
-        ),
-      ]);
-    } else if (['RESOLVED', 'REJECTED'].includes(status)) {
-      const compNotice = createdCompensation
-        ? ` Khoản bồi thường ${Number(createdCompensation.approvedAmount).toLocaleString('vi-VN')} VND đã được ${createdCompensation.status === 'PROCESSED' ? 'giải ngân' : 'phê duyệt'}.`
-        : '';
-      await Promise.all([
-        notify(
-          dispute.customerId,
-          `Phán quyết khiếu nại #${dispute.bookingCode}`,
-          (customerMessage?.trim() || resolutionMessage.trim()) + compNotice,
-          'DISPUTE',
-          dispute._id,
-        ),
-        notify(
-          dispute.partnerId,
-          `Kết luận tranh chấp #${dispute.bookingCode}`,
-          (partnerMessage?.trim() || resolutionMessage.trim()) + (createdCompensation ? ` (Khấu trừ bồi thường: ${Number(createdCompensation.approvedAmount).toLocaleString('vi-VN')} VND).` : ''),
-          'DISPUTE',
-          dispute._id,
-        ),
-      ]);
-    }
 
     await audit(req.user._id, `DISPUTE_${dispute.status}`, 'DISPUTE', dispute._id, {
       oldStatus,
@@ -619,23 +450,6 @@ export const createManagerCompensation = async (req, res, next) => {
 
     await refund.save();
 
-    await Promise.all([
-      notify(
-        booking.customerId,
-        `Hồ sơ bồi thường đơn #${booking.bookingCode}`,
-        `VinaStay đã lập hồ sơ bồi thường ${amount.toLocaleString('vi-VN')} VND cho đơn ${booking.bookingCode}. ${fullReason}`,
-        'REFUND_REQUEST',
-        refund._id,
-      ),
-      notify(
-        hotel.ownerId,
-        `Thông báo bồi thường khách hàng #${booking.bookingCode}`,
-        `Đơn đặt phòng ${booking.bookingCode} tại ${hotel.name} phát sinh hồ sơ bồi thường ${amount.toLocaleString('vi-VN')} VND: ${fullReason}`,
-        'REFUND_REQUEST',
-        refund._id,
-      ),
-    ]);
-
     await audit(req.user._id, `COMPENSATION_CREATED_${initialStatus}`, 'REFUND_REQUEST', refund._id, {
       bookingCode: booking.bookingCode,
       amount,
@@ -752,59 +566,6 @@ export const reviewRefund = async (req, res, next) => {
     refund.reviewedAt = new Date();
     await refund.save();
 
-    const bCode = booking?.bookingCode || '';
-    if (decision === 'UNDER_REVIEW') {
-      await notify(
-        refund.customerId,
-        `Đang thẩm định bồi thường đơn #${bCode}`,
-        `Hồ sơ bồi thường của bạn đang được bộ phận vận hành kiểm tra đối chiếu.${extraCorrectionNote} ${note.trim()}`,
-        'REFUND_REQUEST',
-        refund._id,
-      );
-    } else if (decision === 'APPROVE') {
-      await Promise.all([
-        notify(
-          refund.customerId,
-          `Đã phê duyệt bồi thường đơn #${bCode}`,
-          `Khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND đã được phê duyệt. ${note.trim()}`,
-          'REFUND_REQUEST',
-          refund._id,
-        ),
-        notify(
-          refund.partnerId,
-          `Quyết định bồi thường khách hàng đơn #${bCode}`,
-          `Bộ phận vận hành đã duyệt mức bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND cho khách hàng. ${note.trim()}`,
-          'REFUND_REQUEST',
-          refund._id,
-        ),
-      ]);
-    } else if (decision === 'REJECT') {
-      await notify(
-        refund.customerId,
-        `Từ chối yêu cầu bồi thường đơn #${bCode}`,
-        `Yêu cầu bồi thường đơn ${bCode} không được chấp thuận. Lý do: ${note.trim()}`,
-        'REFUND_REQUEST',
-        refund._id,
-      );
-    } else if (decision === 'MARK_PROCESSED') {
-      await Promise.all([
-        notify(
-          refund.customerId,
-          `Đã giải ngân tiền bồi thường đơn #${bCode}`,
-          `VinaStay đã hoàn tất chuyển khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND cho đơn ${bCode}.`,
-          'REFUND_REQUEST',
-          refund._id,
-        ),
-        notify(
-          refund.partnerId,
-          `Đã khấu trừ bồi thường đơn #${bCode}`,
-          `Khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND của đơn ${bCode} đã được giải ngân và ghi nhận vào đối soát kỳ này.`,
-          'REFUND_REQUEST',
-          refund._id,
-        ),
-      ]);
-    }
-
     await audit(req.user._id, `REFUND_${refund.status}`, 'REFUND_REQUEST', refund._id, {
       decision,
       approvedAmount: refund.approvedAmount,
@@ -918,17 +679,6 @@ export const createCommissionPolicy = async (req, res, next) => {
       status: 'ACTIVE',
       createdBy: req.user._id,
     });
-
-    if (resolvedPartnerId) {
-      const ruleText = calculationType === 'PERCENTAGE' ? `${numericValue}% doanh thu` : `${numericValue.toLocaleString('vi-VN')} VND / đơn`;
-      await notify(
-        resolvedPartnerId,
-        targetHotel ? `Chính sách hoa hồng mới cho ${targetHotel.name}` : 'Cập nhật chính sách hoa hồng đối tác',
-        `Bộ phận vận hành đã gắn chính sách "${name.trim()}" (${ruleText}) áp dụng từ ${new Date(effectiveFrom).toLocaleDateString('vi-VN')}.`,
-        'COMMISSION_POLICY',
-        policy._id,
-      );
-    }
 
     await audit(req.user._id, 'COMMISSION_POLICY_CREATED', 'COMMISSION_POLICY', policy._id, {
       scope,

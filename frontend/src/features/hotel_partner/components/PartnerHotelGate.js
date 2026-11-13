@@ -5,11 +5,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
 import { getMyHotel } from "../partnerApi";
 
-// Hồ sơ bị từ chối hoặc được yêu cầu bổ sung thì được sửa và gửi lại; đang chờ duyệt thì không
-export const canResubmit = (hotel, verification) =>
-  (hotel?.status === "REJECTED" && verification?.status === "REJECTED")
-  || (hotel?.status === "PENDING" && verification?.status === "ADDITIONAL_INFO_REQUIRED");
-const canUseWizard = ({ hotel, verification }) => !hotel || canResubmit(hotel, verification);
+const canUseWizard = ({ hotel, canResubmit }) => !hotel || canResubmit;
 
 // Trang "nhà" của partner theo trạng thái khách sạn
 const homeFor = (hotel) => {
