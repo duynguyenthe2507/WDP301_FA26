@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 const router = express.Router();
 import {
   pingCustomer,
@@ -12,6 +12,9 @@ import {
   getCancelBookingInfo,
   cancelBooking,
   createDispute,
+  withdrawDispute,
+  getBookingDisputeInfo,
+  getMyDisputes,
   createRefundRequest,
 } from '../controllers/customerController.js';
 import {
@@ -29,6 +32,8 @@ import {
   deleteReview,
 } from '../controllers/reviewController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { uploadImages, uploadDisputeFiles } from '../middlewares/uploadMiddleware.js';
+import { uploadReviewImages, uploadDisputeAttachments } from '../controllers/uploadController.js';
 
 router.get('/ping', pingCustomer);
 
@@ -43,11 +48,14 @@ router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), create
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
 
-router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), getCancelBookingInfo);
-router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER', 'ADMIN'), cancelBooking);
+router.get('/bookings/:idOrCode/cancel-info', verifyToken, authorizeRoles('CUSTOMER'), getCancelBookingInfo);
+router.post('/bookings/:idOrCode/cancel', verifyToken, authorizeRoles('CUSTOMER'), cancelBooking);
 router.get('/my-bookings', verifyToken, authorizeRoles('CUSTOMER'), getMyBookings);
 router.get('/bookings/:bookingCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingByCode);
+router.get('/disputes/booking-info/:idOrCode', verifyToken, authorizeRoles('CUSTOMER'), getBookingDisputeInfo);
+router.get('/my-disputes', verifyToken, authorizeRoles('CUSTOMER'), getMyDisputes);
 router.post('/disputes', verifyToken, authorizeRoles('CUSTOMER'), createDispute);
+router.patch('/disputes/:id/withdraw', verifyToken, authorizeRoles('CUSTOMER'), withdrawDispute);
 router.post('/refunds', verifyToken, authorizeRoles('CUSTOMER'), createRefundRequest);
 
 // Đánh giá kỳ nghỉ (Customer Reviews)
@@ -58,6 +66,10 @@ router.post('/reviews', verifyToken, authorizeRoles('CUSTOMER'), createReview);
 router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview);
 router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
 
+
+// Upload routes (ảnh đánh giá và tệp khiếu nại)
+router.post('/upload/review-images', verifyToken, authorizeRoles('CUSTOMER'), uploadImages, uploadReviewImages);
+router.post('/upload/dispute-files', verifyToken, authorizeRoles('CUSTOMER'), uploadDisputeFiles, uploadDisputeAttachments);
 
 // Hotel routes (Search, Filter, Detail, Availability, Reviews)
 router.get('/hotels', getHotels);

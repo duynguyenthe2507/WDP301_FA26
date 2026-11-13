@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { PropertyDraftProvider } from './features/hotel_partner/context/PropertyDraftContext';
 
@@ -27,11 +27,13 @@ import BookingHistoryPage from './features/customer/pages/BookingHistoryPage';
 import MyReviewsPage from './features/customer/pages/MyReviewsPage';
 import WriteReviewPage from './features/customer/pages/WriteReviewPage';
 import CancelBookingPage from './features/customer/pages/CancelBookingPage';
+import SubmitDisputePage from './features/customer/pages/SubmitDisputePage';
+import MyDisputesPage from './features/customer/pages/MyDisputesPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
 
-//Partners Pages
+// Partners Pages
 import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
 import PartnerPropertyLocation from './features/hotel_partner/pages/PartnerPropertyLocation';
 import PartnerPropertyAmenities from './features/hotel_partner/pages/PartnerPropertyAmenities';
@@ -40,20 +42,32 @@ import PartnerPropertyPhotos from './features/hotel_partner/pages/PartnerPropert
 import PartnerPropertyDetails from './features/hotel_partner/pages/PartnerPropertyDetails';
 import PartnerPropertyProfile from './features/hotel_partner/pages/PartnerPropertyProfile';
 import PartnerPropertyPublish from './features/hotel_partner/pages/PartnerPropertyPublish';
+import PartnerHotelInformation from './features/hotel_partner/pages/PartnerHotelInformation';
+import PartnerRoomTypes from './features/hotel_partner/pages/PartnerRoomTypes';
+import { PartnerAddRoomType, PartnerEditRoomType } from './features/hotel_partner/pages/PartnerRoomTypeForm';
+import PartnerRegistrationStatus from './features/hotel_partner/pages/PartnerRegistrationStatus';
+import PartnerBookings from './features/hotel_partner/pages/PartnerBookings';
+import PartnerBookingDetail from './features/hotel_partner/pages/PartnerBookingDetail';
+import PartnerStatistics from './features/hotel_partner/pages/PartnerStatistics';
+import PartnerReviews from './features/hotel_partner/pages/PartnerReviews';
+import PartnerDisputes from './features/hotel_partner/pages/PartnerDisputes';
+import PartnerDisputeDetail from './features/hotel_partner/pages/PartnerDisputeDetail';
+import PartnerHotelGate from './features/hotel_partner/components/PartnerHotelGate';
 
-// Role Dashboards
+// Role Dashboards & OM Pages
 import AdminDashboard from './features/admin/pages/AdminDashboard';
 import UserManagement from './features/admin/pages/UserManagement';
 import PartnerDashboard from './features/hotel_partner/pages/PartnerDashboard';
 import ManagerDashboard from './features/operation_manager/pages/ManagerDashboard';
 import ManagerQueuePage from './features/operation_manager/pages/ManagerQueuePage';
+import DisputeResolutionPage from './features/operation_manager/pages/DisputeResolutionPage';
+import CompensationManagementPage from './features/operation_manager/pages/CompensationManagementPage';
 import PartnerOperationsPage from './features/operation_manager/pages/PartnerOperationsPage';
 import CommissionPolicyPage from './features/operation_manager/pages/CommissionPolicyPage';
 import PayoutPage from './features/operation_manager/pages/PayoutPage';
 import ManagerAuditLogPage from './features/operation_manager/pages/ManagerAuditLogPage';
 import SystemConfiguration from './features/admin/pages/SystemConfiguration';
 import SystemLog from './features/admin/pages/SystemLog';
-
 
 function App() {
   return (
@@ -86,6 +100,9 @@ function App() {
               <Route path="reviews" element={<MyReviewsPage />} />
               <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
               <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
+              <Route path="my-disputes" element={<MyDisputesPage />} />
+              <Route path="submit-dispute/:bookingId" element={<SubmitDisputePage />} />
+              <Route path="disputes/new/:bookingId" element={<SubmitDisputePage />} />
             </Route>
           </Route>
 
@@ -96,27 +113,53 @@ function App() {
             <Route path="system-config" element={<SystemConfiguration />} />
             <Route path="logs" element={<SystemLog />} />
           </Route>
-          {/* Hotel Partner Routes */}
-          <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
-            <Route index element={<PartnerDashboard />} />
-            <Route path="terms" element={<PartnerTerms />} />
-            <Route path="property-location" element={<PartnerPropertyLocation />} />
-            <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
-            <Route path="property-rooms" element={<PartnerPropertyRooms />} />
-            <Route path="property-photos" element={<PartnerPropertyPhotos />} />
-            <Route path="property-details" element={<PartnerPropertyDetails />} />
-            <Route path="property-profile" element={<PartnerPropertyProfile />} />
-            <Route path="property-publish" element={<PartnerPropertyPublish />} />
+          
+          {/* Hotel Partner Routes */}        
+          <Route element={<ProtectedRoute allowedRoles={['HOTEL_PARTNER']} />}>
+            <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
+              {/* Chưa có khách sạn: chỉ vào được wizard */}
+              <Route element={<PartnerHotelGate key="wizard" allow="wizard" />}>
+                <Route path="terms" element={<PartnerTerms />} />
+                <Route path="property-location" element={<PartnerPropertyLocation />} />
+                <Route path="property-amenities" element={<PartnerPropertyAmenities />} />
+                <Route path="property-rooms" element={<PartnerPropertyRooms />} />
+                <Route path="property-photos" element={<PartnerPropertyPhotos />} />
+                <Route path="property-details" element={<PartnerPropertyDetails />} />
+                <Route path="property-profile" element={<PartnerPropertyProfile />} />
+                <Route path="property-publish" element={<PartnerPropertyPublish />} />
+              </Route>
+
+              {/* Đã gửi hồ sơ (mọi trạng thái): xem trạng thái */}
+              <Route element={<PartnerHotelGate key="status" allow="status" />}>
+                <Route path="registration-status" element={<PartnerRegistrationStatus />} />
+              </Route>
+
+              {/* Đã duyệt: dashboard và các trang quản lý */}
+              <Route element={<PartnerHotelGate key="approved" allow="approved" />}>
+                <Route index element={<PartnerDashboard />} />
+                <Route path="hotel-information" element={<PartnerHotelInformation />} />
+                <Route path="room-types" element={<PartnerRoomTypes />} />
+                <Route path="room-types/new" element={<PartnerAddRoomType />} />
+                <Route path="room-types/:roomTypeId/edit" element={<PartnerEditRoomType />} />
+                <Route path="bookings" element={<PartnerBookings />} />
+                <Route path="bookings/:bookingId" element={<PartnerBookingDetail />} />
+                <Route path="statistics" element={<PartnerStatistics />} />
+                <Route path="reviews" element={<PartnerReviews />} />
+                <Route path="disputes" element={<PartnerDisputes />} />
+                <Route path="disputes/:disputeId" element={<PartnerDisputeDetail />} />
+              </Route>
+            </Route>
           </Route>
 
-          {/* Platform Manager Routes */}
+          {/* Platform Operations Manager Routes */}
           <Route element={<ProtectedRoute allowedRoles={['OPERATIONS_MANAGER']} />}>
             <Route path="/manager" element={<ManagerLayout />}>
               <Route index element={<ManagerDashboard />} />
               <Route path="verifications" element={<ManagerQueuePage type="verifications" />} />
               <Route path="partner-operations" element={<PartnerOperationsPage />} />
-              <Route path="disputes" element={<ManagerQueuePage type="disputes" />} />
-              <Route path="refunds" element={<ManagerQueuePage type="refunds" />} />
+              <Route path="disputes" element={<DisputeResolutionPage />} />
+              <Route path="compensations" element={<CompensationManagementPage />} />
+              <Route path="refunds" element={<Navigate to="/manager/compensations" replace />} />
               <Route path="commissions" element={<CommissionPolicyPage />} />
               <Route path="payouts" element={<PayoutPage />} />
               <Route path="audit-history" element={<ManagerAuditLogPage />} />
@@ -129,4 +172,3 @@ function App() {
 }
 
 export default App;
-

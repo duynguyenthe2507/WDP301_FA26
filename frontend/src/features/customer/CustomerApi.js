@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:9999';
 
@@ -43,4 +43,14 @@ export const createReview = (payload) => api.post('/api/customer/reviews', paylo
 export const updateReview = (id, payload) => api.put(`/api/customer/reviews/${id}`, payload);
 export const deleteReview = (id) => api.delete(`/api/customer/reviews/${id}`);
 
+// Khiếu nại & Tranh chấp (Disputes)
+export const getBookingDisputeInfo = (idOrCode) => api.get(`/api/customer/disputes/booking-info/${idOrCode}`);
+export const getMyDisputes = () => api.get('/api/customer/my-disputes');
+export const createDispute = (payload) => api.post('/api/customer/disputes', payload);
+export const withdrawDispute = (id) => api.patch(`/api/customer/disputes/${id}/withdraw`);
 
+// Upload (Cloudinary)
+export const uploadReviewImages = (formData) =>
+  api.post('/api/customer/upload/review-images', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const uploadDisputeFiles = (formData) =>
+  api.post('/api/customer/upload/dispute-files', formData, { headers: { 'Content-Type': 'multipart/form-data' } });

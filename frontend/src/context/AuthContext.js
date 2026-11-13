@@ -80,11 +80,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
 
     // Trả về các trang dựa vào role
-    if (userData.role === 'ADMIN') navigate('/admin');
-    else if (userData.role === 'HOTEL_PARTNER') navigate('/partner');
-    else if (userData.role === 'OPERATIONS_MANAGER') navigate('/manager');
-    else if (redirectTo?.pathname) navigate(`${redirectTo.pathname}${redirectTo.search || ''}`, { replace: true, state: redirectTo.state });
-    else navigate('/');
+    
+    if (userData.role === "ADMIN") navigate("/admin");
+    else if (userData.role === "HOTEL_PARTNER") {
+      const partnerDestination = redirectTo?.pathname?.startsWith("/partner/")
+        ? redirectTo.pathname
+        : "/partner";
+
+      navigate(partnerDestination, { replace: true });
+    } 
+    else if (userData.role === "STAFF") navigate("/manager");
+    else if (redirectTo?.pathname) navigate(`${redirectTo.pathname}${redirectTo.search || ""}`, {replace: true, state: redirectTo.state,});
+    else navigate("/");
   };
 
   return (

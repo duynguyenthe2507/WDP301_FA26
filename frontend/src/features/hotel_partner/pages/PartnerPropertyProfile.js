@@ -3,6 +3,8 @@ import { Form } from "react-bootstrap";
 import { FaInfoCircle } from "react-icons/fa";
 import PropertySetupLayout from "../components/PropertySetupLayout";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { getCities, getRegions } from "../data/locations";
+import { hasErrors, validateProfile } from "../data/propertyValidation";
 
 const COUNTRIES = [
   "Việt Nam",
@@ -42,11 +44,15 @@ const Field = ({
   options = [],
   type = "text",
   className = "",
+  placeholder,
+  disabled,
+  error,
 }) => (
   <Form.Group className={`mb-3 ${className}`}>
     <Form.Label style={{ fontSize: 12 }}>{label}</Form.Label>
     {select ? (
-      <Form.Select value={value} onChange={onChange}>
+      <Form.Select value={value} onChange={onChange} disabled={disabled} isInvalid={!!error}>
+        {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => {
           const optionValue = typeof option === "string" ? option : option.value;
           const optionLabel = typeof option === "string" ? option : option.label;
@@ -59,32 +65,31 @@ const Field = ({
         })}
       </Form.Select>
     ) : (
-      <Form.Control type={type} value={value} onChange={onChange} />
+      <Form.Control type={type} value={value} onChange={onChange} isInvalid={!!error} />
     )}
+    <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
   </Form.Group>
 );
 const PartnerPropertyProfile = () => {
   const { draft, updateSection } = usePropertyDraft();
-  const [form, setForm] = useState(
-    draft.profile || {
-      business: "",
-      address: "",
-      postcode: "",
-      country: "Việt Nam",
-      firstName: "",
-      lastName: "",
-      nationality: "Việt Nam",
-      birthday: "",
-      residenceCountry: "Việt Nam",
-      region: "Hà Nội",
-      city: "Hà Nội",
-      language: "Tiếng Việt",
-      phoneCountryCode: "+84",
-      phone: "",
-    },
-  );
+  const [form, setForm] = useState(draft.profile);
+  const [showErrors, setShowErrors] = useState(false);
+  const errors = validateProfile(form);
+  const shown = showErrors ? errors : {};
   const update = (name) => (event) =>
     setForm((current) => ({ ...current, [name]: event.target.value }));
+  // Đổi cấp trên thì xoá lựa chọn cấp dưới để không giữ giá trị của quốc gia/tỉnh cũ
+  const changeResidenceCountry = (event) =>
+    setForm((current) => ({
+      ...current,
+      residenceCountry: event.target.value,
+      region: "",
+      city: "",
+    }));
+  const changeRegion = (event) =>
+    setForm((current) => ({ ...current, region: event.target.value, city: "" }));
+  const regions = getRegions(form.residenceCountry);
+  const cities = getCities(form.residenceCountry, form.region);
   return (
     <PropertySetupLayout
       step={5}
@@ -92,6 +97,8 @@ const PartnerPropertyProfile = () => {
       previous="/partner/property-details"
       next="/partner/property-publish"
       beforeNext={() => updateSection("profile", form)}
+      invalid={hasErrors(errors)}
+      onInvalid={() => setShowErrors(true)}
     >
       <div
         className="rounded-3 p-3 mb-3"
@@ -110,11 +117,13 @@ const PartnerPropertyProfile = () => {
           <Field
             label="Tên pháp lý của cơ sở lưu trú"
             value={form.business}
+            error={shown.business}
             onChange={update("business")}
           />
           <Field
             label="Địa chỉ"
             value={form.address}
+            error={shown.address}
             onChange={update("address")}
           />
           <div className="row">
@@ -122,6 +131,7 @@ const PartnerPropertyProfile = () => {
               className="col-md-6"
               label="Quốc gia"
               value={form.country}
+              error={shown.country}
               onChange={update("country")}
               options={COUNTRIES}
               select
@@ -150,18 +160,21 @@ const PartnerPropertyProfile = () => {
               className="col-md-6"
               label="Tên"
               value={form.firstName}
+              error={shown.firstName}
               onChange={update("firstName")}
             />
             <Field
               className="col-md-6"
               label="Họ"
               value={form.lastName}
+              error={shown.lastName}
               onChange={update("lastName")}
             />
           </div>
           <Field
             label="Quốc tịch"
             value={form.nationality}
+            error={shown.nationality}
             onChange={update("nationality")}
             options={COUNTRIES}
             select
@@ -169,6 +182,7 @@ const PartnerPropertyProfile = () => {
           <Field
             label="Ngày sinh"
             value={form.birthday}
+            error={shown.birthday}
             onChange={update("birthday")}
             type="date"
           />
@@ -178,7 +192,8 @@ const PartnerPropertyProfile = () => {
           <Field
             label="Quốc gia"
             value={form.residenceCountry}
-            onChange={update("residenceCountry")}
+            error={shown.residenceCountry}
+            onChange={changeResidenceCountry}
             options={COUNTRIES}
             select
           />
@@ -187,14 +202,21 @@ const PartnerPropertyProfile = () => {
               className="col-md-6"
               label="Bang hoặc Tỉnh"
               value={form.region}
-              onChange={update("region")}
+              error={shown.region}
+              onChange={changeRegion}
+              options={regions}
+              placeholder="Chọn bang/tỉnh"
               select
             />
             <Field
               className="col-md-6"
               label="Thành phố"
               value={form.city}
+              error={shown.city}
               onChange={update("city")}
+              options={cities}
+              placeholder="Chọn thành phố"
+              disabled={!form.region}
               select
             />
           </div>
@@ -210,6 +232,7 @@ const PartnerPropertyProfile = () => {
           <Field
             label="Ngôn ngữ yêu thích"
             value={form.language}
+            error={shown.language}
             onChange={update("language")}
             options={LANGUAGES}
             select
@@ -219,6 +242,7 @@ const PartnerPropertyProfile = () => {
               className="col-md-5"
               label="Mã quốc gia"
               value={form.phoneCountryCode}
+              error={shown.phoneCountryCode}
               onChange={update("phoneCountryCode")}
               options={PHONE_COUNTRY_CODES}
               select
@@ -227,6 +251,7 @@ const PartnerPropertyProfile = () => {
               className="col-md-7"
               label="Số điện thoại"
               value={form.phone}
+              error={shown.phone}
               onChange={update("phone")}
             />
           </div>

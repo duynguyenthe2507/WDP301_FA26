@@ -1,12 +1,15 @@
+import mongoose from 'mongoose';
 import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
+import BookingCancellation from '../models/BookingCancellation.js';
 import CommissionPolicy from '../models/CommissionPolicy.js';
 import Dispute from '../models/Dispute.js';
 import Hotel from '../models/Hotel.js';
 import HotelVerification from '../models/HotelVerification.js';
+import Notification from '../models/Notification.js';
 import Payment from '../models/Payment.js';
 import Payout from '../models/Payout.js';
-import PartnerChangeRequest from '../models/PartnerChangeRequest.js';
+import PartnerChangeRequest, { CHANGE_REQUEST_FIELDS } from '../models/PartnerChangeRequest.js';
 import RefundRequest from '../models/RefundRequest.js';
 import SupportTicket from '../models/SupportTicket.js';
 import User from '../models/User.js';
@@ -24,6 +27,21 @@ const audit = (userId, action, entityType, entityId, metadata = {}) => AuditLog.
   entityId,
   metadata,
 });
+
+const notify = async (recipientId, title, message, entityType, entityId) => {
+  if (!recipientId) return null;
+  try {
+    return await Notification.create({
+      recipientId,
+      title,
+      message,
+      entityType,
+      entityId,
+    });
+  } catch {
+    return null;
+  }
+};
 
 const paged = async (model, filter, query, populates = []) => {
   const { page, limit, skip } = getPaging(query);
@@ -52,7 +70,7 @@ export const getVerifications = async (req, res, next) => {
   try {
     const filter = req.query.status ? { status: req.query.status } : {};
     const result = await paged(HotelVerification, filter, req.query, [
-      { path: 'hotelId', select: 'name provinceCity address status starRating' },
+      { path: 'hotelId', select: 'name provinceCity address status starRating description images amenities cancellationPolicy roomTypes' },
       { path: 'partnerId', select: 'fullName email phoneNumber' },
       { path: 'reviewedBy', select: 'fullName email' },
     ]);
@@ -73,10 +91,11 @@ export const getVerificationById = async (req, res, next) => {
 export const reviewVerification = async (req, res, next) => {
   try {
     const { decision, note = '' } = req.body;
+    // [trạng thái hồ sơ, trạng thái khách sạn (Hotel chỉ có PENDING/ACTIVE/REJECTED), hành động audit]
     const outcomes = {
-      APPROVE: ['APPROVED', 'APPROVED', 'HOTEL_VERIFICATION_APPROVED'],
+      APPROVE: ['APPROVED', 'ACTIVE', 'HOTEL_VERIFICATION_APPROVED'],
       REJECT: ['REJECTED', 'REJECTED', 'HOTEL_VERIFICATION_REJECTED'],
-      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', 'ADDITIONAL_INFO_REQUIRED', 'HOTEL_VERIFICATION_INFO_REQUESTED'],
+      REQUEST_INFO: ['ADDITIONAL_INFO_REQUIRED', null, 'HOTEL_VERIFICATION_INFO_REQUESTED'],
     };
     const outcome = outcomes[decision];
     if (!outcome) return res.status(400).json({ message: 'Quyết định xác minh không hợp lệ.' });
@@ -92,11 +111,23 @@ export const reviewVerification = async (req, res, next) => {
     verification.reviewedBy = req.user._id;
     verification.reviewedAt = now;
     verification.history.push({ action: outcome[2], note: note.trim(), performedBy: req.user._id });
-    hotel.status = outcome[1];
-    hotel.verificationStatus = outcome[0];
-    hotel.verificationUpdatedAt = now;
+    if (outcome[1]) hotel.status = outcome[1];
     await Promise.all([verification.save(), hotel.save()]);
-    await audit(req.user._id, outcome[2], 'HOTEL_VERIFICATION', verification._id, { note: note.trim() });
+
+    const notifyTitles = {
+      APPROVE: 'Hồ sơ khách sạn đã được phê duyệt',
+      REJECT: 'Hồ sơ khách sạn bị từ chối',
+      REQUEST_INFO: 'Yêu cầu bổ sung hồ sơ khách sạn',
+    };
+    await notify(
+      verification.partnerId,
+      notifyTitles[decision],
+      `Khách sạn "${hotel.name}": ${note.trim() || 'Đã được bộ phận vận hành phê duyệt và kích hoạt kinh doanh.'}`,
+      'HOTEL_VERIFICATION',
+      verification._id,
+    );
+
+    await audit(req.user._id, outcome[2], 'HOTEL_VERIFICATION', verification._id, { note: note.trim(), hotelName: hotel.name });
     res.json({ message: 'Đã cập nhật kết quả xác minh.', verification });
   } catch (error) { next(error); }
 };
@@ -107,10 +138,40 @@ export const getDisputes = async (req, res, next) => {
     if (req.query.status) filter.status = req.query.status;
     if (req.query.assigned === 'me') filter.assignedTo = req.user._id;
     const result = await paged(Dispute, filter, req.query, [
-      { path: 'customerId', select: 'fullName email' }, { path: 'hotelId', select: 'name' },
-      { path: 'partnerId', select: 'fullName email' }, { path: 'assignedTo', select: 'fullName email' },
+      { path: 'customerId', select: 'fullName email phoneNumber avatarUrl' },
+      { path: 'bookingId', select: 'bookingCode bookerFullName bookerPhone bookerEmail guestFullName guestPhone isSelfGuest checkInDate checkOutDate totalNights totalAmount bookingStatus paymentStatus specialRequests' },
+      { path: 'hotelId', select: 'name address provinceCity starRating images cancellationPolicy' },
+      { path: 'partnerId', select: 'fullName email phoneNumber' },
+      { path: 'assignedTo', select: 'fullName email' },
+      { path: 'responses.respondedBy', select: 'fullName email role' },
+      { path: 'resolution.resolvedBy', select: 'fullName email' },
     ]);
-    res.json({ disputes: result.items, pagination: result.pagination });
+
+    const disputeIds = result.items.map((item) => item._id);
+    const bookingIds = result.items.map((item) => item.bookingId?._id || item.bookingId).filter(Boolean);
+    const compensations = await RefundRequest.find({
+      $or: [
+        { disputeId: { $in: disputeIds } },
+        { bookingId: { $in: bookingIds } },
+      ],
+    }).sort({ createdAt: -1 }).lean();
+
+    // Số lần mỗi khách đã bị bác bỏ vì cung cấp thông tin sai, để Manager cân nhắc khi phán quyết
+    const customerIds = [...new Set(result.items.map((item) => String(item.customerId?._id || item.customerId)))];
+    const falseClaims = await Dispute.aggregate([
+      { $match: { customerId: { $in: customerIds.map((id) => new mongoose.Types.ObjectId(id)) }, 'resolution.rejectReason': 'FALSE_INFORMATION' } },
+      { $group: { _id: '$customerId', count: { $sum: 1 } } },
+    ]);
+    const falseClaimOf = (customerId) => falseClaims.find((row) => String(row._id) === String(customerId))?.count || 0;
+
+    const disputes = result.items.map((doc) => {
+      const item = doc.toObject ? doc.toObject() : doc;
+      const bId = item.bookingId?._id || item.bookingId;
+      const comp = compensations.find((c) => (c.disputeId && String(c.disputeId) === String(item._id)) || (bId && String(c.bookingId) === String(bId)));
+      return { ...item, compensation: comp || null, customerFalseClaimCount: falseClaimOf(item.customerId?._id || item.customerId) };
+    });
+
+    res.json({ disputes, pagination: result.pagination });
   } catch (error) { next(error); }
 };
 
@@ -141,9 +202,8 @@ export const reviewPartnerChangeRequest = async (req, res, next) => {
     if (decision === 'APPROVE') {
       const hotel = await Hotel.findById(request.hotelId);
       if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn của yêu cầu.' });
-      const allowedFields = new Set(['name', 'address', 'legalProfile']);
       request.changes.forEach((change) => {
-        if (allowedFields.has(change.field)) hotel[change.field] = change.proposedValue;
+        if (CHANGE_REQUEST_FIELDS.includes(change.field)) hotel[change.field] = change.proposedValue;
       });
       await hotel.save();
     }
@@ -196,23 +256,398 @@ export const respondToSupportTicket = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// Bồi thường khiếu nại tối đa 10% giá trị đơn (khớp COMPENSATION_MAX_RATE ở DisputeResolutionPage)
+const COMPENSATION_MAX_RATE = 0.1;
+
 export const updateDispute = async (req, res, next) => {
   try {
-    const { status, resolution, resolutionMessage, assignedToMe } = req.body;
+    const {
+      status,
+      resolution,
+      rejectReason,
+      resolutionMessage,
+      assignedToMe,
+      message,
+      customerMessage,
+      partnerMessage,
+      compensationAmount,
+      compensationReason,
+      processCompensationNow,
+    } = req.body;
+
     const dispute = await Dispute.findById(req.params.id);
     if (!dispute) return res.status(404).json({ message: 'Không tìm thấy tranh chấp.' });
-    if (['RESOLVED', 'REJECTED'].includes(dispute.status)) return res.status(409).json({ message: 'Tranh chấp đã được đóng.' });
-    const statuses = ['IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'];
-    if (status && !statuses.includes(status)) return res.status(400).json({ message: 'Trạng thái tranh chấp không hợp lệ.' });
-    if (['RESOLVED', 'REJECTED'].includes(status) && !resolutionMessage?.trim()) return res.status(400).json({ message: 'Cần nhập nội dung kết luận.' });
-    if (assignedToMe) dispute.assignedTo = req.user._id;
-    if (status) dispute.status = status;
-    if (['RESOLVED', 'REJECTED'].includes(status)) {
-      dispute.resolution = { outcome: status === 'REJECTED' ? 'REJECTED' : resolution || 'UPHELD', message: resolutionMessage.trim(), resolvedBy: req.user._id, resolvedAt: new Date() };
+    if (['RESOLVED', 'REJECTED', 'WITHDRAWN'].includes(dispute.status)) {
+      return res.status(409).json({ message: 'Tranh chấp đã được đóng.' });
     }
+
+    const statuses = ['IN_PROGRESS', 'WAITING_PARTNER', 'RESOLVED', 'REJECTED'];
+    if (status && !statuses.includes(status)) {
+      return res.status(400).json({ message: 'Trạng thái tranh chấp không hợp lệ.' });
+    }
+    if (['RESOLVED', 'REJECTED'].includes(status) && !resolutionMessage?.trim()) {
+      return res.status(400).json({ message: 'Cần nhập nội dung phán quyết / kết luận.' });
+    }
+
+    const oldStatus = dispute.status;
+    if (assignedToMe || !dispute.assignedTo) dispute.assignedTo = req.user._id;
+    if (status) dispute.status = status;
+
+    const now = new Date();
+
+    // Ghi nhận trao đổi của Operations Manager vào luồng trao đổi chung (hiển thị cho cả Partner và Customer)
+    if (message?.trim()) {
+      dispute.responses.push({
+        message: message.trim(),
+        respondedBy: req.user._id,
+        respondedAt: now,
+      });
+    }
+
+    // Nếu đưa ra phán quyết cuối cùng
+    let createdCompensation = null;
+    if (['RESOLVED', 'REJECTED'].includes(status)) {
+      const finalOutcome = status === 'REJECTED' ? 'REJECTED' : (resolution || 'UPHELD');
+      dispute.resolution = {
+        outcome: finalOutcome,
+        message: resolutionMessage.trim(),
+        rejectReason: status === 'REJECTED' && rejectReason === 'FALSE_INFORMATION' ? 'FALSE_INFORMATION' : '',
+        customerNotice: customerMessage?.trim() || '',
+        partnerNotice: partnerMessage?.trim() || '',
+        resolvedBy: req.user._id,
+        resolvedAt: now,
+      };
+
+      // Lưu thông báo phán quyết vào timeline trao đổi nếu chưa trùng với message
+      if (!message?.trim()) {
+        const outcomeLabel = {
+          UPHELD: 'Chấp nhận khiếu nại của khách hàng',
+          PARTIALLY_UPHELD: 'Chấp nhận một phần khiếu nại',
+          REJECTED: rejectReason === 'FALSE_INFORMATION' ? 'Bác bỏ khiếu nại (Khách cung cấp thông tin sai sự thật)' : 'Bác bỏ khiếu nại (Khách sạn đúng)',
+          NO_ACTION: 'Hòa giải / Đóng hồ sơ',
+        }[finalOutcome] || finalOutcome;
+
+        dispute.responses.push({
+          message: `[Phán quyết từ Bộ phận Vận hành - ${outcomeLabel}]: ${resolutionMessage.trim()}`,
+          respondedBy: req.user._id,
+          respondedAt: now,
+        });
+      }
+
+      // Tự động khởi tạo / cập nhật khoản bồi thường cho khách hàng nếu có số tiền bồi thường > 0
+      const compAmt = Number(compensationAmount);
+      // Chỉ chấp nhận (toàn phần hoặc một phần) mới phát sinh bồi thường; bác bỏ và hòa giải thì không
+      if (Number.isFinite(compAmt) && compAmt > 0 && ['UPHELD', 'PARTIALLY_UPHELD'].includes(finalOutcome)) {
+        const bookingTotal = Number((await Booking.findById(dispute.bookingId).select('totalAmount').lean())?.totalAmount || 0);
+        const maxCompensation = Math.round(bookingTotal * COMPENSATION_MAX_RATE);
+        if (compAmt > maxCompensation) {
+          return res.status(400).json({ message: `Số tiền bồi thường tối đa ${COMPENSATION_MAX_RATE * 100}% giá trị đơn (${maxCompensation.toLocaleString('vi-VN')} VND).` });
+        }
+        const compReason = (compensationReason || `[Bồi thường theo phán quyết tranh chấp #${dispute.bookingCode}] ${resolutionMessage}`).trim();
+        let refundDoc = await RefundRequest.findOne({
+          $or: [{ disputeId: dispute._id }, { bookingId: dispute.bookingId }],
+          status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED'] },
+        });
+
+        if (!refundDoc) {
+          refundDoc = new RefundRequest({
+            bookingId: dispute.bookingId,
+            disputeId: dispute._id,
+            customerId: dispute.customerId,
+            hotelId: dispute.hotelId,
+            partnerId: dispute.partnerId,
+            requestedAmount: compAmt,
+            approvedAmount: compAmt,
+            reason: compReason,
+            status: processCompensationNow ? 'PROCESSED' : 'APPROVED',
+            reviewedBy: req.user._id,
+            reviewNote: resolutionMessage.trim(),
+            reviewedAt: now,
+          });
+        } else {
+          refundDoc.disputeId = dispute._id;
+          refundDoc.approvedAmount = compAmt;
+          refundDoc.requestedAmount = Math.max(refundDoc.requestedAmount, compAmt);
+          refundDoc.reason = compReason;
+          refundDoc.status = processCompensationNow ? 'PROCESSED' : 'APPROVED';
+          refundDoc.reviewedBy = req.user._id;
+          refundDoc.reviewNote = resolutionMessage.trim();
+          refundDoc.reviewedAt = now;
+        }
+
+        if (processCompensationNow) {
+          const payment = await Payment.create({
+            bookingId: dispute.bookingId,
+            txnRef: `COMP-${dispute.bookingCode}-${Date.now()}`,
+            type: 'REFUND',
+            amount: compAmt,
+            status: 'SUCCESS',
+            payDate: now,
+          });
+          refundDoc.processedAt = now;
+          refundDoc.paymentId = payment._id;
+          await Booking.updateOne({ _id: dispute.bookingId }, { paymentStatus: 'REFUNDED' });
+        }
+
+        createdCompensation = await refundDoc.save();
+      }
+    }
+
     await dispute.save();
-    await audit(req.user._id, `DISPUTE_${dispute.status}`, 'DISPUTE', dispute._id, { resolutionMessage });
-    res.json({ message: 'Đã cập nhật tranh chấp.', dispute });
+
+    // Gửi Notification tới hai bên (Customer & Hotel Partner)
+    if (status === 'IN_PROGRESS') {
+      await Promise.all([
+        notify(
+          dispute.customerId,
+          `Đã tiếp nhận khiếu nại #${dispute.bookingCode}`,
+          customerMessage?.trim() || message?.trim() || `Bộ phận vận hành VinaStay đã tiếp nhận khiếu nại của bạn về đơn ${dispute.bookingCode} và đang tiến hành xác minh với khách sạn.`,
+          'DISPUTE',
+          dispute._id,
+        ),
+        notify(
+          dispute.partnerId,
+          `Thông báo khiếu nại mới #${dispute.bookingCode}`,
+          partnerMessage?.trim() || message?.trim() || `Bộ phận vận hành đang thẩm định khiếu nại của khách hàng đối với đơn đặt phòng ${dispute.bookingCode}.`,
+          'DISPUTE',
+          dispute._id,
+        ),
+      ]);
+    } else if (status === 'WAITING_PARTNER') {
+      await Promise.all([
+        notify(
+          dispute.partnerId,
+          `Yêu cầu giải trình khiếu nại #${dispute.bookingCode}`,
+          partnerMessage?.trim() || message?.trim() || `Bộ phận vận hành yêu cầu khách sạn cung cấp thông tin giải trình và bằng chứng cho đơn ${dispute.bookingCode}.`,
+          'DISPUTE',
+          dispute._id,
+        ),
+        notify(
+          dispute.customerId,
+          `Đang đối chất với khách sạn #${dispute.bookingCode}`,
+          customerMessage?.trim() || `Bộ phận vận hành đã gửi yêu cầu giải trình tới khách sạn cho khiếu nại đơn ${dispute.bookingCode}.`,
+          'DISPUTE',
+          dispute._id,
+        ),
+      ]);
+    } else if (['RESOLVED', 'REJECTED'].includes(status)) {
+      const compNotice = createdCompensation
+        ? ` Khoản bồi thường ${Number(createdCompensation.approvedAmount).toLocaleString('vi-VN')} VND đã được ${createdCompensation.status === 'PROCESSED' ? 'giải ngân' : 'phê duyệt'}.`
+        : '';
+      await Promise.all([
+        notify(
+          dispute.customerId,
+          `Phán quyết khiếu nại #${dispute.bookingCode}`,
+          (customerMessage?.trim() || resolutionMessage.trim()) + compNotice,
+          'DISPUTE',
+          dispute._id,
+        ),
+        notify(
+          dispute.partnerId,
+          `Kết luận tranh chấp #${dispute.bookingCode}`,
+          (partnerMessage?.trim() || resolutionMessage.trim()) + (createdCompensation ? ` (Khấu trừ bồi thường: ${Number(createdCompensation.approvedAmount).toLocaleString('vi-VN')} VND).` : ''),
+          'DISPUTE',
+          dispute._id,
+        ),
+      ]);
+    }
+
+    await audit(req.user._id, `DISPUTE_${dispute.status}`, 'DISPUTE', dispute._id, {
+      oldStatus,
+      newStatus: dispute.status,
+      resolution: dispute.resolution?.outcome || null,
+      rejectReason: dispute.resolution?.rejectReason || null,
+      resolutionMessage: resolutionMessage || message || '',
+      compensationAmount: createdCompensation?.approvedAmount || 0,
+    });
+
+    res.json({
+      message: 'Đã cập nhật tranh chấp và gửi phản hồi cho hai bên.',
+      dispute,
+      compensation: createdCompensation,
+    });
+  } catch (error) { next(error); }
+};
+
+// Tìm kiếm đơn đặt phòng để kiểm tra sai lệch thông tin khách hàng / khách sạn và lập bồi thường
+export const getManagerBookings = async (req, res, next) => {
+  try {
+    const { q = '', hotelId = '' } = req.query;
+    const filter = {};
+    if (hotelId) filter.hotelId = hotelId;
+    if (q.trim()) {
+      const regex = new RegExp(q.trim(), 'i');
+      filter.$or = [
+        { bookingCode: regex },
+        { bookerFullName: regex },
+        { bookerEmail: regex },
+        { bookerPhone: regex },
+        { guestFullName: regex },
+        { hotelName: regex },
+      ];
+    }
+
+    const bookings = await Booking.find(filter)
+      .populate('customerId', 'fullName email phoneNumber status')
+      .populate('hotelId', 'name address provinceCity starRating ownerId')
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+
+    const bookingIds = bookings.map((b) => b._id);
+    const [existingRefunds, existingDisputes] = await Promise.all([
+      RefundRequest.find({ bookingId: { $in: bookingIds } }).lean(),
+      Dispute.find({ bookingId: { $in: bookingIds } }).select('bookingId bookingCode category status description').lean(),
+    ]);
+
+    const enriched = bookings.map((b) => ({
+      ...b,
+      existingRefund: existingRefunds.find((r) => String(r.bookingId) === String(b._id)) || null,
+      existingDispute: existingDisputes.find((d) => String(d.bookingId) === String(b._id)) || null,
+    }));
+
+    res.json({ bookings: enriched });
+  } catch (error) { next(error); }
+};
+
+// Tạo hồ sơ bồi thường cho khách hàng (khi nhập sai thông tin khách hàng / thông tin khách sạn không đúng / sự cố)
+export const createManagerCompensation = async (req, res, next) => {
+  try {
+    const {
+      bookingId,
+      disputeId,
+      requestedAmount,
+      reason,
+      issueType = 'INCORRECT_CUSTOMER_INFO',
+      customerCorrection,
+      autoApprove = false,
+      autoProcess = false,
+      note = '',
+    } = req.body;
+
+    if (!bookingId) return res.status(400).json({ message: 'Vui lòng chọn đơn đặt phòng cần bồi thường / đính chính.' });
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy đơn đặt phòng.' });
+
+    const hotel = await Hotel.findById(booking.hotelId);
+    if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn của đơn đặt phòng này.' });
+
+    // Nếu có cập nhật / đính chính thông tin khách hàng bị nhập sai trên đơn đặt phòng
+    const correctedFields = [];
+    if (customerCorrection && typeof customerCorrection === 'object') {
+      const editableFields = [
+        ['bookerFullName', 'Tên người đặt'],
+        ['bookerPhone', 'SĐT người đặt'],
+        ['bookerEmail', 'Email người đặt'],
+        ['guestFullName', 'Tên khách lưu trú'],
+        ['guestPhone', 'SĐT khách lưu trú'],
+        ['specialRequests', 'Yêu cầu đặc biệt'],
+      ];
+      for (const [field, label] of editableFields) {
+        if (customerCorrection[field] !== undefined && String(customerCorrection[field]).trim() !== String(booking[field] || '').trim()) {
+          correctedFields.push(`${label}: "${booking[field] || '—'}" → "${String(customerCorrection[field]).trim()}"`);
+          booking[field] = String(customerCorrection[field]).trim();
+        }
+      }
+      if (customerCorrection.guestFullName && booking.guestFullName) {
+        booking.isSelfGuest = false;
+      }
+      if (correctedFields.length > 0) {
+        await booking.save();
+      }
+    }
+
+    const amount = Number(requestedAmount);
+    if (!Number.isFinite(amount) || amount < 0 || amount > Number(booking.totalAmount || 0)) {
+      return res.status(400).json({ message: 'Số tiền bồi thường không hợp lệ hoặc vượt quá tổng giá trị đơn đặt phòng.' });
+    }
+    if (!reason?.trim()) {
+      return res.status(400).json({ message: 'Vui lòng nhập lý do bồi thường / chi tiết sai lệch thông tin.' });
+    }
+
+    const activeExisting = await RefundRequest.findOne({
+      bookingId: booking._id,
+      status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED', 'PROCESSED'] },
+    });
+    if (activeExisting) {
+      return res.status(409).json({ message: 'Đơn đặt phòng này đã có hồ sơ bồi thường đang xử lý hoặc đã hoàn tất.' });
+    }
+
+    const issuePrefix = {
+      INCORRECT_CUSTOMER_INFO: '[Sai lệch thông tin khách hàng / đặt phòng]',
+      INCORRECT_HOTEL_INFO: '[Thông tin khách sạn / hạng phòng không đúng mô tả]',
+      SERVICE_COMPENSATION: '[Bồi thường chất lượng dịch vụ lưu trú]',
+      OVERCHARGE_COMPENSATION: '[Bồi thường thu sai phụ phí]',
+    }[issueType] || '[Bồi thường khách hàng]';
+
+    const correctionNote = correctedFields.length ? ` (Đã đính chính: ${correctedFields.join('; ')})` : '';
+    const fullReason = `${issuePrefix} ${reason.trim()}${correctionNote}`;
+
+    const now = new Date();
+    let initialStatus = 'REQUESTED';
+    if (autoProcess) initialStatus = 'PROCESSED';
+    else if (autoApprove) initialStatus = 'APPROVED';
+
+    const refund = new RefundRequest({
+      bookingId: booking._id,
+      disputeId: disputeId || null,
+      customerId: booking.customerId,
+      hotelId: hotel._id,
+      partnerId: hotel.ownerId,
+      requestedAmount: amount,
+      approvedAmount: (autoApprove || autoProcess) ? amount : 0,
+      reason: fullReason,
+      status: initialStatus,
+      reviewedBy: (autoApprove || autoProcess) ? req.user._id : null,
+      reviewNote: note.trim() || (correctedFields.length ? `Đã đính chính thông tin: ${correctedFields.join(', ')}` : ''),
+      reviewedAt: (autoApprove || autoProcess) ? now : null,
+    });
+
+    if (autoProcess && amount > 0) {
+      const payment = await Payment.create({
+        bookingId: booking._id,
+        txnRef: `COMP-${booking.bookingCode}-${Date.now()}`,
+        type: 'REFUND',
+        amount,
+        status: 'SUCCESS',
+        payDate: now,
+      });
+      refund.processedAt = now;
+      refund.paymentId = payment._id;
+      await Booking.updateOne({ _id: booking._id }, { paymentStatus: 'REFUNDED' });
+    }
+
+    await refund.save();
+
+    await Promise.all([
+      notify(
+        booking.customerId,
+        `Hồ sơ bồi thường đơn #${booking.bookingCode}`,
+        `VinaStay đã lập hồ sơ bồi thường ${amount.toLocaleString('vi-VN')} VND cho đơn ${booking.bookingCode}. ${fullReason}`,
+        'REFUND_REQUEST',
+        refund._id,
+      ),
+      notify(
+        hotel.ownerId,
+        `Thông báo bồi thường khách hàng #${booking.bookingCode}`,
+        `Đơn đặt phòng ${booking.bookingCode} tại ${hotel.name} phát sinh hồ sơ bồi thường ${amount.toLocaleString('vi-VN')} VND: ${fullReason}`,
+        'REFUND_REQUEST',
+        refund._id,
+      ),
+    ]);
+
+    await audit(req.user._id, `COMPENSATION_CREATED_${initialStatus}`, 'REFUND_REQUEST', refund._id, {
+      bookingCode: booking.bookingCode,
+      amount,
+      issueType,
+      correctedFields,
+    });
+
+    res.status(201).json({
+      message: 'Đã khởi tạo hồ sơ bồi thường cho khách hàng thành công.',
+      refund,
+      correctedFields,
+    });
   } catch (error) { next(error); }
 };
 
@@ -220,8 +655,13 @@ export const getRefunds = async (req, res, next) => {
   try {
     const filter = req.query.status ? { status: req.query.status } : {};
     const result = await paged(RefundRequest, filter, req.query, [
-      { path: 'customerId', select: 'fullName email' }, { path: 'hotelId', select: 'name' },
-      { path: 'partnerId', select: 'fullName email' }, { path: 'disputeId', select: 'bookingCode category status' },
+      { path: 'bookingId', select: 'bookingCode bookerFullName bookerPhone bookerEmail guestFullName guestPhone isSelfGuest checkInDate checkOutDate totalNights totalAmount bookingStatus paymentStatus specialRequests' },
+      { path: 'customerId', select: 'fullName email phoneNumber' },
+      { path: 'hotelId', select: 'name address provinceCity starRating' },
+      { path: 'partnerId', select: 'fullName email phoneNumber' },
+      { path: 'disputeId', select: 'bookingCode category description status resolution' },
+      { path: 'reviewedBy', select: 'fullName email' },
+      { path: 'paymentId', select: 'txnRef amount status payDate createdAt' },
     ]);
     res.json({ refunds: result.items, pagination: result.pagination });
   } catch (error) { next(error); }
@@ -229,34 +669,196 @@ export const getRefunds = async (req, res, next) => {
 
 export const reviewRefund = async (req, res, next) => {
   try {
-    const { decision, approvedAmount, note = '', paymentReference = '' } = req.body;
+    const { decision, approvedAmount, note = '', paymentReference = '', customerCorrection } = req.body;
     const refund = await RefundRequest.findById(req.params.id);
-    if (!refund) return res.status(404).json({ message: 'Không tìm thấy yêu cầu hoàn tiền.' });
-    if (!['APPROVE', 'REJECT', 'MARK_PROCESSED'].includes(decision)) return res.status(400).json({ message: 'Quyết định hoàn tiền không hợp lệ.' });
-    if (decision === 'REJECT' && !note.trim()) return res.status(400).json({ message: 'Vui lòng nhập lý do từ chối.' });
+    if (!refund) return res.status(404).json({ message: 'Không tìm thấy hồ sơ bồi thường.' });
+    if (!['UNDER_REVIEW', 'APPROVE', 'REJECT', 'MARK_PROCESSED'].includes(decision)) {
+      return res.status(400).json({ message: 'Quyết định xử lý bồi thường không hợp lệ.' });
+    }
+    if (decision === 'REJECT' && !note.trim()) {
+      return res.status(400).json({ message: 'Vui lòng nhập lý do từ chối bồi thường.' });
+    }
+
+    const booking = await Booking.findById(refund.bookingId);
+    const maxCap = booking ? Number(booking.totalAmount || refund.requestedAmount) : refund.requestedAmount;
+
+    // Nếu OM đính chính lại thông tin khách hàng / đặt phòng ngay trong bước Thẩm định
+    const correctedFields = [];
+    if (booking && customerCorrection && typeof customerCorrection === 'object') {
+      const editableFields = [
+        ['bookerFullName', 'Tên người đặt'],
+        ['bookerPhone', 'SĐT người đặt'],
+        ['bookerEmail', 'Email người đặt'],
+        ['guestFullName', 'Tên khách lưu trú'],
+        ['guestPhone', 'SĐT khách lưu trú'],
+        ['specialRequests', 'Yêu cầu đặc biệt'],
+      ];
+      for (const [field, label] of editableFields) {
+        if (customerCorrection[field] !== undefined && String(customerCorrection[field]).trim() !== String(booking[field] || '').trim()) {
+          correctedFields.push(`${label}: "${booking[field] || '—'}" → "${String(customerCorrection[field]).trim()}"`);
+          booking[field] = String(customerCorrection[field]).trim();
+        }
+      }
+      if (correctedFields.length > 0) {
+        await booking.save();
+      }
+    }
+
+    if (decision === 'UNDER_REVIEW') {
+      refund.status = 'UNDER_REVIEW';
+      if (approvedAmount !== undefined && Number.isFinite(Number(approvedAmount)) && Number(approvedAmount) >= 0) {
+        refund.requestedAmount = Math.min(Number(approvedAmount), maxCap);
+      }
+    }
+
     if (decision === 'APPROVE') {
       const amount = Number(approvedAmount);
-      if (!Number.isFinite(amount) || amount < 0 || amount > refund.requestedAmount) return res.status(400).json({ message: 'Số tiền duyệt không hợp lệ.' });
+      if (!Number.isFinite(amount) || amount < 0 || amount > maxCap) {
+        return res.status(400).json({ message: `Số tiền bồi thường không hợp lệ (tối đa ${maxCap.toLocaleString('vi-VN')} VND).` });
+      }
       refund.status = 'APPROVED';
       refund.approvedAmount = amount;
     }
-    if (decision === 'REJECT') refund.status = 'REJECTED';
-    if (decision === 'MARK_PROCESSED') {
-      if (refund.status !== 'APPROVED') return res.status(409).json({ message: 'Chỉ yêu cầu đã duyệt mới có thể hoàn tiền.' });
-      const payment = await Payment.create({ bookingId: refund.bookingId, transactionId: paymentReference.trim() || `REF-${refund._id}-${Date.now()}`, type: 'REFUND', amount: refund.approvedAmount, status: 'SUCCESS' });
-      refund.status = 'PROCESSED'; refund.processedAt = new Date(); refund.paymentId = payment._id;
+
+    if (decision === 'REJECT') {
+      refund.status = 'REJECTED';
+      refund.approvedAmount = 0;
     }
-    refund.reviewedBy = req.user._id; refund.reviewNote = note.trim(); refund.reviewedAt = new Date();
+
+    if (decision === 'MARK_PROCESSED') {
+      if (!['APPROVED', 'UNDER_REVIEW', 'REQUESTED'].includes(refund.status)) {
+        return res.status(409).json({ message: 'Hồ sơ này không ở trạng thái có thể giải ngân.' });
+      }
+      const finalAmount = refund.approvedAmount > 0 ? refund.approvedAmount : Number(approvedAmount || refund.requestedAmount || 0);
+      refund.approvedAmount = finalAmount;
+      const payment = await Payment.create({
+        bookingId: refund.bookingId,
+        txnRef: paymentReference.trim() || `COMP-${refund._id}-${Date.now()}`,
+        type: 'REFUND',
+        amount: finalAmount,
+        status: 'SUCCESS',
+        payDate: new Date(),
+      });
+      refund.status = 'PROCESSED';
+      refund.processedAt = new Date();
+      refund.paymentId = payment._id;
+      await Booking.updateOne({ _id: refund.bookingId }, { paymentStatus: 'REFUNDED' });
+      await BookingCancellation.updateOne({ bookingId: refund.bookingId }, { refundStatus: 'PROCESSED' });
+    }
+
+    const extraCorrectionNote = correctedFields.length ? ` [Đính chính TT khách: ${correctedFields.join('; ')}]` : '';
+    refund.reviewedBy = req.user._id;
+    refund.reviewNote = `${note.trim()}${extraCorrectionNote}`.trim() || refund.reviewNote;
+    refund.reviewedAt = new Date();
     await refund.save();
-    await audit(req.user._id, `REFUND_${refund.status}`, 'REFUND_REQUEST', refund._id, { decision, note: note.trim() });
-    res.json({ message: 'Đã cập nhật yêu cầu hoàn tiền.', refund });
+
+    const bCode = booking?.bookingCode || '';
+    if (decision === 'UNDER_REVIEW') {
+      await notify(
+        refund.customerId,
+        `Đang thẩm định bồi thường đơn #${bCode}`,
+        `Hồ sơ bồi thường của bạn đang được bộ phận vận hành kiểm tra đối chiếu.${extraCorrectionNote} ${note.trim()}`,
+        'REFUND_REQUEST',
+        refund._id,
+      );
+    } else if (decision === 'APPROVE') {
+      await Promise.all([
+        notify(
+          refund.customerId,
+          `Đã phê duyệt bồi thường đơn #${bCode}`,
+          `Khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND đã được phê duyệt. ${note.trim()}`,
+          'REFUND_REQUEST',
+          refund._id,
+        ),
+        notify(
+          refund.partnerId,
+          `Quyết định bồi thường khách hàng đơn #${bCode}`,
+          `Bộ phận vận hành đã duyệt mức bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND cho khách hàng. ${note.trim()}`,
+          'REFUND_REQUEST',
+          refund._id,
+        ),
+      ]);
+    } else if (decision === 'REJECT') {
+      await notify(
+        refund.customerId,
+        `Từ chối yêu cầu bồi thường đơn #${bCode}`,
+        `Yêu cầu bồi thường đơn ${bCode} không được chấp thuận. Lý do: ${note.trim()}`,
+        'REFUND_REQUEST',
+        refund._id,
+      );
+    } else if (decision === 'MARK_PROCESSED') {
+      await Promise.all([
+        notify(
+          refund.customerId,
+          `Đã giải ngân tiền bồi thường đơn #${bCode}`,
+          `VinaStay đã hoàn tất chuyển khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND cho đơn ${bCode}.`,
+          'REFUND_REQUEST',
+          refund._id,
+        ),
+        notify(
+          refund.partnerId,
+          `Đã khấu trừ bồi thường đơn #${bCode}`,
+          `Khoản bồi thường ${Number(refund.approvedAmount).toLocaleString('vi-VN')} VND của đơn ${bCode} đã được giải ngân và ghi nhận vào đối soát kỳ này.`,
+          'REFUND_REQUEST',
+          refund._id,
+        ),
+      ]);
+    }
+
+    await audit(req.user._id, `REFUND_${refund.status}`, 'REFUND_REQUEST', refund._id, {
+      decision,
+      approvedAmount: refund.approvedAmount,
+      note: refund.reviewNote,
+      correctedFields,
+    });
+    res.json({ message: 'Đã cập nhật hồ sơ bồi thường cho khách hàng.', refund, correctedFields });
+  } catch (error) { next(error); }
+};
+
+export const getManagerHotels = async (req, res, next) => {
+  try {
+    const [hotels, activePolicies] = await Promise.all([
+      Hotel.find()
+        .populate('ownerId', 'fullName email phoneNumber status')
+        .sort({ status: 1, name: 1 })
+        .lean(),
+      CommissionPolicy.find({ status: 'ACTIVE' })
+        .populate('hotelId', 'name')
+        .populate('partnerId', 'fullName email')
+        .sort({ effectiveFrom: -1 })
+        .lean(),
+    ]);
+
+    const scopePriority = { HOTEL: 3, PARTNER: 2, GLOBAL: 1 };
+    const enrichedHotels = hotels.map((hotel) => {
+      const ownerIdStr = String(hotel.ownerId?._id || hotel.ownerId || '');
+      const matchingPolicies = activePolicies.filter((p) => {
+        if (p.scope === 'HOTEL') return String(p.hotelId?._id || p.hotelId) === String(hotel._id);
+        if (p.scope === 'PARTNER') return String(p.partnerId?._id || p.partnerId) === ownerIdStr;
+        return p.scope === 'GLOBAL';
+      });
+      matchingPolicies.sort((a, b) => scopePriority[b.scope] - scopePriority[a.scope]);
+      const effectivePolicy = matchingPolicies[0] || null;
+      const directPolicy = matchingPolicies.find((p) => p.scope === 'HOTEL') || null;
+      return {
+        ...hotel,
+        effectivePolicy,
+        directPolicy,
+      };
+    });
+
+    res.json({ hotels: enrichedHotels });
   } catch (error) { next(error); }
 };
 
 export const getCommissionPolicies = async (req, res, next) => {
   try {
     const filter = req.query.status ? { status: req.query.status } : {};
-    const policies = await CommissionPolicy.find(filter).populate('partnerId', 'fullName email').populate('hotelId', 'name').populate('createdBy', 'fullName email').sort({ effectiveFrom: -1 });
+    const policies = await CommissionPolicy.find(filter)
+      .populate('partnerId', 'fullName email phoneNumber')
+      .populate('hotelId', 'name provinceCity address starRating status ownerId')
+      .populate('createdBy', 'fullName email')
+      .sort({ status: 1, effectiveFrom: -1, createdAt: -1 });
     res.json({ policies });
   } catch (error) { next(error); }
 };
@@ -272,14 +874,76 @@ export const getHotelPartners = async (req, res, next) => {
 
 export const createCommissionPolicy = async (req, res, next) => {
   try {
-    const { name, calculationType, value, scope = 'GLOBAL', partnerId, hotelId, effectiveFrom, effectiveTo } = req.body;
+    const { name, calculationType, value, scope = 'HOTEL', partnerId, hotelId, effectiveFrom, effectiveTo } = req.body;
     const numericValue = Number(value);
-    if (!name?.trim() || !['PERCENTAGE', 'FIXED'].includes(calculationType) || !Number.isFinite(numericValue) || numericValue < 0 || (calculationType === 'PERCENTAGE' && numericValue > 100)) return res.status(400).json({ message: 'Thông tin chính sách hoa hồng không hợp lệ.' });
-    if (!effectiveFrom || Number.isNaN(new Date(effectiveFrom).getTime())) return res.status(400).json({ message: 'Ngày hiệu lực không hợp lệ.' });
-    if ((scope === 'PARTNER' && !partnerId) || (scope === 'HOTEL' && !hotelId)) return res.status(400).json({ message: 'Phạm vi chính sách cần có đối tượng áp dụng.' });
-    const policy = await CommissionPolicy.create({ name: name.trim(), calculationType, value: numericValue, scope, partnerId: partnerId || null, hotelId: hotelId || null, effectiveFrom, effectiveTo: effectiveTo || null, createdBy: req.user._id });
-    await audit(req.user._id, 'COMMISSION_POLICY_CREATED', 'COMMISSION_POLICY', policy._id);
-    res.status(201).json({ message: 'Đã tạo chính sách hoa hồng.', policy });
+    if (!name?.trim() || !['PERCENTAGE', 'FIXED'].includes(calculationType) || !Number.isFinite(numericValue) || numericValue < 0 || (calculationType === 'PERCENTAGE' && numericValue > 100)) {
+      return res.status(400).json({ message: 'Thông tin chính sách hoa hồng không hợp lệ.' });
+    }
+    if (!effectiveFrom || Number.isNaN(new Date(effectiveFrom).getTime())) {
+      return res.status(400).json({ message: 'Ngày bắt đầu hiệu lực không hợp lệ.' });
+    }
+    if (effectiveTo && (Number.isNaN(new Date(effectiveTo).getTime()) || new Date(effectiveTo) < new Date(effectiveFrom))) {
+      return res.status(400).json({ message: 'Ngày kết thúc hiệu lực phải sau ngày bắt đầu.' });
+    }
+    if (scope === 'HOTEL' && !hotelId) {
+      return res.status(400).json({ message: 'Vui lòng chọn khách sạn để gắn chính sách hoa hồng.' });
+    }
+    if (scope === 'PARTNER' && !partnerId) {
+      return res.status(400).json({ message: 'Vui lòng chọn đối tác áp dụng chính sách hoa hồng.' });
+    }
+
+    let resolvedPartnerId = partnerId || null;
+    let targetHotel = null;
+    if (scope === 'HOTEL') {
+      targetHotel = await Hotel.findById(hotelId);
+      if (!targetHotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn được chọn.' });
+      resolvedPartnerId = targetHotel.ownerId;
+    }
+
+    // Tự động ngừng áp dụng chính sách ACTIVE cũ của cùng khách sạn / cùng đối tác / cùng toàn hệ thống để tránh chồng chéo
+    const conflictFilter = { status: 'ACTIVE', scope };
+    if (scope === 'HOTEL') conflictFilter.hotelId = targetHotel._id;
+    else if (scope === 'PARTNER') conflictFilter.partnerId = resolvedPartnerId;
+    await CommissionPolicy.updateMany(conflictFilter, { $set: { status: 'INACTIVE' } });
+
+    const policy = await CommissionPolicy.create({
+      name: name.trim(),
+      calculationType,
+      value: numericValue,
+      scope,
+      partnerId: scope === 'GLOBAL' ? null : resolvedPartnerId,
+      hotelId: scope === 'HOTEL' ? targetHotel._id : null,
+      effectiveFrom,
+      effectiveTo: effectiveTo || null,
+      status: 'ACTIVE',
+      createdBy: req.user._id,
+    });
+
+    if (resolvedPartnerId) {
+      const ruleText = calculationType === 'PERCENTAGE' ? `${numericValue}% doanh thu` : `${numericValue.toLocaleString('vi-VN')} VND / đơn`;
+      await notify(
+        resolvedPartnerId,
+        targetHotel ? `Chính sách hoa hồng mới cho ${targetHotel.name}` : 'Cập nhật chính sách hoa hồng đối tác',
+        `Bộ phận vận hành đã gắn chính sách "${name.trim()}" (${ruleText}) áp dụng từ ${new Date(effectiveFrom).toLocaleDateString('vi-VN')}.`,
+        'COMMISSION_POLICY',
+        policy._id,
+      );
+    }
+
+    await audit(req.user._id, 'COMMISSION_POLICY_CREATED', 'COMMISSION_POLICY', policy._id, {
+      scope,
+      hotelId: targetHotel?._id || null,
+      hotelName: targetHotel?.name || null,
+      calculationType,
+      value: numericValue,
+    });
+
+    const populated = await CommissionPolicy.findById(policy._id)
+      .populate('partnerId', 'fullName email phoneNumber')
+      .populate('hotelId', 'name provinceCity address starRating status ownerId')
+      .populate('createdBy', 'fullName email');
+
+    res.status(201).json({ message: 'Đã tạo và gắn chính sách hoa hồng thành công.', policy: populated });
   } catch (error) { next(error); }
 };
 
@@ -287,44 +951,115 @@ export const updateCommissionPolicy = async (req, res, next) => {
   try {
     const policy = await CommissionPolicy.findById(req.params.id);
     if (!policy) return res.status(404).json({ message: 'Không tìm thấy chính sách hoa hồng.' });
-    ['name', 'calculationType', 'value', 'effectiveFrom', 'effectiveTo', 'status'].forEach((key) => { if (req.body[key] !== undefined) policy[key] = req.body[key]; });
-    if (policy.calculationType === 'PERCENTAGE' && Number(policy.value) > 100) return res.status(400).json({ message: 'Hoa hồng phần trăm không thể vượt quá 100%.' });
-    await policy.save(); await audit(req.user._id, 'COMMISSION_POLICY_UPDATED', 'COMMISSION_POLICY', policy._id);
-    res.json({ message: 'Đã cập nhật chính sách hoa hồng.', policy });
+
+    const { name, calculationType, value, scope, hotelId, partnerId, effectiveFrom, effectiveTo, status } = req.body;
+    if (name !== undefined) policy.name = name.trim();
+    if (calculationType !== undefined) policy.calculationType = calculationType;
+    if (value !== undefined) policy.value = Number(value);
+    if (effectiveFrom !== undefined) policy.effectiveFrom = effectiveFrom;
+    if (effectiveTo !== undefined) policy.effectiveTo = effectiveTo || null;
+    if (status !== undefined) policy.status = status;
+
+    if (scope !== undefined) {
+      policy.scope = scope;
+      if (scope === 'GLOBAL') {
+        policy.hotelId = null;
+        policy.partnerId = null;
+      }
+    }
+
+    if (policy.scope === 'HOTEL' && hotelId !== undefined) {
+      const hotel = await Hotel.findById(hotelId);
+      if (!hotel) return res.status(404).json({ message: 'Không tìm thấy khách sạn được chọn.' });
+      policy.hotelId = hotel._id;
+      policy.partnerId = hotel.ownerId;
+    } else if (policy.scope === 'PARTNER' && partnerId !== undefined) {
+      policy.partnerId = partnerId;
+      policy.hotelId = null;
+    }
+
+    if (policy.calculationType === 'PERCENTAGE' && Number(policy.value) > 100) {
+      return res.status(400).json({ message: 'Hoa hồng phần trăm không thể vượt quá 100%.' });
+    }
+    if (policy.scope === 'HOTEL' && !policy.hotelId) {
+      return res.status(400).json({ message: 'Chính sách phạm vi Khách sạn bắt buộc phải gắn với một khách sạn.' });
+    }
+
+    // Nếu chính sách đang ACTIVE, tắt các chính sách ACTIVE trùng phạm vi khách sạn/đối tác
+    if (policy.status === 'ACTIVE') {
+      const conflictFilter = { _id: { $ne: policy._id }, status: 'ACTIVE', scope: policy.scope };
+      if (policy.scope === 'HOTEL') conflictFilter.hotelId = policy.hotelId;
+      else if (policy.scope === 'PARTNER') conflictFilter.partnerId = policy.partnerId;
+      await CommissionPolicy.updateMany(conflictFilter, { $set: { status: 'INACTIVE' } });
+    }
+
+    await policy.save();
+    await audit(req.user._id, 'COMMISSION_POLICY_UPDATED', 'COMMISSION_POLICY', policy._id, {
+      scope: policy.scope,
+      hotelId: policy.hotelId,
+      status: policy.status,
+      value: policy.value,
+    });
+
+    const populated = await CommissionPolicy.findById(policy._id)
+      .populate('partnerId', 'fullName email phoneNumber')
+      .populate('hotelId', 'name provinceCity address starRating status ownerId')
+      .populate('createdBy', 'fullName email');
+
+    res.json({ message: 'Đã cập nhật chính sách hoa hồng.', policy: populated });
   } catch (error) { next(error); }
 };
 
 export const getPayouts = async (req, res, next) => {
   try {
     const filter = {}; if (req.query.status) filter.status = req.query.status; if (req.query.partnerId) filter.partnerId = req.query.partnerId;
-    const result = await paged(Payout, filter, req.query, [{ path: 'partnerId', select: 'fullName email' }, { path: 'policyId', select: 'name calculationType value' }, { path: 'reviewedBy', select: 'fullName email' }]);
+    const result = await paged(Payout, filter, req.query, [{ path: 'partnerId', select: 'fullName email' }, { path: 'policyId', select: 'name calculationType value scope hotelId' }, { path: 'reviewedBy', select: 'fullName email' }]);
     res.json({ payouts: result.items, pagination: result.pagination });
   } catch (error) { next(error); }
 };
 
+// Ngày dạng YYYY-MM-DD từ form được hiểu theo giờ Việt Nam để kỳ thanh toán tính đủ cả ngày cuối
+const toPeriodBound = (value, time) => new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T${time}+07:00` : value);
+
 export const generatePayout = async (req, res, next) => {
   try {
     const { partnerId, periodStart, periodEnd } = req.body;
-    const start = new Date(periodStart); const end = new Date(periodEnd);
+    const start = toPeriodBound(periodStart, '00:00:00'); const end = toPeriodBound(periodEnd, '23:59:59.999');
     if (!partnerId || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return res.status(400).json({ message: 'Partner hoặc kỳ thanh toán không hợp lệ.' });
     const partner = await User.findOne({ _id: partnerId, role: 'HOTEL_PARTNER' });
     if (!partner) return res.status(404).json({ message: 'Không tìm thấy đối tác khách sạn.' });
     const hotelIds = (await Hotel.find({ ownerId: partnerId }).select('_id')).map((hotel) => hotel._id.toString());
-    const bookings = await Booking.find({ hotelId: { $in: hotelIds }, paymentStatus: 'PAID', bookingStatus: { $in: ['CONFIRMED', 'COMPLETED'] }, checkOutDate: { $gte: start, $lte: end } });
-    const bookingIds = bookings.map((booking) => booking._id);
-    const grossRevenue = bookings.reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0);
+    // Cùng quy tắc doanh thu với màn Thống kê của đối tác: đơn đã qua ngày trả phòng tính vào kỳ của ngày trả phòng,
+    // đơn hủy chỉ tính phí giữ lại và tính vào kỳ của ngày hủy
+    const paidStatuses = ['PAID', 'REFUNDED'];
+    const completed = await Booking.find({
+      hotelId: { $in: hotelIds },
+      paymentStatus: { $in: paidStatuses },
+      checkOutDate: { $gte: start, $lte: end },
+      $or: [{ bookingStatus: 'COMPLETED' }, { bookingStatus: 'CONFIRMED', checkOutDate: { $lt: new Date() } }],
+    });
+    const cancellations = (await BookingCancellation.find({ cancelledAt: { $gte: start, $lte: end }, cancellationFee: { $gt: 0 } }).populate('bookingId'))
+      .filter(({ bookingId: booking }) => booking && hotelIds.includes(String(booking.hotelId)) && paidStatuses.includes(booking.paymentStatus));
+    const completedIds = completed.map((booking) => booking._id);
+    const bookingIds = [...completedIds, ...cancellations.map((item) => item.bookingId._id)];
     const [refunds, openDisputes, openRefunds] = await Promise.all([
-      RefundRequest.find({ bookingId: { $in: bookingIds }, status: 'PROCESSED' }),
+      // Tiền hoàn lúc hủy đã nằm ngoài phí giữ lại nên chỉ trừ khoản hoàn của đơn hoàn thành
+      RefundRequest.find({ bookingId: { $in: completedIds }, status: 'PROCESSED' }),
       Dispute.find({ bookingId: { $in: bookingIds }, status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] } }),
       RefundRequest.find({ bookingId: { $in: bookingIds }, status: { $in: ['REQUESTED', 'UNDER_REVIEW', 'APPROVED'] } }),
     ]);
+    const revenueItems = [
+      ...completed.map((booking) => ({ booking, revenue: Number(booking.totalAmount || 0) })),
+      ...cancellations.map((item) => ({ booking: item.bookingId, revenue: Number(item.cancellationFee) })),
+    ];
+    const grossRevenue = revenueItems.reduce((sum, item) => sum + item.revenue, 0);
     const refundAdjustment = refunds.reduce((sum, refund) => sum + Number(refund.approvedAmount || 0), 0);
+    const refundedOf = (booking) => refunds.filter((refund) => refund.bookingId.equals(booking._id)).reduce((sum, refund) => sum + Number(refund.approvedAmount || 0), 0);
     const scopePriority = { HOTEL: 3, PARTNER: 2, GLOBAL: 1 };
-    const commissionBreakdown = await Promise.all(bookings.map(async (booking) => {
+    const commissionBreakdown = await Promise.all(revenueItems.map(async ({ booking, revenue: itemRevenue }) => {
       const bookedAt = booking.createdAt || start;
-      const policies = await CommissionPolicy.find({
+      const candidatePolicies = await CommissionPolicy.find({
         status: 'ACTIVE',
-        effectiveFrom: { $lte: bookedAt },
         $or: [
           { effectiveTo: null },
           { effectiveTo: { $gte: bookedAt } },
@@ -335,10 +1070,16 @@ export const generatePayout = async (req, res, next) => {
           { scope: 'HOTEL', hotelId: booking.hotelId },
         ] }],
       }).sort({ effectiveFrom: -1 });
-      const policy = policies.sort((left, right) => scopePriority[right.scope] - scopePriority[left.scope])[0];
-      const revenue = Number(booking.totalAmount || 0);
+
+      // Ưu tiên chính sách có effectiveFrom <= bookedAt; nếu chính sách mới gắn cho khách sạn sau ngày đặt đơn thì vẫn áp dụng theo thứ tự HOTEL > PARTNER > GLOBAL
+      const strictMatches = candidatePolicies.filter((p) => new Date(p.effectiveFrom) <= new Date(bookedAt));
+      const pool = strictMatches.length > 0 ? strictMatches : candidatePolicies;
+      const policy = pool.sort((left, right) => scopePriority[right.scope] - scopePriority[left.scope])[0];
+
+      // Hoa hồng tính trên số tiền còn lại sau khi hoàn cho khách, không vượt quá số tiền đó
+      const revenue = Math.max(0, itemRevenue - refundedOf(booking));
       const amount = policy
-        ? (policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Number(policy.value))
+        ? (policy.calculationType === 'PERCENTAGE' ? Math.round((revenue * policy.value) / 100) : Math.min(Number(policy.value), revenue))
         : 0;
       return { bookingId: booking._id, policyId: policy?._id || null, rate: Number(policy?.value || 0), amount };
     }));
@@ -356,7 +1097,7 @@ export const generatePayout = async (req, res, next) => {
       commissionAmount,
       netAmount: Math.max(0, grossRevenue - refundAdjustment - commissionAmount),
       status: holdCount ? 'ON_HOLD' : 'PENDING_APPROVAL',
-      holdReason: holdCount ? `Có ${holdCount} tranh chấp hoặc yêu cầu hoàn tiền đang mở.` : '',
+      holdReason: holdCount ? `Có ${holdCount} tranh chấp hoặc hồ sơ bồi thường đang mở.` : '',
       policyId: policyIds.length === 1 ? policyIds[0] : null,
     });
     await audit(req.user._id, 'PAYOUT_GENERATED', 'PAYOUT', payout._id);
@@ -389,4 +1130,3 @@ export const getManagerAuditLogs = async (req, res, next) => {
     res.json({ logs: result.items, pagination: result.pagination });
   } catch (error) { next(error); }
 };
-

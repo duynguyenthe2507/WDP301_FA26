@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Button, Card, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { usePropertyDraft } from '../context/PropertyDraftContext';
 
 const partnerTerms = {
   title: 'THOA THUAN VA DIEU KHOAN DANH CHO DOI TAC KHACH SAN',
@@ -312,6 +313,7 @@ const PartnerTerms = () => {
   const [accepted, setAccepted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const navigate = useNavigate();
+  const { setDraft } = usePropertyDraft();
 
   const handleNext = () => {
     if (!accepted) {
@@ -319,6 +321,7 @@ const PartnerTerms = () => {
       return;
     }
 
+    setDraft((current) => ({ ...current, termsAccepted: true }));
     navigate('/partner/property-location');
   };
 

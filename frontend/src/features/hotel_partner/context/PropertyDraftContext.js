@@ -1,27 +1,65 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from "react";
 
 const PropertyDraftContext = createContext(null);
-const blankRoom = () => ({
-  name: 'Phòng đôi Deluxe', description: '', bedType: '', roomSize: '20',
-  adultCapacity: 2, childrenCapacity: 0, totalRooms: 1, basePrice: '2000000',
-  amenities: [], images: [],
-});
 const initialDraft = {
-  location: { country: '', provinceCity: '', district: '', address: '', zipCode: '' },
-  amenities: [], rooms: [blankRoom()], photos: [],
-  details: { name: '', description: '', stars: 4, cancellation: '' },
-  profile: { business: '', address: '', postcode: '', country: '', firstName: '', lastName: '', nationality: '', birthday: '', residenceCountry: '', region: '', city: '', language: '', phoneCountryCode: '+84', phone: '' },
+  termsAccepted: false,
+  location: {
+    provinceCity: "",
+    district: "",
+    address: "",
+  },
+  amenities: [],
+  rooms: [],
+  photos: [],
+  details: {
+    name: "",
+    description: "",
+    stars: 4,
+    cancellation: "",
+    checkInTime: "14:00",
+    checkOutTime: "12:00",
+  },
+  profile: {
+    business: "",
+    address: "",
+    postcode: "",
+    country: "Việt Nam",
+    firstName: "",
+    lastName: "",
+    nationality: "Việt Nam",
+    birthday: "",
+    residenceCountry: "Việt Nam",
+    region: "",
+    city: "",
+    language: "Tiếng Việt",
+    phoneCountryCode: "+84",
+    phone: "",
+  },
 };
 
 export const PropertyDraftProvider = ({ children }) => {
   const [draft, setDraft] = useState(initialDraft);
-  const updateSection = (section, values) => setDraft((current) => ({ ...current, [section]: { ...current[section], ...values } }));
-  const clearDraft = () => setDraft(initialDraft);
-  return <PropertyDraftContext.Provider value={{ draft, setDraft, updateSection, clearDraft }}>{children}</PropertyDraftContext.Provider>;
+  const updateSection = (section, values) =>
+    setDraft((current) => ({
+      ...current,
+      [section]: { ...current[section], ...values },
+    }));
+  // Giữ termsAccepted để layout wizard không chuyển về trang điều khoản ngay trước khi sang trang trạng thái
+  const clearDraft = () => setDraft({ ...initialDraft, termsAccepted: true });
+  return (
+    <PropertyDraftContext.Provider
+      value={{ draft, setDraft, updateSection, clearDraft }}
+    >
+      {children}
+    </PropertyDraftContext.Provider>
+  );
 };
 
 export const usePropertyDraft = () => {
   const context = useContext(PropertyDraftContext);
-  if (!context) throw new Error('usePropertyDraft must be used within PropertyDraftProvider');
+  if (!context)
+    throw new Error(
+      "usePropertyDraft must be used within PropertyDraftProvider",
+    );
   return context;
 };

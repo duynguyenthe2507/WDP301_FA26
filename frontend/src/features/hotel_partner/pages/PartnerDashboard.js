@@ -1,17 +1,33 @@
-import React from 'react';
-import { Card } from 'react-bootstrap';
+import React from "react";
+import { Button, Card } from "react-bootstrap";
+import { FaBed, FaCalendarCheck, FaChartBar, FaExclamationTriangle, FaHotel, FaStar } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
-const PartnerDashboard = () => {
-  return (
-    <div>
-      <h2 className="mb-4">Bảng điều khiển Đối tác Khách sạn</h2>
-      <Card className="border-0 shadow-sm rounded-4">
-        <Card.Body>
-          <p>Chào mừng Đối tác. Tại đây bạn có thể quản lý danh sách phòng của mình, xem đơn đặt phòng và báo cáo doanh thu.</p>
-        </Card.Body>
-      </Card>
+const PartnerDashboard = () => (
+  <div>
+    <h2 className="mb-2">Bảng điều khiển Đối tác Khách sạn</h2>
+    <p className="text-muted mb-4">Quản lý thông tin khách sạn, loại phòng và hoạt động kinh doanh của bạn.</p>
+    <div className="row g-3">
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaHotel className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Thông tin khách sạn</h3><p className="text-muted small">Cập nhật thông tin cơ bản, tiện nghi, chính sách và hình ảnh khách sạn.</p><Button as={Link} to="/partner/hotel-information" variant="outline-dark" size="sm">Quản lý thông tin</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaBed className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Loại phòng</h3><p className="text-muted small">Xem, thêm và cập nhật các loại phòng đang kinh doanh.</p><Button as={Link} to="/partner/room-types" variant="outline-dark" size="sm">Quản lý loại phòng</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaCalendarCheck className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Quản lý đặt phòng</h3><p className="text-muted small">Xem, tìm kiếm đơn đặt phòng và theo dõi thông tin khách, thanh toán, hủy phòng.</p><Button as={Link} to="/partner/bookings" variant="outline-dark" size="sm">Quản lý đặt phòng</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaChartBar className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Thống kê</h3><p className="text-muted small">Theo dõi số khách, đặt phòng, doanh thu và lịch sử thanh toán.</p><Button as={Link} to="/partner/statistics" variant="outline-dark" size="sm">Xem thống kê</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaStar className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Đánh giá của khách</h3><p className="text-muted small">Xem điểm đánh giá và nhận xét của khách về khách sạn.</p><Button as={Link} to="/partner/reviews" variant="outline-dark" size="sm">Xem đánh giá</Button></Card.Body></Card>
+      </div>
+      <div className="col-md-6">
+        <Card className="border-0 shadow-sm rounded-4 h-100"><Card.Body className="p-4"><FaExclamationTriangle className="text-primary fs-3 mb-3" /><h3 className="h5 fw-bold">Khiếu nại của khách</h3><p className="text-muted small">Xem khiếu nại liên quan đến khách sạn và gửi phản hồi cho bộ phận vận hành.</p><Button as={Link} to="/partner/disputes" variant="outline-dark" size="sm">Xem khiếu nại</Button></Card.Body></Card>
+      </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default PartnerDashboard;

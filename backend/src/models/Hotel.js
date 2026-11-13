@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Giờ dạng HH:mm (00:00 - 23:59)
+export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const hotelSchema = new mongoose.Schema(
   {
     ownerId: {
@@ -19,6 +22,8 @@ const hotelSchema = new mongoose.Schema(
       required: true,
       enum: ["one", "three", "none"],
     },
+    checkInTime: { type: String, match: TIME_PATTERN, default: "14:00" },
+    checkOutTime: { type: String, match: TIME_PATTERN, default: "12:00" },
     averageRating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 },
     status: {

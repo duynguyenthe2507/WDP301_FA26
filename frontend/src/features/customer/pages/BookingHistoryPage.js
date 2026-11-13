@@ -285,8 +285,8 @@ const BookingHistoryPage = () => {
               <div className="d-flex flex-column gap-3">
                 {filteredBookings.map((booking) => {
                   const category = categorizeBooking(booking);
-                  const detailsList = Array.isArray(booking.bookingDetails) && booking.bookingDetails.length > 0
-                    ? booking.bookingDetails
+                  const detailsList = Array.isArray(booking.details) && booking.details.length > 0
+                    ? booking.details
                     : [];
                   const roomCount = detailsList.reduce((sum, r) => sum + (Number(r.quantity) || 1), 0) || 1;
                   const roomName = detailsList.length > 1
@@ -306,8 +306,8 @@ const BookingHistoryPage = () => {
                     },
                   };
 
-                  const totalAdults = booking.totalAdults || detailsList.reduce((sum, r) => sum + (Number(r.adults) || 1), 0) || 2;
-                  const totalChildren = booking.totalChildren || detailsList.reduce((sum, r) => sum + (Number(r.children) || 0), 0) || 0;
+                  const totalAdults = booking.adultsCount;
+                  const totalChildren = booking.childrenCount;
                   const guestsText = `${totalAdults} người lớn${totalChildren > 0 ? `, ${totalChildren} trẻ em` : ''}`;
 
                   let detailLine = `${totalNights} đêm · ${roomCount} phòng · ${guestsText}`;
@@ -420,30 +420,50 @@ const BookingHistoryPage = () => {
                     detailLine = `Đã trả phòng ${day}/${month}/${year} · 12:00`;
                     paymentLine = 'Thanh toán: Đã thanh toán';
                     actionBtn = (
-                      <button
-                        onClick={() =>
-                          navigate(
-                            reviewedIds.has(String(booking._id))
-                              ? '/my-reviews'
-                              : `/write-review/${booking._id}`
-                          )
-                        }
-                        style={{
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #d1d5db',
-                          color: '#1f2937',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          padding: '7px 18px',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
-                      >
-                        {reviewedIds.has(String(booking._id)) ? 'Xem đánh giá' : 'Đánh giá kỳ nghỉ'}
-                      </button>
+                      <div className="d-flex flex-wrap gap-2 justify-content-end">
+                        <button
+                          onClick={() => navigate(`/submit-dispute/${booking._id}`)}
+                          style={{
+                            backgroundColor: '#fff',
+                            border: '1px solid #fed7aa',
+                            color: '#c2410c',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            padding: '7px 14px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#fff7ed')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                        >
+                          Báo cáo khiếu nại
+                        </button>
+                        <button
+                          onClick={() =>
+                            navigate(
+                              reviewedIds.has(String(booking._id))
+                                ? '/my-reviews'
+                                : `/write-review/${booking._id}`
+                            )
+                          }
+                          style={{
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #d1d5db',
+                            color: '#1f2937',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            padding: '7px 18px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9fafb')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                        >
+                          {reviewedIds.has(String(booking._id)) ? 'Xem đánh giá' : 'Đánh giá kỳ nghỉ'}
+                        </button>
+                      </div>
                     );
                   } else if (category === 'CANCELLED') {
                     badgeConfig = {
@@ -523,7 +543,7 @@ const BookingHistoryPage = () => {
                         {/* ẢNH & THÔNG TIN CHI TIẾT */}
                         <div className="d-flex gap-3 align-items-start" style={{ flex: 1, minWidth: 0 }}>
                           <img
-                            src={booking.hotelImage || BLANK_IMG}
+                            src={booking.hotel?.images?.find((img) => img.isCover)?.url || booking.hotel?.images?.[0]?.url || BLANK_IMG}
                             alt={hotelName}
                             onError={onImgError}
                             style={{

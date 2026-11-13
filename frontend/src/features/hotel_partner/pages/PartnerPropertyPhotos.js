@@ -1,18 +1,15 @@
 import { useState } from "react";
-import { Button, Form } from "react-bootstrap";
-import { FaPlus } from "react-icons/fa";
+import { Button } from "react-bootstrap";
 import PropertySetupLayout from "../components/PropertySetupLayout";
+import ImageUploadButton from "../components/ImageUploadButton";
 import { usePropertyDraft } from "../context/PropertyDraftContext";
+import { hasErrors, MAX_HOTEL_IMAGES, validatePhotos } from "../data/propertyValidation";
 
 const PartnerPropertyPhotos = () => {
   const { draft, setDraft } = usePropertyDraft();
   const [photos, setPhotos] = useState(draft.photos || []);
-  const [url, setUrl] = useState("");
-  const addPhoto = () => {
-    if (!/^https?:\/\//i.test(url.trim())) return;
-    setPhotos((current) => [...current, { url: url.trim() }]);
-    setUrl("");
-  };
+  const [showErrors, setShowErrors] = useState(false);
+  const errors = validatePhotos(photos);
   return (
     <PropertySetupLayout
       step={3}
@@ -20,26 +17,28 @@ const PartnerPropertyPhotos = () => {
       previous="/partner/property-rooms"
       next="/partner/property-details"
       beforeNext={() => setDraft((current) => ({ ...current, photos }))}
+      invalid={hasErrors(errors)}
+      onInvalid={() => setShowErrors(true)}
     >
       <p className="text-muted">
-        Nhập URL ảnh đã được lưu trên dịch vụ ảnh. Ảnh đầu tiên sẽ là ảnh đại
-        diện.
+        Chọn từ 1 đến {MAX_HOTEL_IMAGES} ảnh (JPG, PNG, WEBP, GIF, tối đa 5MB
+        mỗi ảnh). Ảnh đầu tiên sẽ là ảnh đại diện.
       </p>
-      <div className="input-group mb-3">
-        <Form.Control
-          type="url"
-          value={url}
-          placeholder="https://example.com/hotel.jpg"
-          onChange={(e) => setUrl(e.target.value)}
+      <div className="mb-3">
+        <ImageUploadButton
+          type="hotel"
+          maxFiles={MAX_HOTEL_IMAGES - photos.length}
+          onUploaded={(images) =>
+            setPhotos((current) => [...current, ...images])
+          }
         />
-        <Button onClick={addPhoto}>
-          <FaPlus className="me-1" />
-          Thêm ảnh
-        </Button>
+        {showErrors && errors.photos && (
+          <div className="text-danger small mt-2">{errors.photos}</div>
+        )}
       </div>
       <div className="d-flex flex-wrap gap-3">
         {photos.map((photo, index) => (
-          <div key={photo.url} className="position-relative">
+          <div key={photo.publicId || photo.url} className="position-relative">
             <img
               src={photo.url}
               alt={`Ảnh khách sạn ${index + 1}`}

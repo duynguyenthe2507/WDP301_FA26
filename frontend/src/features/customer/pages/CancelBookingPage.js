@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BLANK_IMG, imgBg, onImgError } from '../imageFallback';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Form, Spinner, Modal, Button } from 'react-bootstrap';
+import { Container, Row, Col, Form, Spinner, Button, Modal } from 'react-bootstrap';
 import CustomerSidebar from '../components/CustomerSidebar';
 import { getCancelBookingInfo, cancelBooking } from '../CustomerApi';
 
@@ -49,7 +49,7 @@ const CancelBookingPage = () => {
   const [cancellationNote, setCancellationNote] = useState('');
   const [agreed, setAgreed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Tải dữ liệu đặt phòng & chính sách hủy từ backend
   useEffect(() => {
@@ -86,11 +86,7 @@ const CancelBookingPage = () => {
 
   // Xử lý gửi yêu cầu hủy đặt phòng
   const handleConfirmCancel = async () => {
-    if (!agreed) {
-      alert('Vui lòng xác nhận đã đọc chính sách hủy và thông tin hoàn tiền.');
-      return;
-    }
-
+    setShowConfirm(false);
     setSubmitting(true);
     try {
       const cleanReason = selectedReason.replace(/\s*\*$/, '').trim();
@@ -101,7 +97,7 @@ const CancelBookingPage = () => {
 
       const res = await cancelBooking(idOrCode, payload);
       if (res.data?.success) {
-        setShowSuccessModal(true);
+        navigate(`/booking/confirmation/${booking.bookingCode}`, { replace: true, state: { booking: res.data.booking } });
       } else {
         alert(res.data?.message || 'Có lỗi xảy ra khi hủy phòng.');
       }
@@ -119,10 +115,10 @@ const CancelBookingPage = () => {
   // Tính toán số lượng khách và phòng
   const guestsAndRoomsText = useMemo(() => {
     if (!booking) return '';
-    const adults = booking.guestCounts?.adults || 2;
-    const children = booking.guestCounts?.children || 0;
-    const totalRooms = Array.isArray(booking.bookingDetails)
-      ? booking.bookingDetails.reduce((sum, d) => sum + (Number(d.quantity) || 1), 0)
+    const adults = booking.adultsCount;
+    const children = booking.childrenCount;
+    const totalRooms = Array.isArray(booking.details)
+      ? booking.details.reduce((sum, d) => sum + (Number(d.quantity) || 1), 0)
       : 1;
     const totalNights = booking.totalNights || 1;
 
@@ -213,7 +209,7 @@ const CancelBookingPage = () => {
                   {/* THÔNG TIN KHÁCH SẠN */}
                   <div className="d-flex gap-3 align-items-start mb-4">
                     <img
-                      src={hotelInfo?.thumbnail || booking?.hotelImage || BLANK_IMG}
+                      src={hotelInfo?.thumbnail || BLANK_IMG}
                       alt={hotelInfo?.name || booking?.hotelName}
                       onError={onImgError}
                       style={{
@@ -255,7 +251,7 @@ const CancelBookingPage = () => {
                         }}
                       >
                         {hotelInfo?.roomDetailsInfo ||
-                          booking?.bookingDetails?.[0]?.roomTypeName ||
+                          booking?.details?.[0]?.roomTypeName ||
                           'Phòng tiêu chuẩn'}
                       </div>
                     </div>
@@ -329,9 +325,8 @@ const CancelBookingPage = () => {
                         <div
                           style={{
                             backgroundColor: calculations?.isFreeCancel ? '#f0fdf4' : '#fffbeb',
-                            border: `1px solid ${
-                              calculations?.isFreeCancel ? '#bbf7d0' : '#fef08a'
-                            }`,
+                            border: `1px solid ${calculations?.isFreeCancel ? '#bbf7d0' : '#fef08a'
+                              }`,
                             borderRadius: '8px',
                             padding: '10px 14px',
                             color: calculations?.isFreeCancel ? '#15803d' : '#a16207',
@@ -577,7 +572,7 @@ const CancelBookingPage = () => {
 
                   <button
                     type="button"
-                    onClick={handleConfirmCancel}
+                    onClick={() => setShowConfirm(true)}
                     disabled={!agreed || submitting}
                     style={{
                       backgroundColor: agreed && !submitting ? '#b91c1c' : '#9ca3af',
@@ -606,49 +601,27 @@ const CancelBookingPage = () => {
         </Row>
       </Container>
 
-      {/* MODAL THÔNG BÁO HỦY THÀNH CÔNG */}
-      <Modal
-        show={showSuccessModal}
-        onHide={() => navigate('/booking-history')}
-        centered
-        backdrop="static"
-      >
+      {/* MODAL XÁC NHẬN HỦY */}
+      <Modal show={showConfirm} onHide={() => setShowConfirm(false)} centered>
         <Modal.Body className="p-4 text-center">
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#ecfdf5',
-              color: '#059669',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              margin: '0 auto 16px',
-            }}
-          >
-            ✓
-          </div>
           <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-            Hủy đặt phòng thành công!
+            Xác nhận hủy đặt phòng?
           </h3>
-          <p style={{ fontSize: '13.5px', color: '#475569', marginBottom: '16px', lineHeight: 1.5 }}>
-            Đơn đặt phòng <strong>{booking?.bookingCode}</strong> đã được hủy.
+          <p style={{ fontSize: '13.5px', color: '#475569', marginBottom: '20px', lineHeight: 1.5 }}>
+            Bạn sắp hủy đơn <strong>{booking?.bookingCode}</strong>
             {calculations?.refundAmount > 0 && (
-              <>
-                {' '}Số tiền hoàn dự kiến <strong>{formatPrice(calculations?.refundAmount)}</strong> đã được ghi nhận và gửi đến bộ phận đối soát.
-              </>
+              <>, số tiền hoàn dự kiến <strong>{formatPrice(calculations.refundAmount)}</strong></>
             )}
+            . Hành động này không thể hoàn tác.
           </p>
-          <Button
-            variant="dark"
-            className="w-100 py-2 fw-semibold"
-            style={{ borderRadius: '8px', fontSize: '14px' }}
-            onClick={() => navigate('/booking-history')}
-          >
-            Về danh sách đặt phòng
-          </Button>
+          <div className="d-flex gap-2">
+            <Button variant="outline-secondary" className="w-50 py-2 fw-semibold" onClick={() => setShowConfirm(false)}>
+              Quay lại
+            </Button>
+            <Button variant="danger" className="w-50 py-2 fw-semibold" onClick={handleConfirmCancel}>
+              Đồng ý hủy
+            </Button>
+          </div>
         </Modal.Body>
       </Modal>
     </div>
