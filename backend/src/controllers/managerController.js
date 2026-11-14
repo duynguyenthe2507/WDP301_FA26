@@ -950,7 +950,7 @@ export const generatePayout = async (req, res, next) => {
     const hotelIds = (await Hotel.find({ ownerId: partnerId }).select('_id')).map((hotel) => hotel._id.toString());
     // Cùng quy tắc doanh thu với màn Thống kê của đối tác: đơn đã qua ngày trả phòng tính vào kỳ của ngày trả phòng,
     // đơn hủy chỉ tính phí giữ lại và tính vào kỳ của ngày hủy
-    const paidStatuses = ['PAID', 'REFUNDED'];
+    const paidStatuses = ['PAID', 'REFUNDED', 'UNREFUNDED'];
     const completed = await Booking.find({
       hotelId: { $in: hotelIds },
       paymentStatus: { $in: paidStatuses },

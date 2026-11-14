@@ -145,20 +145,18 @@ const BookingConfirmationPage = () => {
   const serviceFee = Math.max(0, (booking.totalAmount || 0) - totalRoomCost);
 
   // Đơn đã hủy nhưng từng thanh toán -> hiện phần hoàn tiền
-  const wasPaid = ['PAID', 'REFUNDED'].includes(booking.paymentStatus);
+  const wasPaid = ['PAID', 'REFUNDED', 'UNREFUNDED'].includes(booking.paymentStatus);
   const cancellation = booking.cancellation || {};
   const refundAmount = cancellation.refundAmount ?? 0;
-  const refundStatusText = {
-    PENDING: 'Đang xử lý',
-    PROCESSED: 'Đã hoàn tiền',
-  }[cancellation.refundStatus] || (wasPaid ? 'Đang xử lý' : 'Không áp dụng');
+  const refunded = cancellation.refundStatus === 'PROCESSED';
+  const refundStatusText = refunded ? 'Đã hoàn tiền' : wasPaid ? 'Không được hoàn tiền' : 'Không áp dụng';
 
   const countdown = `${Math.floor(remainingSeconds / 60).toString().padStart(2, '0')}:${(remainingSeconds % 60).toString().padStart(2, '0')}`;
 
   const status = isPaid
     ? { icon: <FaCheckCircle className="text-success" size={36} />, title: 'Đặt phòng thành công', text: 'Đơn phòng đã được xác nhận và thanh toán qua VNPAY.' }
     : isCancelled
-      ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã bị hủy', text: wasPaid ? (cancellation.refundStatus === 'PROCESSED' ? 'Hủy đặt phòng thành công, tiền đã được hoàn về tài khoản của bạn.' : 'Yêu cầu hủy đã được tiếp nhận, tiền hoàn đang được xử lý.') : 'Đơn đặt phòng này đã được hủy.' }
+      ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã bị hủy', text: wasPaid ? (refunded ? 'Hủy đặt phòng thành công, tiền đã được hoàn về tài khoản của bạn.' : 'Đơn đã được hủy. Theo chính sách hủy, đơn này không được hoàn tiền.') : 'Đơn đặt phòng này đã được hủy.' }
       : isExpired
         ? { icon: <FaTimesCircle className="text-danger" size={36} />, title: 'Đơn đã quá hạn thanh toán', text: 'Đơn quá 15 phút chưa thanh toán nên đã bị hủy. Vui lòng đặt lại.' }
         : { icon: <FaClock className="text-secondary" size={36} />, title: 'Đang chờ thanh toán', text: 'Vui lòng thanh toán trước khi hết giờ để giữ phòng.' };
@@ -260,9 +258,9 @@ const BookingConfirmationPage = () => {
                 <InfoRow label="Phí hủy">
                   {cancellation.cancellationFee > 0 ? formatPrice(cancellation.cancellationFee) : 'Miễn phí'}
                 </InfoRow>
-                {wasPaid && <InfoRow label="Phương thức hoàn">VNPAY / tài khoản nguồn</InfoRow>}
+                {refunded && <InfoRow label="Phương thức hoàn">VNPAY / tài khoản nguồn</InfoRow>}
                 <InfoRow label="Trạng thái">{refundStatusText}</InfoRow>
-                {wasPaid && (
+                {refunded && (
                   <>
                     <div className="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
                       <span className="fw-bold text-success">Tiền được hoàn</span>

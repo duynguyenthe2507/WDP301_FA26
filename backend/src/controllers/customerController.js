@@ -935,9 +935,11 @@ export const cancelBooking = async (req, res) => {
     const calculations = calculateCancellationDetails(booking, hotel);
 
     // sandbox mode: if paid and has refund amount, record refund as successful right away
-    const refunded = booking.paymentStatus === 'PAID' && calculations.refundAmount > 0;
+    const wasPaid = booking.paymentStatus === 'PAID';
+    const refunded = wasPaid && calculations.refundAmount > 0;
     booking.bookingStatus = 'CANCELLED';
-    if (refunded) booking.paymentStatus = 'REFUNDED';
+    // Đã thanh toán: có hoàn tiền -> REFUNDED, không hoàn đồng nào -> UNREFUNDED
+    if (wasPaid) booking.paymentStatus = refunded ? 'REFUNDED' : 'UNREFUNDED';
     await booking.save();
     if (refunded) {
       await Payment.create({

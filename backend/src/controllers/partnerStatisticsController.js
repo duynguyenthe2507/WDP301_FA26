@@ -17,7 +17,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const NO_DATA_MESSAGE = 'Không có dữ liệu thống kê trong khoảng thời gian đã chọn.';
 
 // Khách bắt buộc trả tiền khi đặt nên partner chỉ thống kê đơn đã thanh toán
-export const PAID_FILTER = { paymentStatus: { $in: ['PAID', 'REFUNDED'] } };
+export const PAID_FILTER = { paymentStatus: { $in: ['PAID', 'REFUNDED', 'UNREFUNDED'] } };
 
 // Kỳ thống kê tính theo giờ Việt Nam, ngày ở dạng YYYY-MM-DD
 export const vnDate = (date) => new Date(new Date(date).getTime() + VN_OFFSET_MS).toISOString().slice(0, 10);
@@ -79,7 +79,7 @@ const loadRevenueEntries = async (hotel, from, to) => {
     const commission = commissionFor(policies, booking.createdAt, gross);
     return { booking, gross, commission, net: gross - commission, recognizedDay: vnDate(recognizedAt), status };
   };
-  const ownCancellations = cancellations.filter(({ bookingId: booking }) => booking?.hotelId?.equals(hotel._id) && ['PAID', 'REFUNDED'].includes(booking.paymentStatus));
+  const ownCancellations = cancellations.filter(({ bookingId: booking }) => booking?.hotelId?.equals(hotel._id) && ['PAID', 'REFUNDED', 'UNREFUNDED'].includes(booking.paymentStatus));
   const entries = [
     ...completed.map((booking) => toEntry(booking, Math.max(0, booking.totalAmount - refundedOf(booking)), booking.checkOutDate, 'COMPLETED')),
     ...ownCancellations.map((item) => toEntry(item.bookingId, item.cancellationFee, item.cancelledAt, 'CANCELLED')),

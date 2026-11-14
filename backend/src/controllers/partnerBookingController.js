@@ -280,12 +280,11 @@ export const cancelPartnerBooking = async (req, res, next) => {
     // Đổi trạng thái có điều kiện để không hủy chồng lên đơn khách vừa tự hủy (Exc 3)
     const updated = await Booking.updateOne(
       { _id: booking._id, hotelId: hotel._id, bookingStatus: 'CONFIRMED', paymentStatus: 'PAID' },
-      { $set: { bookingStatus: 'CANCELLED' } },
+      { $set: { bookingStatus: 'CANCELLED', paymentStatus: refundAmount > 0 ? 'REFUNDED' : 'UNREFUNDED' } },
     );
     if (!updated.modifiedCount) return res.status(409).json({ message: MSG_NOT_CONFIRMED });
 
     // Hoàn tiền được mô phỏng: hủy xong là coi như đã hoàn, ghi một giao dịch REFUND để lưu vết.
-    // paymentStatus giữ PAID vì màn của khách dựa vào đó để hiện phần hoàn tiền.
     let cancellationId = null;
     try {
       const cancellation = await BookingCancellation.create({
@@ -310,7 +309,7 @@ export const cancelPartnerBooking = async (req, res, next) => {
       }
     } catch (error) {
       if (cancellationId) await BookingCancellation.deleteOne({ _id: cancellationId });
-      await Booking.updateOne({ _id: booking._id, bookingStatus: 'CANCELLED' }, { $set: { bookingStatus: 'CONFIRMED' } });
+      await Booking.updateOne({ _id: booking._id, bookingStatus: 'CANCELLED' }, { $set: { bookingStatus: 'CONFIRMED', paymentStatus: 'PAID' } });
       throw error;
     }
 
