@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { getMaintenance } from '../middlewares/maintenanceMiddleware.js';
 
 export const register = async (req, res) => {
   try {
@@ -80,6 +81,12 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(401).json({ message: 'Email không tồn tại' });
+    }
+
+    // Đang bảo trì thì chỉ Admin được đăng nhập
+    if (user.role !== 'ADMIN') {
+      const { on, message } = await getMaintenance();
+      if (on) return res.status(503).json({ maintenance: true, message });
     }
 
     // Kiểm tra trạng thái tài khoản (chỉ kiểm tra BLOCKED và SUSPENDED theo enum schema)

@@ -6,7 +6,7 @@ const CustomerSidebar = ({ activeKey = 'reviews' }) => {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
 
-  // Lấy chữ cái viết tắt đại diện Avatar (ví dụ: "Nguyễn Minh Anh" -> "MA")
+  // get user initials for avatar (e.g. "Nguyen Minh Anh" -> "MA")
   const getUserInitials = (name) => {
     if (!name) return '';
     const parts = name.trim().split(/\s+/);
@@ -120,7 +120,7 @@ const CustomerSidebar = ({ activeKey = 'reviews' }) => {
 
           <div style={{ borderTop: '1px solid #f1f5f9', margin: '8px 0' }} />
 
-          {/* Đăng xuất */}
+          {/* Logout */}
           <div
             onClick={() => logout()}
             style={{

@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 
-// light: dùng trên nền tối (chữ sáng thay cho text-muted)
+// light: for dark backgrounds (uses light text instead of text-muted)
 const RatingStars = ({ rating = 0, count, size = '1rem', light = false }) => {
   const stars = [];
   const fullStars = Math.floor(rating);

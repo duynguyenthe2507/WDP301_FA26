@@ -24,7 +24,7 @@ const Home = () => {
   const [featuredHotels, setFeaturedHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Lay 3 khach san moi nhat lam noi bat
+  // get 3 latest hotels for featured section
   useEffect(() => {
     let isMounted = true;
 
@@ -60,7 +60,7 @@ const Home = () => {
           >
             <Container>
               <h1 className="display-3 fw-bold mb-4">
-                Chào mừng đến với VinaStay Hotels
+                Chào mừng đến với VinaStay
               </h1>
               <p className="lead mb-5 fs-4">
                 Trải nghiệm sự sang trọng và thoải mái chưa từng có.
