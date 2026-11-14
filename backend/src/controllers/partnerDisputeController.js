@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 import Dispute, { PARTNER_FAULT_OUTCOMES, PARTNER_MAX_VALID_REPORTS } from '../models/Dispute.js';
-import Notification from '../models/Notification.js';
 import { findApprovedHotel, notApproved } from './partnerController.js';
 import { vnDate } from './partnerStatisticsController.js';
 
@@ -168,15 +167,6 @@ export const respondPartnerDispute = async (req, res, next) => {
       new_status: updated.status,
       metadata: { bookingCode: dispute.bookingCode, hotelId: hotel._id },
     });
-    if (dispute.assignedTo) {
-      await Notification.create({
-        recipientId: dispute.assignedTo,
-        title: 'Khách sạn đã phản hồi khiếu nại',
-        message: `${hotel.name} đã phản hồi khiếu nại của đặt phòng ${dispute.bookingCode}.`,
-        entityType: 'DISPUTE',
-        entityId: dispute._id,
-      });
-    }
 
     const booking = await findDetailBooking(dispute);
     res.status(201).json({ message: 'Đã gửi phản hồi đến bộ phận vận hành.', dispute: toDetail(updated, booking, req.user._id) });
@@ -223,15 +213,6 @@ export const editPartnerDisputeResponse = async (req, res, next) => {
       new_status: updated.status,
       metadata: { bookingCode: dispute.bookingCode, hotelId: hotel._id, responseIndex: index, previousMessage, newMessage: message },
     });
-    if (dispute.assignedTo) {
-      await Notification.create({
-        recipientId: dispute.assignedTo,
-        title: 'Khách sạn đã sửa phản hồi khiếu nại',
-        message: `${hotel.name} đã sửa phản hồi khiếu nại của đặt phòng ${dispute.bookingCode}.`,
-        entityType: 'DISPUTE',
-        entityId: dispute._id,
-      });
-    }
 
     res.json({ message: 'Đã cập nhật phản hồi.', dispute: toDetail(updated, await findDetailBooking(dispute), req.user._id) });
   } catch (error) { next(error); }

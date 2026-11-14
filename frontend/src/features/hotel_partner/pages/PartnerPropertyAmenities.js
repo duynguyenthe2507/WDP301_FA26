@@ -4,7 +4,7 @@ import { usePropertyDraft } from "../context/PropertyDraftContext";
 import { HOTEL_AMENITIES as amenities } from "../data/hotelOptions";
 
 const PartnerPropertyAmenities = () => {
-  const { draft, setDraft } = usePropertyDraft();
+  const { draft } = usePropertyDraft();
   const [selectedAmenities, setSelectedAmenities] = useState(draft.amenities);
   const toggle = (name) =>
     setSelectedAmenities((current) =>
@@ -19,9 +19,7 @@ const PartnerPropertyAmenities = () => {
       title="Tiện nghi"
       previous="/partner/property-location"
       next="/partner/property-rooms"
-      beforeNext={() =>
-        setDraft((current) => ({ ...current, amenities: selectedAmenities }))
-      }
+      draftValues={{ amenities: selectedAmenities }}
     >
       <h2 className="h6 fw-semibold">Những điều khách yêu thích</h2>
       <p className="text-muted">Chọn các tiện nghi có tại khách sạn.</p>

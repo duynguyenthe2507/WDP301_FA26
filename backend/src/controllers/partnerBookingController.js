@@ -3,7 +3,6 @@ import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 import BookingCancellation from '../models/BookingCancellation.js';
 import BookingDetail from '../models/BookingDetail.js';
-import Notification from '../models/Notification.js';
 import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import { calculateCancellationDetails } from './customerController.js';
@@ -52,7 +51,6 @@ const MSG_MISSING_REASON = 'Vui lòng chọn lý do và nhập ghi chú.'; // MS
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const guestNameOf = (booking) => (!booking.isSelfGuest && booking.guestFullName) || booking.bookerFullName;
-const formatVnd = (amount) => `${new Intl.NumberFormat('vi-VN').format(amount)} đ`;
 const notFound = (res) => res.status(404).json({ message: 'Không tìm thấy đặt phòng.' });
 
 // Việc xác nhận đã nhận và việc partner hủy được lưu trong AuditLog vì Booking không có trường riêng
@@ -245,20 +243,11 @@ export const acknowledgeBooking = async (req, res, next) => {
     }
 
     // upsert theo đơn để bấm hai lần (hoặc hai tab) cũng chỉ có một bản ghi
-    const result = await AuditLog.updateOne(
+    await AuditLog.updateOne(
       { action: ACK_ACTION, entityType: 'BOOKING', entityId: booking._id },
       { $setOnInsert: { admin_id: req.user._id, target_user_id: booking.customerId, metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id } } },
       { upsert: true },
     );
-    if (result.upsertedCount) {
-      await Notification.create({
-        recipientId: booking.customerId,
-        title: 'Khách sạn đã xác nhận đặt phòng',
-        message: `${hotel.name} đã xác nhận nhận đặt phòng ${booking.bookingCode}.`,
-        entityType: 'BOOKING',
-        entityId: booking._id,
-      });
-    }
     res.json({ message: `Đã xác nhận nhận đặt phòng ${booking.bookingCode}.` }); // MSG15
   } catch (error) { next(error); }
 };
@@ -336,15 +325,6 @@ export const cancelPartnerBooking = async (req, res, next) => {
       new_status: 'CANCELLED',
       new_reason: cleanReason,
       metadata: { bookingCode: booking.bookingCode, hotelId: hotel._id, initiator, note: cleanNote, waiveFee, refundAmount, cancellationFee },
-    });
-    await Notification.create({
-      recipientId: booking.customerId,
-      title: 'Đặt phòng đã bị hủy',
-      message: initiator === 'HOTEL'
-        ? `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} vì: ${cleanReason}. Bạn đã được hoàn ${formatVnd(refundAmount)}.`
-        : `${hotel.name} đã hủy đặt phòng ${booking.bookingCode} theo yêu cầu của bạn. Số tiền đã hoàn: ${formatVnd(refundAmount)}.`,
-      entityType: 'BOOKING',
-      entityId: booking._id,
     });
 
     res.json({ message: `Đã hủy đặt phòng ${booking.bookingCode}. Khách hàng sẽ được thông báo.`, refundAmount, cancellationFee }); // MSG16

@@ -10,12 +10,10 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const getManagerDashboard = () => api.get("/dashboard");
-export const getVerifications = (params) =>
-  api.get("/verifications", { params });
-export const reviewVerification = (id, data) =>
-  api.patch(`/verifications/${id}/review`, data);
-export const getDisputes = (params) => api.get("/disputes", { params });
+export const getManagerDashboard = () => api.get('/dashboard');
+export const getVerifications = (params) => api.get('/verifications', { params });
+export const reviewVerification = (id, data) => api.patch(`/verifications/${id}/review`, data);
+export const getDisputes = (params) => api.get('/disputes', { params });
 export const updateDispute = (id, data) => api.patch(`/disputes/${id}`, data);
 export const getManagerBookings = (params) => api.get('/bookings', { params });
 export const getRefunds = (params) => api.get('/refunds', { params });

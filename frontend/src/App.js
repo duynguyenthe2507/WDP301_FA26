@@ -32,6 +32,7 @@ import MyDisputesPage from './features/customer/pages/MyDisputesPage';
 
 // Guards
 import ProtectedRoute from './components/ProtectedRoute';
+import PartnerBoundary from './components/PartnerBoundary';
 
 // Partners Pages
 import PartnerTerms from './features/hotel_partner/pages/PartnerTerms';
@@ -73,46 +74,49 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/register/customer" element={<CustomerRegister />} />
-          <Route path="/register/user" element={<CustomerRegister />} />
-          <Route path="/register/partner" element={<PartnerRegister />} />
+          {/* Hotel Partner đã đăng nhập không vào được các trang ngoài /partner */}
+          <Route element={<PartnerBoundary />}>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/register/customer" element={<CustomerRegister />} />
+            <Route path="/register/user" element={<CustomerRegister />} />
+            <Route path="/register/partner" element={<PartnerRegister />} />
 
-          {/* Customer Routes (Default) */}
-          <Route path="/" element={<CustomerLayout />}>
-            <Route index element={<Home />} />
-            <Route path="hotels" element={<HotelSearchPage />} />
-            <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
-            <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
+            {/* Customer Routes (Default) */}
+            <Route path="/" element={<CustomerLayout />}>
+              <Route index element={<Home />} />
+              <Route path="hotels" element={<HotelSearchPage />} />
+              <Route path="hotels/:hotelId" element={<HotelDetailsPage />} />
+              <Route path="booking/vnpay-return" element={<VNPayReturnPage />} />
 
-            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
-              <Route path="booking" element={<BookingPage />} />
-              <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
-              <Route path="booking/cancel/:bookingId" element={<CancelBookingPage />} />
-              <Route path="booking/cancel/:bookingCode" element={<CancelBookingPage />} />
-              <Route path="booking-history" element={<BookingHistoryPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="change-password" element={<ProfilePage section="password" />} />
-              <Route path="my-reviews" element={<MyReviewsPage />} />
-              <Route path="reviews" element={<MyReviewsPage />} />
-              <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
-              <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
-              <Route path="my-disputes" element={<MyDisputesPage />} />
-              <Route path="submit-dispute/:bookingId" element={<SubmitDisputePage />} />
-              <Route path="disputes/new/:bookingId" element={<SubmitDisputePage />} />
+              <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+                <Route path="booking" element={<BookingPage />} />
+                <Route path="booking/confirmation/:bookingCode" element={<BookingConfirmationPage />} />
+                <Route path="booking/cancel/:bookingId" element={<CancelBookingPage />} />
+                <Route path="booking/cancel/:bookingCode" element={<CancelBookingPage />} />
+                <Route path="booking-history" element={<BookingHistoryPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="change-password" element={<ProfilePage section="password" />} />
+                <Route path="my-reviews" element={<MyReviewsPage />} />
+                <Route path="reviews" element={<MyReviewsPage />} />
+                <Route path="write-review/:bookingId" element={<WriteReviewPage />} />
+                <Route path="reviews/new/:bookingId" element={<WriteReviewPage />} />
+                <Route path="my-disputes" element={<MyDisputesPage />} />
+                <Route path="submit-dispute/:bookingId" element={<SubmitDisputePage />} />
+                <Route path="disputes/new/:bookingId" element={<SubmitDisputePage />} />
+              </Route>
+            </Route>
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="system-config" element={<SystemConfiguration />} />
+              <Route path="logs" element={<SystemLog />} />
             </Route>
           </Route>
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<UserManagement />} />
-            <Route path="system-config" element={<SystemConfiguration />} />
-            <Route path="logs" element={<SystemLog />} />
-          </Route>
-          
           {/* Hotel Partner Routes */}        
           <Route element={<ProtectedRoute allowedRoles={['HOTEL_PARTNER']} />}>
             <Route path="/partner" element={<PropertyDraftProvider><PartnerLayout /></PropertyDraftProvider>}>
@@ -163,6 +167,8 @@ function App() {
               <Route path="audit-history" element={<ManagerAuditLogPage />} />
             </Route>
           </Route>
+          {/* URL không tồn tại: về trang chủ (partner sẽ được đưa tiếp về /partner) */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>

@@ -33,7 +33,7 @@ const blankRoom = () => ({
 });
 
 const PartnerPropertyRooms = () => {
-  const { draft, setDraft } = usePropertyDraft();
+  const { draft } = usePropertyDraft();
   const [rooms, setRooms] = useState(
     draft.rooms?.length ? draft.rooms : [blankRoom()],
   );
@@ -71,7 +71,7 @@ const PartnerPropertyRooms = () => {
       next="/partner/property-photos"
       invalid={roomErrors.some(hasErrors)}
       onInvalid={() => setShowErrors(true)}
-      beforeNext={() => setDraft((current) => ({ ...current, rooms }))}
+      draftValues={{ rooms }}
     >
       {rooms.map((room, index) => {
         const shown = showErrors ? roomErrors[index] : {};

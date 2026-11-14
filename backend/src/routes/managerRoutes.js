@@ -12,17 +12,13 @@ import {
   getManagerBookings,
   getManagerHotels,
   getPayouts,
-  getPartnerChangeRequests,
   getRefunds,
-  getSupportTickets,
   getVerificationById,
   getVerifications,
   pingManager,
   reviewPayout,
-  reviewPartnerChangeRequest,
   reviewRefund,
   reviewVerification,
-  respondToSupportTicket,
   updateCommissionPolicy,
   updateDispute,
 } from '../controllers/managerController.js';
@@ -35,10 +31,6 @@ router.get('/dashboard', getDashboard);
 router.get('/verifications', getVerifications);
 router.get('/verifications/:id', getVerificationById);
 router.patch('/verifications/:id/review', reviewVerification);
-router.get('/partner-change-requests', getPartnerChangeRequests);
-router.patch('/partner-change-requests/:id/review', reviewPartnerChangeRequest);
-router.get('/support-tickets', getSupportTickets);
-router.patch('/support-tickets/:id/respond', respondToSupportTicket);
 router.get('/disputes', getDisputes);
 router.patch('/disputes/:id', updateDispute);
 router.get('/bookings', getManagerBookings);
