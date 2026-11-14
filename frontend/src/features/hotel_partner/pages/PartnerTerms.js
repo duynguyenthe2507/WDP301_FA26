@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Button, Card, Form } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { usePropertyDraft } from '../context/PropertyDraftContext';
 
 const partnerTerms = {
@@ -313,7 +313,8 @@ const PartnerTerms = () => {
   const [accepted, setAccepted] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const navigate = useNavigate();
-  const { setDraft } = usePropertyDraft();
+  const { hotel } = useOutletContext();
+  const { draft, setDraft, savedStep } = usePropertyDraft();
 
   const handleNext = () => {
     if (!accepted) {
@@ -347,6 +348,19 @@ const PartnerTerms = () => {
               </section>
             ))}
           </div>
+
+          {hotel && !savedStep && (
+            <Alert variant="info" className="border-0">
+              Bạn đang sửa hồ sơ đã nộp. Thông tin cũ đã được điền sẵn ở các bước sau.
+            </Alert>
+          )}
+
+          {savedStep && draft.termsAccepted && (
+            <Alert variant="info" className="border-0 d-flex justify-content-between align-items-center gap-3">
+              <span>Bạn có bản nháp đăng ký đã lưu.</span>
+              <Button size="sm" variant="primary" onClick={() => navigate(savedStep)}>Tiếp tục</Button>
+            </Alert>
+          )}
 
           {showWarning && !accepted && (
             <Alert variant="warning" className="border-0">

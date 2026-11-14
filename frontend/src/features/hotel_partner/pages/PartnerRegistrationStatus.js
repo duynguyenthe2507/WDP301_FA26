@@ -8,7 +8,7 @@ const MESSAGES = {
 };
 
 const PartnerRegistrationStatus = () => {
-  const { hotel, verification } = useOutletContext();
+  const { hotel, verification, canResubmit } = useOutletContext();
   const needsInfo = verification?.status === "ADDITIONAL_INFO_REQUIRED";
   const message = needsInfo
     ? { variant: "info", text: "Operations Manager yêu cầu bổ sung thông tin." }
@@ -24,6 +24,7 @@ const PartnerRegistrationStatus = () => {
       <Alert variant={message.variant}>{message.text}</Alert>
       {verification?.reviewNote && <p><strong>Ghi chú của quản lý:</strong> {verification.reviewNote}</p>}
       {hotel.status === "ACTIVE" && <Button as={Link} to="/partner">Vào trang quản lý</Button>}
+      {canResubmit && <Button as={Link} to="/partner/terms">Sửa và gửi lại</Button>}
     </Card.Body></Card>
   );
 };
