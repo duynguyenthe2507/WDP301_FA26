@@ -8,6 +8,7 @@ export const BOOKING_STATUS = {
 export const PAYMENT_STATUS = {
   PAID: "Đã thanh toán",
   REFUNDED: "Đã hoàn tiền",
+  UNREFUNDED: "Không hoàn tiền",
 };
 
 export const PAYOUT_STATUS = {

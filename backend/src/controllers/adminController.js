@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import AuditLog from '../models/AuditLog.js';
 import SystemConfig from "../models/SystemConfig.js";
+import { clearMaintenanceCache } from '../middlewares/maintenanceMiddleware.js';
 
 
 const roles = ['CUSTOMER', 'HOTEL_PARTNER', 'OPERATIONS_MANAGER', 'ADMIN'];
@@ -234,6 +235,7 @@ export const updateConfig = async (req, res) => {
       config.maintenanceMessage = maintenanceMessage.trim();
     }
     await config.save();
+    clearMaintenanceCache();
 
     // GHI NHẬT KÝ KIỂM TOÁN (Audit Log)
     await AuditLog.create({

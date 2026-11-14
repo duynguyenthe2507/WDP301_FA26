@@ -12,7 +12,7 @@ import HotelReviews from '../components/HotelReviews';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import ErrorMessage from '../../../components/ErrorMessage';
 
-// Helper xử lý ngày chuẩn giờ địa phương (tránh lỗi lệch ngày do múi giờ UTC)
+// helper to format local date YYYY-MM-DD (avoids UTC timezone shift)
 const getLocalDateString = (d = new Date()) => {
   const date = new Date(d);
   const year = date.getFullYear();
@@ -44,7 +44,7 @@ const HotelDetailsPage = () => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const location = useLocation();
-  // Lựa chọn (ngày, số phòng) được giữ lại khi khách đăng nhập xong và quay về trang này
+  // keep selected dates and rooms if guest had to log in and returned
   const restored = location.state?.restoreSelection;
 
   const today = getLocalDateString(new Date());
@@ -68,7 +68,7 @@ const HotelDetailsPage = () => {
   const [roomQuantities, setRoomQuantities] = useState(restored?.roomQuantities || {});
   const [roomGuests, setRoomGuests] = useState(restored?.roomGuests || {});
 
-  // 1. Tải thông tin khách sạn
+  // 1. fetch hotel details
   useEffect(() => {
     if (!hotelId) return;
     const fetchHotel = async () => {
@@ -90,7 +90,7 @@ const HotelDetailsPage = () => {
     fetchHotel();
   }, [hotelId]);
 
-  // 2. Tải và đồng bộ tình trạng phòng trống khi ngày checkIn/checkOut thay đổi
+  // 2. fetch availability when check-in or check-out date changes
   useEffect(() => {
     if (!hotelId || !checkIn || !checkOut || checkOut <= checkIn) return;
 
@@ -104,7 +104,7 @@ const HotelDetailsPage = () => {
         const roomAvail = res.data?.room_availability || [];
         setAvailability(roomAvail);
 
-        // Kiểm tra và tự động điều chỉnh số lượng nếu vượt quá tồn kho mới
+        // clamp room quantity if it exceeds updated availability
         setRoomQuantities((prev) => {
           let adjusted = false;
           const next = { ...prev };
@@ -138,7 +138,7 @@ const HotelDetailsPage = () => {
     };
   }, [hotelId, checkIn, checkOut]);
 
-  // Thay đổi ngày nhận phòng (Tự động cập nhật ngày trả phòng nếu ngày trả <= ngày nhận)
+  // update check-in date (auto adjust check-out if check-in >= check-out)
   const handleCheckInChange = (newCheckIn) => {
     setCheckIn(newCheckIn);
     setWarningMessage('');
@@ -147,13 +147,13 @@ const HotelDetailsPage = () => {
     }
   };
 
-  // Thay đổi ngày trả phòng
+  // update check-out date
   const handleCheckOutChange = (newCheckOut) => {
     setCheckOut(newCheckOut);
     setWarningMessage('');
   };
 
-  // Thay đổi số lượng phòng cho một loại phòng cụ thể
+  // update room quantity for a specific room type
   const handleQuantityChange = useCallback((roomTypeId, newQty) => {
     setRoomQuantities((prev) => {
       const next = { ...prev };
@@ -187,7 +187,7 @@ const HotelDetailsPage = () => {
     setWarningMessage('');
   }, [hotel]);
 
-  // Thay đổi số lượng khách (người lớn + trẻ em) cho loại phòng
+  // update guest count (adults & children) for a room type
   const handleGuestsChange = useCallback((roomTypeId, newGuests) => {
     setRoomGuests((prev) => ({
       ...prev,
@@ -195,14 +195,14 @@ const HotelDetailsPage = () => {
     }));
   }, []);
 
-  // Tìm thông tin phòng trống theo ID loại phòng
+  // get availability info by room type id
   const getAvailabilityForRoom = (roomTypeId) => {
     return availability.find(
       (a) => a.room_type_id?.toString() === roomTypeId?.toString()
     );
   };
 
-  // 3. TÍNH TOÁN TẬP TRUNG (Single Source of Truth)
+  // 3. calculate booking summary totals
   const selectedRoomsList = (hotel?.room_types || [])
     .filter((rt) => (roomQuantities[rt._id] || 0) > 0)
     .map((rt) => {
@@ -227,10 +227,10 @@ const HotelDetailsPage = () => {
     (sum, item) => sum + item.base_price * item.quantity * nights,
     0
   );
-  const serviceFee = Math.round(roomCost * 0.1); // 10% thuế & phí
+  const serviceFee = Math.round(roomCost * 0.1); // 10% tax & service fee
   const totalAmount = roomCost + serviceFee;
 
-  // 4. Xử lý chuyển sang trang Đặt phòng
+  // 4. navigate to booking page
   const handleSubmitBooking = () => {
     if (totalRooms <= 0) {
       alert('Vui lòng chọn số lượng phòng bạn muốn đặt.');
@@ -246,7 +246,7 @@ const HotelDetailsPage = () => {
       return;
     }
 
-    // Khách chưa đăng nhập: sang trang đăng nhập, xong sẽ quay lại đúng trang chọn phòng này
+    // if guest is not logged in, redirect to login and restore state after
     if (!user) {
       navigate('/login', {
         state: {
@@ -272,7 +272,7 @@ const HotelDetailsPage = () => {
     navigate('/booking', {
       state: {
         hotel,
-        roomType: selectedRoomsList[0], // Giữ tương thích ngược
+        roomType: selectedRoomsList[0], // backwards compatibility
         quantity: totalRooms,
         totalAdults,
         totalChildren,
@@ -347,12 +347,12 @@ const HotelDetailsPage = () => {
 
       <Container className="mt-4">
         <Row className="gy-4">
-          {/* CỘT TRÁI: ẢNH, MÔ TẢ & DANH SÁCH LOẠI PHÒNG */}
+          {/* left column: gallery, description, room types */}
           <Col lg={7} xl={8}>
-            {/* Gallery ảnh */}
+            {/* Image gallery */}
             <ImageGallery images={hotel.images || []} />
 
-            {/* Giới thiệu */}
+            {/* Hotel description */}
             {hotel.description && (
               <div className="mt-4 p-4 bg-white rounded-4 shadow-sm border">
                 <h4 className="fw-bold mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -362,7 +362,7 @@ const HotelDetailsPage = () => {
               </div>
             )}
 
-            {/* Danh sách loại phòng */}
+            {/* Room types list */}
             <div className="mt-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h4 className="fw-bold mb-0" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -396,14 +396,14 @@ const HotelDetailsPage = () => {
               )}
             </div>
 
-            {/* Đánh giá từ khách hàng */}
+            {/* Customer reviews */}
             <HotelReviews
               hotelId={hotelId}
               initialRatingSummary={hotel.rating_summary}
             />
           </Col>
 
-          {/* CỘT PHẢI: CARD THÔNG TIN ĐẶT PHÒNG */}
+          {/* Right column: booking summary card */}
           <Col lg={5} xl={4}>
             <BookingSummaryCard
               isGuest={!user}

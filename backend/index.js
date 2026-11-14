@@ -10,6 +10,7 @@ import adminRoutes from './src/routes/adminRoutes.js';
 import partnerRoutes from './src/routes/partnerRoutes.js';
 import managerRoutes from './src/routes/managerRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
+import { maintenanceGuard } from './src/middlewares/maintenanceMiddleware.js';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,9 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Connect to Database
 connectDB();
+
+// Phải đặt trước các route để chặn mọi API khi hệ thống đang bảo trì
+app.use(maintenanceGuard);
 
 // API Routes
 app.use('/api/customer', customerRoutes);

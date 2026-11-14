@@ -475,10 +475,11 @@ const BookingHistoryPage = () => {
                       },
                     };
                     detailLine = 'Lịch sử đặt phòng được giữ lại sau khi hủy';
-                    paymentLine =
-                      booking.paymentStatus === 'PAID'
-                        ? 'Thanh toán: Đã thanh toán · Hoàn tiền đang xử lý'
-                        : 'Thanh toán: Đã hủy';
+                    paymentLine = {
+                      PAID: 'Thanh toán: Không được hoàn tiền',
+                      REFUNDED: 'Thanh toán: Đã hoàn tiền',
+                      UNREFUNDED: 'Thanh toán: Không được hoàn tiền',
+                    }[booking.paymentStatus] || 'Thanh toán: Đã hủy';
                     actionBtn = (
                       <button
                         onClick={() => navigate(`/booking/confirmation/${booking.bookingCode}`, { state: { booking } })}
