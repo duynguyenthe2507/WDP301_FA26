@@ -30,7 +30,7 @@ const RoomTypeCard = ({
   const primaryImage =
     room_type_images.find((img) => img.is_primary) || room_type_images[0];
 
-  // Xác định số phòng còn trống
+  // get available rooms count
   const availableRooms =
     availability !== undefined
       ? availability.available_rooms ?? 0
@@ -39,7 +39,7 @@ const RoomTypeCard = ({
   const isOutOfStock = availableRooms <= 0;
   const isMaxReached = quantity >= availableRooms;
 
-  // Giới hạn số người theo số phòng đã chọn
+  // guest limits based on selected room count
   const maxAdultsPerRoom = capacity?.adults || 2;
   const maxChildrenPerRoom = capacity?.children != null ? capacity.children : 1;
   const maxAdults = Math.max(1, quantity * maxAdultsPerRoom);
@@ -90,7 +90,7 @@ const RoomTypeCard = ({
                 )}
               </div>
 
-              {/* Thông tin sức chứa & giường */}
+              {/* Capacity & beds */}
               <div className="d-flex flex-wrap gap-3 text-muted small mb-3">
                 {capacity?.adults > 0 && (
                   <span>
@@ -112,7 +112,7 @@ const RoomTypeCard = ({
                 )}
               </div>
 
-              {/* Tiện nghi phòng */}
+              {/* Room amenities */}
               {amenities.length > 0 && (
                 <div className="d-flex flex-wrap gap-3 mb-3">
                   {amenities.slice(0, 4).map((a, i) => (
@@ -136,7 +136,7 @@ const RoomTypeCard = ({
               )}
             </div>
 
-            {/* Giá tiền & Bộ chọn số lượng (Quantity Selector) */}
+            {/* Price and quantity selector */}
             <div className="d-flex align-items-center justify-content-between mt-3 pt-3 border-top flex-wrap gap-3">
               <div>
                 <span className="fs-4 fw-bold" style={{ color: '#1a202c' }}>
@@ -150,7 +150,7 @@ const RoomTypeCard = ({
                 )}
               </div>
 
-              {/* BỘ CHỌN SỐ LƯỢNG PHÒNG */}
+              {/* Room quantity buttons */}
               <div className="d-flex flex-column align-items-end">
                 <div className="d-flex align-items-center gap-2">
                   <Button
@@ -212,7 +212,7 @@ const RoomTypeCard = ({
               </div>
             </div>
 
-            {/* YÊU CẦU ĐIỀN SỐ NGƯỜI (NGƯỜI LỚN + TRẺ EM) KHI ĐÃ CHỌN PHÒNG */}
+            {/* Guest selector (adults & children) once room is selected */}
             {quantity > 0 && (
               <div className="mt-3 p-3 bg-light rounded-3 border">
                 <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
@@ -226,7 +226,7 @@ const RoomTypeCard = ({
                 </div>
 
                 <Row className="g-2">
-                  {/* Người lớn */}
+                  {/* Adults */}
                   <Col sm={6}>
                     <div className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded-2 border">
                       <div>
@@ -280,7 +280,7 @@ const RoomTypeCard = ({
                     </div>
                   </Col>
 
-                  {/* Trẻ em */}
+                  {/* Children */}
                   <Col sm={6}>
                     <div className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded-2 border">
                       <div>

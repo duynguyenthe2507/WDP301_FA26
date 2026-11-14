@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:9999';
 
@@ -35,7 +35,7 @@ export const getMyBookings = (params = {}) => api.get('/api/customer/my-bookings
 export const getCancelBookingInfo = (idOrCode) => api.get(`/api/customer/bookings/${idOrCode}/cancel-info`);
 export const cancelBooking = (idOrCode, payload) => api.post(`/api/customer/bookings/${idOrCode}/cancel`, payload);
 
-// Đánh giá kỳ nghỉ (Reviews)
+// Reviews
 export const getMyReviews = () => api.get('/api/customer/reviews');
 export const getPendingReviewBookings = () => api.get('/api/customer/reviews/pending-bookings');
 export const getBookingReviewInfo = (bookingId) => api.get(`/api/customer/reviews/booking-info/${bookingId}`);
@@ -43,7 +43,7 @@ export const createReview = (payload) => api.post('/api/customer/reviews', paylo
 export const updateReview = (id, payload) => api.put(`/api/customer/reviews/${id}`, payload);
 export const deleteReview = (id) => api.delete(`/api/customer/reviews/${id}`);
 
-// Khiếu nại & Tranh chấp (Disputes)
+// Disputes
 export const getBookingDisputeInfo = (idOrCode) => api.get(`/api/customer/disputes/booking-info/${idOrCode}`);
 export const getMyDisputes = () => api.get('/api/customer/my-disputes');
 export const createDispute = (payload) => api.post('/api/customer/disputes', payload);

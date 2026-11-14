@@ -18,8 +18,8 @@ const formatDate = (dateStr) => {
 const HotelReviews = ({ hotelId, initialRatingSummary }) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStar, setSelectedStar] = useState(null); // null = Tat ca
-  const [showAll, setShowAll] = useState(false); // false = vai danh gia moi nhat
+  const [selectedStar, setSelectedStar] = useState(null); // null = all
+  const [showAll, setShowAll] = useState(false); // false = show latest few reviews
 
   const [stats, setStats] = useState({
     totalReviews: initialRatingSummary?.total_reviews || initialRatingSummary?.totalReviews || 0,
@@ -62,13 +62,13 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
     };
   }, [hotelId, initialRatingSummary]);
 
-  // Loc danh gia theo so sao da chon
+  // filter reviews by selected star rating
   const filteredReviews = reviews.filter((r) => {
     if (selectedStar === null) return true;
     return Math.round(r.rating) === selectedStar;
   });
 
-  // Che do hien thi: 3 danh gia moi nhat hoac tat ca
+  // display mode: 3 latest reviews or all
   const DISPLAY_LIMIT = 3;
   const displayedReviews = showAll ? filteredReviews : filteredReviews.slice(0, DISPLAY_LIMIT);
   const hasMore = filteredReviews.length > DISPLAY_LIMIT;
@@ -77,7 +77,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
 
   return (
     <div className="mt-5 p-4 bg-white rounded-4 shadow-sm border">
-      {/* Tieu de section */}
+      {/* Section title */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
           <h4 className="fw-bold mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -96,7 +96,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
         </Badge>
       </div>
 
-      {/* Tong quan diem so & Thong ke phan bo sao */}
+      {/* Rating summary & star distribution */}
       <Row className="g-4 align-items-center mb-4 pb-4 border-bottom">
         <Col md={4} className="text-center border-end-md">
           <div className="display-4 fw-bold text-dark mb-1">
@@ -143,7 +143,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
         </Col>
       </Row>
 
-      {/* Bo loc theo sao */}
+      {/* Star filter */}
       {reviews.length > 0 && (
         <div className="d-flex align-items-center flex-wrap gap-2 mb-4">
           <span className="text-secondary small fw-bold d-flex align-items-center me-1">
@@ -181,7 +181,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
         </div>
       )}
 
-      {/* Danh sach danh gia */}
+      {/* Reviews list */}
       {loading ? (
         <div className="text-center py-4">
           <Spinner animation="border" variant="warning" size="sm" />
@@ -248,12 +248,12 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
                     <RatingStars rating={rev.rating} size="0.9rem" />
                   </div>
 
-                  {/* Noi dung danh gia */}
+                  {/* Review comment */}
                   <p className="text-dark mb-2 mt-2 lh-base" style={{ fontSize: '0.95rem' }}>
                     {rev.comment}
                   </p>
 
-                  {/* Anh dinh kem cua khach neu co */}
+                  {/* Guest photo attachments */}
                   {rev.images && rev.images.length > 0 && (
                     <div className="d-flex gap-2 flex-wrap my-2">
                       {rev.images.map((img, idx) => (
@@ -268,7 +268,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
                     </div>
                   )}
 
-                  {/* Phan hoi tu chu khach san */}
+                  {/* Partner reply */}
                   {rev.partnerReply?.content && (
                     <div className="mt-3 p-3 bg-white rounded-3 border-start border-warning border-3 shadow-2xs">
                       <div className="d-flex align-items-center justify-content-between mb-1">
@@ -292,7 +292,7 @@ const HotelReviews = ({ hotelId, initialRatingSummary }) => {
             );
           })}
 
-          {/* Nut chuyen doi giua "Xem tat ca" va "Thu gon" */}
+          {/* Toggle show all / collapse */}
           {hasMore && (
             <div className="text-center mt-3">
               <Button

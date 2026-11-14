@@ -1,6 +1,6 @@
 import Hotel from '../models/Hotel.js';
 import RoomType from '../models/RoomType.js';
-import '../models/BookingDetail.js'; // đăng ký model cho populate('details')
+import '../models/BookingDetail.js'; // register model for populate('details')
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
 import mongoose from 'mongoose';
@@ -48,7 +48,7 @@ export const getHotels = async (req, res) => {
 
     const andConditions = [];
 
-    // Tìm kiếm theo địa điểm hoặc tên khách sạn
+    // search by location or hotel name
     if (location && location.trim()) {
       const keyword = location.trim();
       andConditions.push({
@@ -60,7 +60,7 @@ export const getHotels = async (req, res) => {
       });
     }
 
-    // Lọc theo đánh giá tối thiểu (sao)
+    // filter by minimum star rating
     if (minRating) {
       const ratingVal = Number(minRating);
       andConditions.push({
@@ -76,13 +76,13 @@ export const getHotels = async (req, res) => {
       query.$and = andConditions;
     }
 
-    // Lọc theo giá phòng
+    // filter by price range
     if (minPrice || maxPrice) {
       const priceFilter = {};
       if (minPrice) priceFilter.$gte = Number(minPrice);
       if (maxPrice) priceFilter.$lte = Number(maxPrice);
 
-      // roomTypes là virtual (collection RoomType) nên không lọc trực tiếp trên Hotel được
+      // roomTypes is a virtual field, so get hotelIds from RoomType first
       query._id = { $in: await RoomType.distinct('hotelId', { basePrice: priceFilter, isDeleted: { $ne: true } }) };
     }
 
@@ -155,7 +155,7 @@ export const checkRoomAvailability = async (req, res) => {
       });
     }
 
-    // Neu khong truyen ngay, tra ve so phong mac dinh
+    // if dates are not provided, return default total rooms
     if (!checkIn || !checkOut) {
       const defaultAvail = (hotel.roomTypes || [])
         .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE' && rt.status !== 'MAINTENANCE')
@@ -178,9 +178,9 @@ export const checkRoomAvailability = async (req, res) => {
     const reqInStr = String(checkIn).slice(0, 10);
     const reqOutStr = String(checkOut).slice(0, 10);
 
-    // Lay danh sach don dat cua khach san
-    // Don hop le chiem phong: CONFIRMED, PAID, hoac PENDING_PAYMENT chua qua 15 phut
-    // chi tiet phong cua don nam o collection BookingDetail (virtual `details`)
+    // get active bookings for this hotel
+    // valid bookings holding rooms: CONFIRMED, PAID, or PENDING_PAYMENT within 15 mins
+    // room details are stored in BookingDetail collection (virtual 'details')
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
     const activeBookings = await Booking.find({
@@ -197,14 +197,14 @@ export const checkRoomAvailability = async (req, res) => {
       ],
     }).populate('details');
 
-    // Tinh tong so phong da dat theo tung roomTypeId trong khoang [checkIn, checkOut]
+    // count booked rooms per roomTypeId between checkIn and checkOut
     const bookedCountsByRoomType = {};
 
     for (const b of activeBookings) {
       const bInStr = b.checkInDate ? new Date(b.checkInDate).toISOString().slice(0, 10) : '';
       const bOutStr = b.checkOutDate ? new Date(b.checkOutDate).toISOString().slice(0, 10) : '';
 
-      // Kiem tra trung ngay: bIn < reqOut && bOut > reqIn
+      // check overlapping dates: bIn < reqOut && bOut > reqIn
       const isOverlap = bInStr < reqOutStr && bOutStr > reqInStr;
 
       if (isOverlap && Array.isArray(b.details)) {
@@ -218,7 +218,7 @@ export const checkRoomAvailability = async (req, res) => {
       }
     }
 
-    // Tinh so phong con trong thuc te
+    // calculate actual available rooms
     const room_availability = (hotel.roomTypes || [])
       .filter((rt) => !rt.isDeleted && rt.status !== 'INACTIVE' && rt.status !== 'MAINTENANCE')
       .map((rt) => {
@@ -274,7 +274,7 @@ export const getHotelReviews = async (req, res) => {
 
     const hotelObjectId = new mongoose.Types.ObjectId(id);
 
-    // Thong ke tat ca danh gia cua khach san de tinh starCounts va averageRating
+    // aggregate all reviews to calculate starCounts and average rating
     const allReviews = await Review.find({
       $or: [{ hotelId: hotelObjectId }, { hotelId: id.toString() }],
     })
@@ -295,7 +295,7 @@ export const getHotelReviews = async (req, res) => {
     const totalReviews = allReviews.length;
     const averageRating = totalReviews > 0 ? Number((totalScore / totalReviews).toFixed(1)) : 0;
 
-    // Loc theo so sao neu co yeu cau
+    // filter by star rating if requested
     let filteredReviews = allReviews;
     if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
       filteredReviews = allReviews.filter((r) => Math.round(r.rating) === Number(rating));

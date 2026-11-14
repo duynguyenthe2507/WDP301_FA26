@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-// Giờ dạng HH:mm (00:00 - 23:59)
+// format HH:mm (00:00 - 23:59)
 export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const hotelSchema = new mongoose.Schema({

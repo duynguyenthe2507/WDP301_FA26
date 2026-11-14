@@ -1,4 +1,4 @@
-// Không dùng ảnh mặc định: thiếu ảnh hoặc link hỏng thì hiện ô xám trống
+// show blank gray placeholder if image is missing or broken
 export const BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 export const imgBg = { backgroundColor: '#e2e8f0' };

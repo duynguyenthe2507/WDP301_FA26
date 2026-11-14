@@ -24,7 +24,7 @@ const Home = () => {
   const [featuredHotels, setFeaturedHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Lay 3 khach san moi nhat lam noi bat
+  // get 3 latest hotels for featured section
   useEffect(() => {
     let isMounted = true;
 

@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 const router = express.Router();
 import {
   pingCustomer,
@@ -37,13 +37,13 @@ import { uploadReviewImages, uploadDisputeAttachments } from '../controllers/upl
 
 router.get('/ping', pingCustomer);
 
-// Profile routes (yêu cầu đăng nhập với role CUSTOMER)
+// Profile routes (requires CUSTOMER role)
 router.get('/profile', verifyToken, authorizeRoles('CUSTOMER'), getProfile);
 router.put('/profile', verifyToken, authorizeRoles('CUSTOMER'), updateProfile);
 router.put('/change-password', verifyToken, authorizeRoles('CUSTOMER'), changePassword);
 
 // VNPay Sandbox Booking & Payment routes
-// Đặt phòng & xem đơn yêu cầu đăng nhập CUSTOMER (khách vãng lai chỉ được xem phòng)
+// Booking requires CUSTOMER role (guests can only view rooms)
 router.post('/bookings/pending', verifyToken, authorizeRoles('CUSTOMER'), createPendingBooking);
 router.get('/bookings/vnpay-verify', verifyVNPayPayment);
 router.post('/bookings/vnpay-verify', verifyVNPayPayment);
@@ -58,7 +58,7 @@ router.post('/disputes', verifyToken, authorizeRoles('CUSTOMER'), createDispute)
 router.patch('/disputes/:id/withdraw', verifyToken, authorizeRoles('CUSTOMER'), withdrawDispute);
 router.post('/refunds', verifyToken, authorizeRoles('CUSTOMER'), createRefundRequest);
 
-// Đánh giá kỳ nghỉ (Customer Reviews)
+// Customer reviews
 router.get('/reviews', verifyToken, authorizeRoles('CUSTOMER'), getMyReviews);
 router.get('/reviews/pending-bookings', verifyToken, authorizeRoles('CUSTOMER'), getPendingReviewBookings);
 router.get('/reviews/booking-info/:bookingId', verifyToken, authorizeRoles('CUSTOMER'), getBookingReviewInfo);
@@ -67,11 +67,11 @@ router.put('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), updateReview
 router.delete('/reviews/:id', verifyToken, authorizeRoles('CUSTOMER'), deleteReview);
 
 
-// Upload routes (ảnh đánh giá và tệp khiếu nại)
+// Upload routes (review images and dispute attachments)
 router.post('/upload/review-images', verifyToken, authorizeRoles('CUSTOMER'), uploadImages, uploadReviewImages);
 router.post('/upload/dispute-files', verifyToken, authorizeRoles('CUSTOMER'), uploadDisputeFiles, uploadDisputeAttachments);
 
-// Hotel routes (Search, Filter, Detail, Availability, Reviews)
+// Hotel routes (search, filter, detail, availability, reviews)
 router.get('/hotels', getHotels);
 router.get('/hotels/:id', getHotelById);
 router.get('/hotels/:id/availability', checkRoomAvailability);

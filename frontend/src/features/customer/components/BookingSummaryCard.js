@@ -66,7 +66,7 @@ const BookingSummaryCard = ({
           </Alert>
         )}
 
-        {/* A. NGÀY NHẬN PHÒNG */}
+        {/* Check-in date */}
         <Form.Group className="mb-3">
           <Form.Label className="fw-semibold small text-muted d-flex align-items-center gap-1 mb-1">
             <FaCalendarAlt style={{ color: '#d4af37' }} />
@@ -82,7 +82,7 @@ const BookingSummaryCard = ({
           />
         </Form.Group>
 
-        {/* B. NGÀY TRẢ PHÒNG */}
+        {/* Check-out date */}
         <Form.Group className="mb-3">
           <Form.Label className="fw-semibold small text-muted d-flex align-items-center gap-1 mb-1">
             <FaCalendarAlt style={{ color: '#d4af37' }} />
@@ -103,7 +103,7 @@ const BookingSummaryCard = ({
           )}
         </Form.Group>
 
-        {/* THỜI GIAN LƯU TRÚ & SỐ KHÁCH */}
+        {/* Stay duration & guest count */}
         <div className="p-2 mb-3 bg-light rounded-3 d-flex justify-content-between align-items-center small">
           <span className="text-secondary">Thời gian & Khách:</span>
           <strong className="text-dark text-end">
@@ -116,7 +116,7 @@ const BookingSummaryCard = ({
           </strong>
         </div>
 
-        {/* C. THÔNG TIN SỐ LƯỢNG PHÒNG ĐÃ CHỌN */}
+        {/* Selected rooms list */}
         <div className="border-top pt-3 mb-3">
           <div className="d-flex justify-content-between align-items-center mb-2">
             <h6 className="fw-bold mb-0 text-dark d-flex align-items-center gap-1">
@@ -166,7 +166,7 @@ const BookingSummaryCard = ({
           )}
         </div>
 
-        {/* D. THÔNG TIN GIÁ TIỀN */}
+        {/* Price breakdown */}
         {totalRooms > 0 && (
           <div className="border-top pt-3 mb-4">
             <h6 className="fw-bold text-dark small mb-2">Chi tiết thanh toán</h6>
@@ -187,7 +187,7 @@ const BookingSummaryCard = ({
           </div>
         )}
 
-        {/* CHÍNH SÁCH HỦY PHÒNG CỦA KHÁCH SẠN */}
+        {/* Cancellation policy */}
         {totalRooms > 0 && (
           <div className="mb-3">
             <CancellationTerms
@@ -198,7 +198,7 @@ const BookingSummaryCard = ({
           </div>
         )}
 
-        {/* 2.2 NÚT TIẾP TỤC ĐẶT PHÒNG */}
+        {/* Proceed to booking button */}
         <Button
           onClick={onSubmitBooking}
           disabled={isSubmitDisabled}

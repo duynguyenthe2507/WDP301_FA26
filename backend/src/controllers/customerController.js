@@ -1,4 +1,4 @@
-﻿import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
@@ -71,7 +71,7 @@ export const changePassword = async (req, res) => {
 
 
     user.password = new_password;
-    await user.save(); // trigger pre-save hook để hash password mới
+    await user.save(); // pre-save hook will hash the new password
 
     res.status(200).json({ message: 'Đổi mật khẩu thành công' });
   } catch (error) {
@@ -84,7 +84,7 @@ export const cleanExpiredPendingBookings = async () => {
   try {
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-    // Bug 3 fix: tìm đơn hết hạn trước, rồi xóa BookingDetail và Payment liên quan
+    // Bug 3 fix: find expired bookings first, then delete related BookingDetail and Payment
     const expiredBookings = await Booking.find({
       bookingStatus: 'PENDING_PAYMENT',
       paymentStatus: { $ne: 'PAID' },
@@ -106,13 +106,13 @@ export const cleanExpiredPendingBookings = async () => {
 };
 
 // POST /api/customer/bookings/pending
-// Tạo đơn đặt phòng và sinh link chuyển hướng sang VNPay Sandbox
-// Ảnh bìa khách sạn: ưu tiên ảnh isCover, không có thì lấy ảnh đầu tiên
+// create pending booking and generate VNPay sandbox redirect link
+// hotel cover: use isCover image if available, otherwise take the first one
 const getHotelCover = (hotel) =>
   hotel?.images?.find((img) => img.isCover)?.url || hotel?.images?.[0]?.url || '';
 
-// Lấy IP client
-// VNPay chỉ nhận IPv4: bỏ danh sách proxy, tiền tố ::ffff: và đổi ::1 về 127.0.0.1
+// get client ip
+// VNPay only accepts IPv4: strip proxy list, ::ffff: prefix and map ::1 to 127.0.0.1
 const getClientIp = (req) => {
   const ip = String(
     req.headers['x-forwarded-for'] ||
@@ -126,13 +126,13 @@ const getClientIp = (req) => {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? ip : '127.0.0.1';
 };
 
-// vnp_PayDate dạng yyyyMMddHHmmss (GMT+7) -> Date
+// parse vnp_PayDate string yyyyMMddHHmmss (GMT+7) into Date
 const parseVnpDate = (str) => {
   const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(str || '');
   return m ? new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+07:00`) : new Date();
 };
 
-// Các quan hệ đính kèm khi trả booking về frontend
+// relations to populate when returning booking to frontend
 const BOOKING_POPULATE = [
   'details',
   'cancellation',
@@ -144,8 +144,8 @@ const isBookingOwner = (booking, user) =>
   String(booking.customerId) === String(user._id) ||
   booking.bookerEmail === user.email?.trim().toLowerCase();
 
-// Mỗi lần thanh toán là một Payment PENDING với txnRef riêng (VNPay không nhận trùng vnp_TxnRef;
-// verifyReturnData cắt hậu tố R<timestamp> để ra lại bookingCode)
+// each payment attempt has its own txnRef (VNPay rejects duplicate vnp_TxnRef;
+// verifyReturnData trims the R<timestamp> suffix to get original bookingCode)
 const startPayment = async (booking, req) => {
   const txnRef = `${booking.bookingCode}R${Date.now()}`;
   await Payment.create({ bookingId: booking._id, txnRef, amount: booking.totalAmount });
@@ -205,7 +205,7 @@ export const createPendingBooking = async (req, res) => {
       guestPhone: isSelfGuest ? '' : guestPhone.trim(),
     };
 
-    // Thanh toán lại đơn cũ: dùng lại đơn PENDING_PAYMENT thay vì tạo đơn mới
+    // retry payment for existing booking: reuse PENDING_PAYMENT booking instead of creating a new one
     if (req.body.bookingCode) {
       const existing = await Booking.findOne({
         bookingCode: req.body.bookingCode,
@@ -227,7 +227,7 @@ export const createPendingBooking = async (req, res) => {
       return res.status(200).json({ message: 'Tạo lại giao dịch thanh toán', booking: await existing.populate(BOOKING_POPULATE), paymentUrl });
     }
 
-    // Validate ngày nhận và trả phòng
+    // validate check-in and check-out dates
     if (!checkInDate || !checkOutDate) {
       return res.status(400).json({ message: 'Vui lòng chọn ngày nhận phòng và ngày trả phòng' });
     }
@@ -267,20 +267,20 @@ export const createPendingBooking = async (req, res) => {
     if (!mongoose.isValidObjectId(hotelId)) {
       return res.status(400).json({ message: 'Khách sạn không hợp lệ' });
     }
-    // Kiem tra so phong con trong truoc khi tao don
+    // check room availability before creating booking
     const hotelDoc = await Hotel.findById(hotelId).populate('roomTypes');
     if (!hotelDoc) {
       return res.status(404).json({ message: 'Không tìm thấy khách sạn' });
     }
-    // Lỗi trong lúc kiểm tra phòng trống không chặn việc đặt phòng (chỉ log cảnh báo ở catch bên dưới)
+    // don't block booking if availability check fails (just log a warning below)
     try {
       if (hotelDoc) {
         const reqInStr = String(checkInDate).slice(0, 10);
         const reqOutStr = String(checkOutDate).slice(0, 10);
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
-        // Các đơn đang chiếm phòng của khách sạn: đã xác nhận, đã thanh toán,
-        // hoặc đang chờ thanh toán nhưng chưa quá 15 phút giữ chỗ (đơn hủy / thanh toán lỗi thì không tính)
+        // bookings that hold rooms: confirmed, paid,
+        // or pending payment within 15 mins (cancelled/failed bookings don't count)
         const existingBookings = await Booking.find({
           hotelId: String(hotelId),
           bookingStatus: { $nin: ['CANCELLED'] },
@@ -292,8 +292,8 @@ export const createPendingBooking = async (req, res) => {
           ],
         }).populate('details');
 
-        // Đếm số phòng đã bị đặt theo từng loại phòng, chỉ tính các đơn trùng khoảng ngày
-        // (trùng khi: nhận phòng cũ < trả phòng mới và trả phòng cũ > nhận phòng mới)
+        // count booked rooms per room type for overlapping date range
+        // (overlap condition: oldCheckIn < newCheckOut && oldCheckOut > newCheckIn)
         const bookedCounts = {};
         for (const b of existingBookings) {
           const bInStr = b.checkInDate ? new Date(b.checkInDate).toISOString().slice(0, 10) : '';
@@ -306,7 +306,7 @@ export const createPendingBooking = async (req, res) => {
           }
         }
 
-        // So sánh số phòng khách chọn với số phòng còn trống (tổng phòng - đã đặt) của từng loại phòng
+        // compare requested quantity with available rooms (total - booked)
         for (const item of bookingDetails) {
           const rtId = item.roomTypeId?.toString();
           const roomType = (hotelDoc.roomTypes || []).find((rt) => rt._id.toString() === rtId);
@@ -409,7 +409,7 @@ export const verifyVNPayPayment = async (req, res) => {
       });
     }
 
-    // Return URL có thể được gọi lại (GET + POST): đơn đã thanh toán thì không ghi đè
+    // return URL can be retried (GET + POST): don't overwrite if already paid
     if (booking.paymentStatus === 'PAID') {
       return res.status(200).json({ success: true, message: 'Thanh toán VNPay thành công!', booking: await booking.populate(BOOKING_POPULATE) });
     }
@@ -517,7 +517,7 @@ export const getMyBookings = async (req, res) => {
       const now = new Date();
       if (status === 'UPCOMING') {
         filter.bookingStatus = 'CONFIRMED';
-        // Bug 8 fix: bao gồm cả đơn đang lưu trú (checkIn < now < checkOut)
+        // Bug 8 fix: include ongoing stays as well (checkIn < now < checkOut)
         filter.checkOutDate = { $gt: now };
       } else if (status === 'PENDING') {
         filter.bookingStatus = 'PENDING_PAYMENT';
@@ -605,7 +605,7 @@ export const createDispute = async (req, res) => {
 };
 
 // GET /api/customer/disputes/booking-info/:idOrCode
-// Lấy thông tin đặt phòng phục vụ màn hình "Gửi khiếu nại về kỳ nghỉ"
+// get booking info for "Submit dispute" screen
 export const getBookingDisputeInfo = async (req, res) => {
   try {
     const { idOrCode } = req.params;
@@ -621,7 +621,7 @@ export const getBookingDisputeInfo = async (req, res) => {
 
     const hotel = booking.hotel || (await Hotel.findById(booking.hotelId).lean());
 
-    // Kiểm tra xem đã có dispute đang xử lý chưa
+    // check if there is an active dispute already
     const existingDispute = await Dispute.findOne({
       bookingId: booking._id,
       status: { $in: ['PENDING', 'IN_PROGRESS', 'WAITING_PARTNER'] },
@@ -639,7 +639,7 @@ export const getBookingDisputeInfo = async (req, res) => {
 };
 
 // GET /api/customer/my-disputes
-// Lấy danh sách khiếu nại của khách hàng
+// get list of customer disputes
 export const getMyDisputes = async (req, res) => {
   try {
     const disputes = await Dispute.find({ customerId: req.user._id })
@@ -648,7 +648,7 @@ export const getMyDisputes = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Khoản bồi thường Manager đã duyệt gắn với từng khiếu nại (APPROVED = đã duyệt, PROCESSED = đã chuyển)
+    // attach approved compensation from manager if any (APPROVED or PROCESSED)
     const compensations = await RefundRequest.find({
       disputeId: { $in: disputes.map((d) => d._id) },
       status: { $in: ['APPROVED', 'PROCESSED'] },
@@ -669,11 +669,11 @@ export const getMyDisputes = async (req, res) => {
 };
 
 // PATCH /api/customer/disputes/:id/withdraw
-// Khách rút khiếu nại khi chưa có kết luận (SRS 2.8.1 Alt 1)
+// customer withdraws dispute before conclusion
 export const withdrawDispute = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
-    // Điều kiện status nằm trong filter để không đè lên kết luận Manager vừa ghi
+    // status filter prevents overwriting a decision if manager just resolved it
     const dispute = await Dispute.findOneAndUpdate(
       {
         _id: req.params.id,
@@ -689,7 +689,7 @@ export const withdrawDispute = async (req, res) => {
     if (!dispute) {
       return res.status(409).json({ message: 'Không thể rút khiếu nại này (không tồn tại hoặc đã được xử lý xong).' });
     }
-    // Yêu cầu hoàn tiền đang chờ gắn với khiếu nại này không còn lý do tồn tại
+    // reject any pending refund request tied to this dispute
     await RefundRequest.updateMany(
       { disputeId: dispute._id, status: { $in: ['REQUESTED', 'UNDER_REVIEW'] } },
       { $set: { status: 'REJECTED', reviewNote: 'Khách hàng đã rút khiếu nại.', reviewedAt: new Date() } },
@@ -738,11 +738,11 @@ export const createRefundRequest = async (req, res) => {
 };
 
 
-// HỦY ĐẶT PHÒNG & TÍNH TOÁN HOÀN TIỀN
-// Hàm tính toán chi tiết chính sách hủy, hạn hủy và số tiền hoàn
-// Hạn hoàn tiền theo chính sách khách sạn (tính đến 14:00 của ngày nhận phòng trừ N ngày):
-// 'one': trước 1 ngày hoàn 100%; 'three': trước 3 ngày hoàn 100%, trước 1 ngày hoàn 50%;
-// hủy sau mốc cuối cùng thì mất toàn bộ; 'none' = không hoàn tiền. Mỗi chính sách xếp mốc xa nhất trước.
+// BOOKING CANCELLATION & REFUND CALCULATION
+// calculate cancellation policy details, deadlines and refund amount
+// refund deadline is 14:00 on (check-in date - N days):
+// 'one': 100% refund before 1 day; 'three': 100% before 3 days, 50% before 1 day;
+// no refund after deadline; 'none' = no refund
 const REFUND_TIERS = {
   one: [{ days: 1, rate: 1 }],
   three: [{ days: 3, rate: 1 }, { days: 1, rate: 0.5 }],
@@ -750,7 +750,7 @@ const REFUND_TIERS = {
 };
 
 export const calculateCancellationDetails = (booking, hotel) => {
-  // Đơn cũ chưa lưu chính sách lúc đặt thì dùng chính sách hiện tại của khách sạn
+  // fallback to current hotel policy if booking has no policy saved
   const bookedPolicy = booking.cancellationPolicy || hotel?.cancellationPolicy;
   const policy = REFUND_TIERS[bookedPolicy] ? bookedPolicy : 'three';
   const tiers = REFUND_TIERS[policy];
@@ -761,7 +761,7 @@ export const calculateCancellationDetails = (booking, hotel) => {
   const deadlineOf = (days) =>
     new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate() - days, 14, 0, 0);
 
-  // Mốc đầu tiên mà thời điểm hủy còn nằm trong hạn quyết định tỉ lệ hoàn
+  // find first matching tier before its deadline
   const tier = tiers.find((t) => now.getTime() <= deadlineOf(t.days).getTime());
   const refundRate = tier ? tier.rate : 0;
   const isPaid = booking.paymentStatus === 'PAID';
@@ -826,7 +826,7 @@ export const getCancelBookingInfo = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
     }
 
-    // Kiểm tra quyền sở hữu đơn (chủ đơn hoặc ADMIN)
+    // check booking ownership (customer or ADMIN)
     if (req.user.role !== 'ADMIN' && !isBookingOwner(booking, req.user)) {
       return res.status(403).json({ message: 'Bạn không có quyền thao tác với đơn đặt phòng này' });
     }
@@ -842,12 +842,12 @@ export const getCancelBookingInfo = async (req, res) => {
       return res.status(400).json({ message: 'Đơn đặt phòng đã hoàn thành, không thể hủy' });
     }
 
-    // Lấy thông tin khách sạn
+    // get hotel info
     const hotel = await Hotel.findById(booking.hotelId).populate('roomTypes');
 
     const calculations = calculateCancellationDetails(booking, hotel);
 
-    // Xử lý thông tin chi tiết loại phòng (tên phòng, diện tích, loại giường)
+    // format room details (name, size, bed type)
     let roomDetailsInfo = '';
     if (hotel && Array.isArray(hotel.roomTypes) && booking.details?.[0]?.roomTypeId) {
       const room = hotel.roomTypes.find(
@@ -904,7 +904,7 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy thông tin đơn đặt phòng' });
     }
 
-    // Kiểm tra quyền sở hữu đơn (chủ đơn hoặc ADMIN)
+    // check booking ownership (customer or ADMIN)
     if (req.user.role !== 'ADMIN' && !isBookingOwner(booking, req.user)) {
       return res.status(403).json({ message: 'Bạn không có quyền hủy đơn đặt phòng này' });
     }
@@ -916,12 +916,12 @@ export const cancelBooking = async (req, res) => {
       return res.status(400).json({ message: 'Đơn đặt phòng đã hoàn thành, không thể hủy' });
     }
 
-    // Lấy khách sạn để tính toán phí hủy và tiền hoàn chính xác
+    // get hotel to calculate cancellation fee and refund accurately
     const hotel = await Hotel.findById(booking.hotelId);
 
     const calculations = calculateCancellationDetails(booking, hotel);
 
-    // Môi trường sandbox: đơn đã thanh toán và có tiền hoàn thì ghi nhận hoàn tiền thành công ngay
+    // sandbox mode: if paid and has refund amount, record refund as successful right away
     const refunded = booking.paymentStatus === 'PAID' && calculations.refundAmount > 0;
     booking.bookingStatus = 'CANCELLED';
     if (refunded) booking.paymentStatus = 'REFUNDED';

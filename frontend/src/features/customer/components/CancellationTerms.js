@@ -3,7 +3,7 @@ import React from 'react';
 const formatPrice = (price) =>
   new Intl.NumberFormat('vi-VN').format(price) + ' đ';
 
-// Cùng hạn với backend (REFUND_TIERS trong customerController): tính đến 14:00 của ngày nhận phòng trừ N ngày
+// matches backend refund tiers: deadline is 14:00 on (check-in date - N days)
 const REFUND_TIERS = {
   one: [{ days: 1, rate: 1 }],
   three: [{ days: 3, rate: 1 }, { days: 1, rate: 0.5 }],
