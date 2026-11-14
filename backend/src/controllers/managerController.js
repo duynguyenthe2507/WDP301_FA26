@@ -94,7 +94,11 @@ export const getVerifications = async (req, res, next) => {
   try {
     const filter = req.query.status ? { status: req.query.status } : {};
     const result = await paged(HotelVerification, filter, req.query, [
-      { path: 'hotelId', select: 'name provinceCity address status starRating description images amenities cancellationPolicy roomTypes' },
+      {
+        path: 'hotelId',
+        select: 'name provinceCity address status starRating description images amenities cancellationPolicy checkInTime checkOutTime legalProfile roomTypes',
+        populate: { path: 'roomTypes', match: { isDeleted: { $ne: true } }, select: 'name bedType roomSize adultCapacity childrenCapacity totalRooms basePrice amenities images' },
+      },
       { path: 'partnerId', select: 'fullName email phoneNumber' },
       { path: 'reviewedBy', select: 'fullName email' },
     ]);

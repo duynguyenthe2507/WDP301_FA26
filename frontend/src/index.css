@@ -28,6 +28,12 @@ html {
   min-height: calc(100vh / var(--ui-zoom)) !important;
 }
 
+/* Lớp nền mờ của modal dùng 100vw/100vh nên cũng bị zoom thu lại, để hở một dải trắng ở bên phải và dưới */
+.modal-backdrop {
+  width: calc(100vw / var(--ui-zoom)) !important;
+  height: calc(100vh / var(--ui-zoom)) !important;
+}
+
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
