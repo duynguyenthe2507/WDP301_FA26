@@ -107,7 +107,7 @@ const RoomTypeCard = ({
                 {bed.length > 0 && (
                   <span>
                     <FaBed className="me-1" style={{ color: '#d4af37' }} />
-                    {bed.map((b) => `${b.quantity} ${b.bed_type}`).join(', ')}
+                    {bed.map((b) => ` ${b.bed_type}`).join(', ')}
                   </span>
                 )}
               </div>
